@@ -57,3 +57,4 @@ def test_api_camera_snapshot():
         assert response.status_code == 200
         assert response.headers["content-type"] == "image/jpeg"
         assert response.content.startswith(b"\xff\xd8")
+

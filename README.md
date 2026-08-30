@@ -41,3 +41,4 @@ Run pytest to verify the camera streaming and endpoints:
 ```bash
 pytest tests/ -v
 ```
+
