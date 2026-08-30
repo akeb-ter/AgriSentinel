@@ -1,6 +1,6 @@
 # BLUEPRINT.md - AgriSentinel System Specification
 
-This document serves as the technical master plan and implementation blueprint for **AgriSentinel**, an AI-assisted autonomous crop protection robot utilizing species-specific adaptive frequency repellent technology[cite: 1]. It is structured for direct ingestion by developers and AI coding agents.
+This document serves as the technical master plan and implementation blueprint for **AgriSentinel**, an AI-assisted autonomous crop protection robot utilizing species-specific adaptive frequency repellent technology. It is structured for direct ingestion by developers and AI coding agents.
 
 ---
 
@@ -8,12 +8,12 @@ This document serves as the technical master plan and implementation blueprint f
 
 | Paper Objective | Feature Requirement | Implementation Details |
 | :--- | :--- | :--- |
-| **Obj 2.1: Manage user information**[cite: 1] | User Profile & Login | Hardcoded single-user authentication (`admin`/`password123`) storing session token in `localStorage`. Simple profile management view[cite: 1]. |
-| **Obj 2.2: Monitor detected pests**[cite: 1] | Real-time Detection Feed | Live telemetry logging detected pest classes (*stem borers*, *sucking insects*, *defoliators*, *grain/storage pests*) with timestamp and confidence score[cite: 1, 2]. |
-| **Obj 2.3: Pest notifications**[cite: 1] | Alert Engine | WebSocket push notifications triggered instantly when a target pest is detected[cite: 1]. |
-| **Obj 2.4: Monitor robot status**[cite: 1] | System Telemetry Dashboard | Status indicator showing motor state (moving/stopped), obstacle clearance (ultrasonic distance), and active AI pipeline[cite: 1]. |
-| **Obj 2.5: Monitor repellent system**[cite: 1] | Audio Output Telemetry | Live display of the active dynamic frequency signal (in Hz) emitted by the audio system[cite: 1]. |
-| **Obj 2.6: Activate and control**[cite: 1] | Remote Control Interface | GUI controls (Forward, Reverse, Left, Right, Stop, Auto/Manual Toggle, Frequency Override) sent via WebSockets/HTTP[cite: 1]. |
+| **Obj 2.1: Manage user information** | User Profile & Login | Hardcoded single-user authentication (`admin`/`password123`) storing session token in `localStorage`. Simple profile management view. |
+| **Obj 2.2: Monitor detected pests** | Real-time Detection Feed | Live telemetry logging detected pest classes (*stem borers*, *sucking insects*, *defoliators*, *grain/storage pests*) with timestamp and confidence score. |
+| **Obj 2.3: Pest notifications** | Alert Engine | WebSocket push notifications triggered instantly when a target pest is detected. |
+| **Obj 2.4: Monitor robot status** | System Telemetry Dashboard | Status indicator showing motor state (moving/stopped), obstacle clearance (ultrasonic distance), and active AI pipeline. |
+| **Obj 2.5: Monitor repellent system** | Audio Output Telemetry | Live display of the active dynamic frequency signal (in Hz) emitted by the audio system. |
+| **Obj 2.6: Activate and control** | Remote Control Interface | GUI controls (Forward, Reverse, Left, Right, Stop, Auto/Manual Toggle, Frequency Override) sent via WebSockets/HTTP. |
 
 ---
 
@@ -21,11 +21,11 @@ This document serves as the technical master plan and implementation blueprint f
 
 ### Component Breakdown
 
-* **Primary Controller:** Raspberry Pi 4[cite: 1].
-* **Vision Capture:** Camera Module[cite: 1].
-* **Obstacle Detection:** Ultrasonic Sensor for autonomous collision avoidance[cite: 1].
-* **Actuation:** Motor Driver governing DC Motors attached to the chassis wheels[cite: 1].
-* **Audio Output:** Audio Amplifier Module connected to a high-frequency speaker capable of generating dynamic sweeps[cite: 1].
+* **Primary Controller:** Raspberry Pi 4.
+* **Vision Capture:** Camera Module.
+* **Obstacle Detection:** Ultrasonic Sensor for autonomous collision avoidance.
+* **Actuation:** Motor Driver governing DC Motors attached to the chassis wheels.
+* **Audio Output:** Audio Amplifier Module connected to a high-frequency speaker capable of generating dynamic sweeps.
 
 ---
 
@@ -33,7 +33,7 @@ This document serves as the technical master plan and implementation blueprint f
 
 ### Software Stack
 
-* **Edge Processing (Robot):** Python[cite: 1].
+* **Edge Processing (Robot):** Python.
 * **Edge Machine Learning:** Edge Impulse FOMO Model optimized for lightweight vision detection.
 * **Backend Framework:** FastAPI (Python) serving REST APIs and WebSocket streams over LAN.
 * **Database Layer:** SQLite (embedded single-file database).
