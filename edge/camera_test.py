@@ -1,9 +1,10 @@
 """
 AgriSentinel - Edge Camera Test Module
 
-This module provides a local FastAPI server streaming live video from the connected
-camera module or webcam using OpenCV. If a physical camera is not connected or accessible,
-it provides a synthetic test-pattern fallback stream to verify the streaming pipeline.
+This module provides a local FastAPI server streaming live video from:
+1. Native Raspberry Pi libcamera/rpicam-apps (`rpicam-vid` or `libcamera-vid` subprocess pipe)
+2. Standard OpenCV VideoCapture (fallback for USB webcams / desktop testing)
+3. Synthetic animated test pattern (fallback for headless / simulation environments)
 
 Usage:
     python -m edge.camera_test
@@ -14,95 +15,245 @@ Usage:
 import os
 import sys
 import time
+import shutil
+import logging
 import threading
+import subprocess
 from typing import Generator, Optional
 from contextlib import asynccontextmanager
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, Response, Query
+from fastapi import FastAPI, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
 
-# Configuration via environment variables or defaults
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("AgriSentinel-Camera")
+
+# Configuration via environment variables
 CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "0"))
 STREAM_FPS = int(os.getenv("STREAM_FPS", "30"))
+STREAM_WIDTH = int(os.getenv("STREAM_WIDTH", "640"))
+STREAM_HEIGHT = int(os.getenv("STREAM_HEIGHT", "480"))
 JPEG_QUALITY = int(os.getenv("JPEG_QUALITY", "80"))
+CAMERA_BACKEND_OVERRIDE = os.getenv("CAMERA_BACKEND", "").lower().strip()  # "rpicam", "opencv", "synthetic"
+
+
+class RpiCamReader:
+    """Spawns and reads raw MJPEG frames from rpicam-vid / libcamera-vid stdout stream."""
+
+    def __init__(self, width: int = STREAM_WIDTH, height: int = STREAM_HEIGHT, fps: int = STREAM_FPS):
+        self.width = width
+        self.height = height
+        self.fps = fps
+        self.process: Optional[subprocess.Popen] = None
+        self.thread: Optional[threading.Thread] = None
+        self.running = False
+        self.latest_frame: Optional[bytes] = None
+        self.lock = threading.Lock()
+        self.frame_count = 0
+        self.cmd_used = ""
+
+    @staticmethod
+    def detect_executable() -> Optional[str]:
+        """Detects if rpicam-vid (Bookworm) or libcamera-vid (Bullseye) exists on PATH."""
+        if shutil.which("rpicam-vid"):
+            return "rpicam-vid"
+        if shutil.which("libcamera-vid"):
+            return "libcamera-vid"
+        return None
+
+    def start(self, executable: str) -> bool:
+        """Starts the rpicam-vid / libcamera-vid subprocess and reading thread."""
+        self.cmd_used = executable
+        cmd = [
+            executable,
+            "-t", "0",
+            "--inline",
+            "--codec", "mjpeg",
+            "--width", str(self.width),
+            "--height", str(self.height),
+            "--framerate", str(self.fps),
+            "-o", "-",
+            "-n",  # No preview window on desktop
+        ]
+
+        logger.info(f"[RpiCamReader] Spawning camera subprocess: {' '.join(cmd)}")
+        try:
+            self.process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                bufsize=0,
+            )
+            self.running = True
+            self.thread = threading.Thread(target=self._read_stdout_loop, daemon=True)
+            self.thread.start()
+            return True
+        except Exception as e:
+            logger.error(f"[RpiCamReader] Failed to start {executable}: {e}")
+            self.running = False
+            return False
+
+    def _read_stdout_loop(self):
+        """Worker thread that parses MJPEG byte stream for SOI/EOI markers."""
+        buffer = b""
+        soi_marker = b"\xff\xd8"
+        eoi_marker = b"\xff\xd9"
+
+        while self.running and self.process and self.process.stdout:
+            try:
+                chunk = self.process.stdout.read(4096)
+                if not chunk:
+                    if self.process.poll() is not None:
+                        logger.warning("[RpiCamReader] Camera subprocess exited.")
+                        break
+                    time.sleep(0.01)
+                    continue
+
+                buffer += chunk
+                while True:
+                    soi = buffer.find(soi_marker)
+                    if soi == -1:
+                        # Retain only last byte in case marker was cut across chunks
+                        buffer = buffer[-1:] if buffer else b""
+                        break
+
+                    eoi = buffer.find(eoi_marker, soi + 2)
+                    if eoi == -1:
+                        # Keep from soi onwards to wait for eoi
+                        buffer = buffer[soi:]
+                        break
+
+                    # Complete JPEG frame found
+                    jpeg_frame = buffer[soi : eoi + 2]
+                    buffer = buffer[eoi + 2 :]
+
+                    with self.lock:
+                        self.latest_frame = jpeg_frame
+                        self.frame_count += 1
+
+            except Exception as e:
+                logger.error(f"[RpiCamReader] Error reading stdout stream: {e}")
+                break
+
+    def get_latest_frame(self) -> Optional[bytes]:
+        """Returns the most recently decoded JPEG frame bytes."""
+        with self.lock:
+            return self.latest_frame
+
+    def stop(self):
+        """Terminates the camera subprocess."""
+        self.running = False
+        if self.process:
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=2.0)
+            except Exception:
+                try:
+                    self.process.kill()
+                except Exception:
+                    pass
+            self.process = None
+        if self.thread and self.thread.is_alive():
+            self.thread.join(timeout=1.0)
 
 
 class CameraManager:
-    """Manages OpenCV VideoCapture and synthetic fallback generation."""
+    """Unified camera manager handling rpicam, OpenCV, and Synthetic modes."""
 
     def __init__(self, camera_index: int = CAMERA_INDEX):
         self.camera_index = camera_index
+        self.active_backend = "uninitialized"  # "rpicam", "opencv", "synthetic"
+        self.rpicam_reader: Optional[RpiCamReader] = None
         self.cap: Optional[cv2.VideoCapture] = None
         self.is_running = False
         self.lock = threading.Lock()
-        self.synthetic_mode = False
         self.frame_count = 0
-        self.last_frame: Optional[bytes] = None
 
     def start(self):
-        """Initializes the video capture device."""
+        """Selects and starts the optimal camera backend."""
         with self.lock:
             if self.is_running:
                 return
 
-            print(f"[CameraManager] Attempting to open camera index {self.camera_index}...")
-            # On Windows, try cv2.CAP_DSHOW first for faster and more reliable webcam init
-            if sys.platform.startswith("win"):
-                self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
-                if not self.cap.isOpened():
+            # 1. Check if user forced a specific backend
+            if CAMERA_BACKEND_OVERRIDE == "synthetic":
+                self.active_backend = "synthetic"
+                self.is_running = True
+                logger.info("[CameraManager] Backend forced to Synthetic.")
+                return
+
+            # 2. Check for native Raspberry Pi rpicam / libcamera
+            rpicam_bin = RpiCamReader.detect_executable()
+            if rpicam_bin and CAMERA_BACKEND_OVERRIDE != "opencv":
+                reader = RpiCamReader(STREAM_WIDTH, STREAM_HEIGHT, STREAM_FPS)
+                if reader.start(rpicam_bin):
+                    self.rpicam_reader = reader
+                    self.active_backend = f"rpicam ({rpicam_bin})"
+                    self.is_running = True
+                    logger.info(f"[CameraManager] Using native Raspberry Pi camera backend: {rpicam_bin}")
+                    return
+
+            # 3. Fallback to OpenCV (for USB webcams & desktop development)
+            if CAMERA_BACKEND_OVERRIDE != "rpicam":
+                logger.info(f"[CameraManager] Attempting OpenCV capture on device index {self.camera_index}...")
+                if sys.platform.startswith("win"):
+                    self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
+                    if not self.cap.isOpened():
+                        self.cap = cv2.VideoCapture(self.camera_index)
+                else:
                     self.cap = cv2.VideoCapture(self.camera_index)
-            else:
-                self.cap = cv2.VideoCapture(self.camera_index)
 
-            if self.cap and self.cap.isOpened():
-                # Set reasonable resolution
-                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-                self.cap.set(cv2.CAP_PROP_FPS, STREAM_FPS)
-                self.synthetic_mode = False
-                print(f"[CameraManager] Hardware camera {self.camera_index} successfully opened.")
-            else:
-                self.synthetic_mode = True
-                print(
-                    f"[CameraManager] Warning: Hardware camera {self.camera_index} not accessible. "
-                    "Switching to synthetic test pattern mode."
-                )
+                if self.cap and self.cap.isOpened():
+                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, STREAM_WIDTH)
+                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, STREAM_HEIGHT)
+                    self.cap.set(cv2.CAP_PROP_FPS, STREAM_FPS)
+                    self.active_backend = f"opencv (index {self.camera_index})"
+                    self.is_running = True
+                    logger.info(f"[CameraManager] Hardware camera opened via OpenCV index {self.camera_index}.")
+                    return
 
+            # 4. Fallback to synthetic mode
+            self.active_backend = "synthetic"
             self.is_running = True
+            logger.warning("[CameraManager] No physical camera found/opened. Falling back to synthetic test pattern.")
 
     def stop(self):
-        """Releases the camera device."""
+        """Releases all active camera resources."""
         with self.lock:
             self.is_running = False
-            if self.cap is not None and self.cap.isOpened():
-                self.cap.release()
-                print("[CameraManager] Camera hardware released.")
-            self.cap = None
+            if self.rpicam_reader:
+                self.rpicam_reader.stop()
+                self.rpicam_reader = None
+            if self.cap is not None:
+                if self.cap.isOpened():
+                    self.cap.release()
+                self.cap = None
+            logger.info("[CameraManager] Camera resources successfully stopped.")
 
     def get_status(self) -> dict:
-        """Returns the current camera status."""
-        width, height, fps = 640, 480, STREAM_FPS
+        """Returns the current camera diagnostic status."""
+        width, height, fps = STREAM_WIDTH, STREAM_HEIGHT, STREAM_FPS
         if self.cap and self.cap.isOpened():
-            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or STREAM_WIDTH
+            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or STREAM_HEIGHT
             fps = int(self.cap.get(cv2.CAP_PROP_FPS)) or STREAM_FPS
 
         return {
             "is_running": self.is_running,
-            "synthetic_mode": self.synthetic_mode,
+            "backend": self.active_backend,
+            "is_synthetic": "synthetic" in self.active_backend,
             "camera_index": self.camera_index,
             "resolution": f"{width}x{height}",
             "fps": fps,
             "frames_served": self.frame_count,
         }
 
-    def _generate_synthetic_frame(self, width: int = 640, height: int = 480) -> np.ndarray:
-        """Generates a synthetic camera test frame with animated elements and telemetry."""
-        # Create dark slate background
+    def _generate_synthetic_frame(self, width: int = STREAM_WIDTH, height: int = STREAM_HEIGHT) -> np.ndarray:
+        """Generates an animated test card when physical camera is unavailable."""
         img = np.zeros((height, width, 3), dtype=np.uint8)
-        img[:] = (24, 28, 36)  # Dark BGR
+        img[:] = (24, 28, 36)
 
         # Grid lines
         for x in range(0, width, 40):
@@ -122,92 +273,48 @@ class CameraManager:
         bx = int(cx + (width // 3) * np.sin(t * 1.5))
         by = int(cy + (height // 3) * np.cos(t * 2.0))
         cv2.circle(img, (bx, by), 24, (16, 185, 129), -1)
-        cv2.putText(
-            img,
-            "TEST TARGET",
-            (bx - 40, by - 30),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (16, 185, 129),
-            1,
-            cv2.LINE_AA,
-        )
+        cv2.putText(img, "TARGET", (bx - 26, by - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (16, 185, 129), 1, cv2.LINE_AA)
 
         # Overlay banner
         cv2.rectangle(img, (10, 10), (width - 10, 80), (30, 41, 59), -1)
         cv2.rectangle(img, (10, 10), (width - 10, 80), (100, 116, 139), 1)
 
-        cv2.putText(
-            img,
-            "AGRISENTINEL - CAMERA SUBSYSTEM TEST",
-            (24, 38),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
-            (255, 255, 255),
-            2,
-            cv2.LINE_AA,
-        )
-        cv2.putText(
-            img,
-            "Mode: SYNTHETIC TEST PATTERN (Hardware Camera Not Detected / Simulated)",
-            (24, 62),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.42,
-            (234, 179, 8),
-            1,
-            cv2.LINE_AA,
-        )
+        cv2.putText(img, "AGRISENTINEL - CAMERA HARDWARE TEST", (24, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.60, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(img, "Mode: SYNTHETIC TEST PATTERN (Physical Camera Not Connected / Simulated)", (24, 62), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (234, 179, 8), 1, cv2.LINE_AA)
 
-        # Timestamp & Telemetry at bottom
+        # Timestamp
         ts_str = time.strftime("%Y-%m-%d %H:%M:%S") + f".{int((t % 1) * 1000):03d}"
-        cv2.putText(
-            img,
-            f"Timestamp: {ts_str}  |  Frame: {self.frame_count}",
-            (20, height - 20),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (148, 163, 184),
-            1,
-            cv2.LINE_AA,
-        )
+        cv2.putText(img, f"Timestamp: {ts_str}  |  Frame: {self.frame_count}", (20, height - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (148, 163, 184), 1, cv2.LINE_AA)
 
         return img
 
-    def read_frame(self) -> Optional[np.ndarray]:
-        """Reads a frame from the hardware camera, or generates a synthetic test frame."""
+    def get_jpeg_frame(self) -> Optional[bytes]:
+        """Returns the current JPEG frame from the active backend."""
         self.frame_count += 1
-        if not self.synthetic_mode and self.cap and self.cap.isOpened():
+
+        # 1. From rpicam-vid process pipe
+        if self.rpicam_reader:
+            frame = self.rpicam_reader.get_latest_frame()
+            if frame:
+                return frame
+
+        # 2. From OpenCV VideoCapture
+        if self.cap and self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret and frame is not None:
-                # Add timestamp overlay to physical camera feed
                 ts_str = time.strftime("%Y-%m-%d %H:%M:%S")
-                cv2.putText(
-                    frame,
-                    f"AgriSentinel Live | {ts_str}",
-                    (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (0, 255, 0),
-                    2,
-                    cv2.LINE_AA,
-                )
-                return frame
-            else:
-                # If capture failed momentarily, fallback to synthetic
-                print("[CameraManager] Frame read failed from hardware; fallback to synthetic.")
-                return self._generate_synthetic_frame()
+                cv2.putText(frame, f"AgriSentinel Live | {ts_str}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+                ret_enc, buffer = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
+                if ret_enc:
+                    return buffer.tobytes()
 
-        return self._generate_synthetic_frame()
+        # 3. From Synthetic Generator
+        synth_frame = self._generate_synthetic_frame()
+        ret_enc, buffer = cv2.imencode(".jpg", synth_frame, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
+        if ret_enc:
+            return buffer.tobytes()
 
-    def get_jpeg_frame(self) -> Optional[bytes]:
-        """Captures a frame and encodes it to JPEG."""
-        frame = self.read_frame()
-        if frame is None:
-            return None
-        ret, buffer = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
-        if not ret:
-            return None
-        return buffer.tobytes()
+        return None
 
 
 # Global camera manager instance
@@ -216,7 +323,7 @@ camera_manager = CameraManager()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI lifespan context to manage camera resource startup and shutdown."""
+    """FastAPI lifespan context to manage camera startup and shutdown."""
     camera_manager.start()
     yield
     camera_manager.stop()
@@ -224,8 +331,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AgriSentinel Camera Test Service",
-    description="Local camera stream preview and hardware diagnostic server",
-    version="1.0.0",
+    description="Local camera stream preview and hardware diagnostic server supporting rpicam and OpenCV",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -478,7 +585,7 @@ def index_page():
     <div class="header">
         <div class="title-group">
             <h1>AgriSentinel Vision <span class="badge badge-live">Live Stream</span></h1>
-            <p>Hardware Vision Capture & Local Diagnostic Preview</p>
+            <p>Hardware Vision Capture & Diagnostics (rpicam / OpenCV)</p>
         </div>
     </div>
 
@@ -501,8 +608,8 @@ def index_page():
             </div>
             <div class="stats-panel">
                 <div class="stat-item">
-                    <span class="stat-label">Source Mode:</span>
-                    <span id="stat-mode" class="stat-value">Detecting...</span>
+                    <span class="stat-label">Active Backend:</span>
+                    <span id="stat-backend" class="stat-value">Detecting...</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">Resolution:</span>
@@ -526,7 +633,7 @@ def index_page():
     </div>
 
     <div class="footer">
-        AgriSentinel Autonomous Crop Protection Robot • Vision Testing Subsystem
+        AgriSentinel Autonomous Crop Protection Robot • Camera Subsystem
     </div>
 
     <script>
@@ -540,8 +647,8 @@ def index_page():
                 const res = await fetch('/api/camera/status');
                 if (res.ok) {
                     const data = await res.json();
-                    document.getElementById('stat-mode').textContent = data.synthetic_mode ? 'Synthetic (Simulation)' : 'Physical Camera (' + data.camera_index + ')';
-                    document.getElementById('stat-mode').style.color = data.synthetic_mode ? 'var(--accent-yellow)' : 'var(--accent-green)';
+                    document.getElementById('stat-backend').textContent = data.backend;
+                    document.getElementById('stat-backend').style.color = data.is_synthetic ? 'var(--accent-yellow)' : 'var(--accent-green)';
                     document.getElementById('stat-resolution').textContent = data.resolution;
                     document.getElementById('stat-fps').textContent = data.fps;
                     document.getElementById('stat-frames').textContent = data.frames_served;
@@ -576,4 +683,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

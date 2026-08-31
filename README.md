@@ -4,41 +4,42 @@ AgriSentinel is an AI-assisted autonomous crop protection robot utilizing specie
 
 ---
 
-## Camera Subsystem Testing
+## Camera Subsystem Testing (`rpicam` & OpenCV)
 
-The `edge/camera_test.py` module provides a standalone local FastAPI server streaming live video from the connected camera module / webcam via OpenCV.
+The `edge/camera_test.py` module provides a local FastAPI server streaming live video. It automatically selects the optimal capture backend:
+1. **`rpicam-vid` / `libcamera-vid`**: Native hardware pipeline for Raspberry Pi Camera Module.
+2. **OpenCV VideoCapture**: For USB webcams and desktop development.
+3. **Synthetic Test Generator**: Diagnostic fallback when no camera is attached.
 
 ### Prerequisites
 
-Ensure the dependencies are installed:
 ```bash
 pip install -r requirements.txt
 ```
 
-### Running the Camera Test Server
-
-You can run the camera test server using either of the following commands:
+### Running on Raspberry Pi 4 (CSI Camera Module)
 
 ```bash
-# Option 1: Direct Python execution
-python -m edge.camera_test
+python3 -m edge.camera_test
+```
+*(The server will automatically detect `rpicam-vid` or `libcamera-vid` on your Raspberry Pi).*
 
-# Option 2: Using Uvicorn directly
-uvicorn edge.camera_test:app --host 0.0.0.0 --port 8000 --reload
+### Running on Local PC (Webcam or Synthetic Mode)
+
+```bash
+python -m edge.camera_test
 ```
 
-### Accessing the Live Stream & Diagnostics
+### Accessing the Web Dashboard
 
 Open your browser and navigate to:
-* **Web UI Dashboard:** [http://localhost:8000](http://localhost:8000)
-* **Raw Video MJPEG Stream:** [http://localhost:8000/video_feed](http://localhost:8000/video_feed)
+* **Web UI Dashboard:** [http://localhost:8000](http://localhost:8000) (or `http://<RPI_IP>:8000`)
+* **Raw Video Stream:** [http://localhost:8000/video_feed](http://localhost:8000/video_feed)
 * **Camera Diagnostics JSON:** [http://localhost:8000/api/camera/status](http://localhost:8000/api/camera/status)
-* **Single Snapshot JPEG:** [http://localhost:8000/api/camera/snapshot](http://localhost:8000/api/camera/snapshot)
+* **Snapshot JPEG:** [http://localhost:8000/api/camera/snapshot](http://localhost:8000/api/camera/snapshot)
 
 ### Running Automated Tests
 
-Run pytest to verify the camera streaming and endpoints:
 ```bash
 pytest tests/ -v
 ```
-
