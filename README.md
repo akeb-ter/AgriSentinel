@@ -69,7 +69,45 @@ Open your browser and navigate to:
 
 ---
 
-## 3. Running Subsystems & Autonomous Control
+## 3. GPS Module Testing & Verification (`GY-NEO6MV2`)
+
+The GY-NEO6MV2 GPS module streams NMEA data over hardware UART `/dev/ttyS0` at 9600 baud.
+
+### Running GPS Unit Tests
+
+To run the GPS unit test suite using the standard Python `unittest` framework:
+
+```bash
+python -m unittest tests/test_gps.py
+```
+
+Alternatively, if `pytest` is installed in your virtual environment:
+
+```bash
+pytest tests/test_gps.py -v
+```
+
+### Hardware Setup & Verification on Raspberry Pi 4
+
+1. **Enable UART Interface:**
+   Ensure hardware serial is enabled in `/boot/config.txt` (or `/boot/firmware/config.txt`):
+   ```text
+   enable_uart=1
+   ```
+2. **Wiring Verification:**
+   * `VCC` -> Pin 1 (3.3V)
+   * `GND` -> Pin 14 (Ground)
+   * `TX` -> Pin 10 (GPIO 15 / RXD0)
+   * `RX` -> Pin 8 (GPIO 14 / TXD0)
+
+3. **Running Main Robot Loop with Live GPS & Dual Ultrasonic Telemetry:**
+   ```bash
+   python -m edge.robot_main
+   ```
+
+---
+
+## 4. Running Subsystems & Autonomous Control
 
 ### Main Robot Control Loop
 
@@ -77,8 +115,12 @@ Open your browser and navigate to:
 python -m edge.robot_main
 ```
 
-### Running Automated Tests
+### Running All Automated Tests
 
+```bash
+python -m unittest discover tests
+```
+*or:*
 ```bash
 pytest tests/ -v
 ```
