@@ -5,7 +5,7 @@ Reads NMEA sentences ($GPGGA, $GPRMC) from /dev/ttyS0 at 9600 baud.
 
 import os
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Tuple
 
 logger = logging.getLogger("AgriSentinel-GPS")
 
@@ -13,8 +13,24 @@ GPS_SERIAL_PORT = os.getenv("GPS_SERIAL_PORT", "/dev/ttyS0")
 GPS_BAUD_RATE = int(os.getenv("GPS_BAUD_RATE", "9600"))
 
 
+def _parse_nmea_degrees(raw_val: str, direction: str, is_lon: bool = False) -> float:
+    """Converts NMEA DDMM.MMMM (or DDDMM.MMMM for lon) string to decimal degrees."""
+    if not raw_val or not direction:
+        return 0.0
+    try:
+        deg_len = 3 if is_lon else 2
+        deg = float(raw_val[:deg_len])
+        minutes = float(raw_val[deg_len:])
+        decimal = deg + (minutes / 60.0)
+        if direction.upper() in ["S", "W"]:
+            decimal = -decimal
+        return round(decimal, 6)
+    except (ValueError, IndexError):
+        return 0.0
+
+
 class GPSReader:
-    """GY-NEO6MV2 GPS Serial Reader and NMEA Parser."""
+    """GY-NEO6MV2 GPS Serial Reader and NMEA Parser with zero-dependency fallback."""
 
     def __init__(self, port: str = GPS_SERIAL_PORT, baudrate: int = GPS_BAUD_RATE):
         self.port = port
@@ -40,7 +56,6 @@ class GPSReader:
     def read_gps_data(self) -> Dict[str, Any]:
         """Reads and parses NMEA sentences ($GPGGA / $GPRMC) from serial stream."""
         if not self.serial_conn or not self.serial_conn.is_open:
-            # Fallback mock GPS data for non-Raspberry Pi / indoor testing
             return {
                 "latitude": self.latitude,
                 "longitude": self.longitude,
@@ -50,28 +65,57 @@ class GPSReader:
             }
 
         try:
-            import pynmea2
-            line = self.serial_conn.readline().decode("utf-8", errors="replace").strip()
+            raw_bytes = self.serial_conn.readline()
+            line = raw_bytes.decode("utf-8", errors="replace").strip() if isinstance(raw_bytes, bytes) else str(raw_bytes).strip()
 
-            if line.startswith("$GPGGA") or line.startswith("$GNGGA"):
-                msg = pynmea2.parse(line)
-                if msg.gps_qual and int(msg.gps_qual) > 0:
-                    self.latitude = msg.latitude
-                    self.longitude = msg.longitude
-                    self.altitude = float(msg.altitude) if msg.altitude else 0.0
-                    self.satellites = int(msg.num_sats) if msg.num_sats else 0
+            # Try pynmea2 first if available
+            try:
+                import pynmea2
+                if line.startswith("$GPGGA") or line.startswith("$GNGGA"):
+                    msg = pynmea2.parse(line)
+                    if msg.gps_qual and int(msg.gps_qual) > 0:
+                        self.latitude = msg.latitude
+                        self.longitude = msg.longitude
+                        self.altitude = float(msg.altitude) if msg.altitude else 0.0
+                        self.satellites = int(msg.num_sats) if msg.num_sats else 0
+                        self.gps_fix = True
+                elif line.startswith("$GPRMC") or line.startswith("$GNRMC"):
+                    msg = pynmea2.parse(line)
+                    if msg.status == "A":
+                        self.latitude = msg.latitude
+                        self.longitude = msg.longitude
+                        self.gps_fix = True
+                return self._get_payload()
+            except ImportError:
+                pass  # Fall back to native string parser below
+
+            # Native NMEA parsing fallback
+            parts = line.split(",")
+            header = parts[0] if len(parts) > 0 else ""
+
+            if header in ["$GPGGA", "$GNGGA"] and len(parts) >= 10:
+                qual = parts[6]
+                if qual and qual != "0":
+                    self.latitude = _parse_nmea_degrees(parts[2], parts[3], is_lon=False)
+                    self.longitude = _parse_nmea_degrees(parts[4], parts[5], is_lon=True)
+                    self.satellites = int(parts[7]) if parts[7].isdigit() else 0
+                    self.altitude = float(parts[9]) if parts[9] else 0.0
                     self.gps_fix = True
 
-            elif line.startswith("$GPRMC") or line.startswith("$GNRMC"):
-                msg = pynmea2.parse(line)
-                if msg.status == "A":
-                    self.latitude = msg.latitude
-                    self.longitude = msg.longitude
+            elif header in ["$GPRMC", "$GNRMC"] and len(parts) >= 7:
+                status = parts[2]
+                if status == "A":
+                    self.latitude = _parse_nmea_degrees(parts[3], parts[4], is_lon=False)
+                    self.longitude = _parse_nmea_degrees(parts[5], parts[6], is_lon=True)
                     self.gps_fix = True
 
         except Exception as e:
             logger.debug(f"[GPSReader] Parse error: {e}")
 
+        return self._get_payload()
+
+    def _get_payload(self) -> Dict[str, Any]:
+        """Returns current GPS telemetry payload dictionary."""
         return {
             "latitude": self.latitude,
             "longitude": self.longitude,
@@ -88,4 +132,3 @@ class GPSReader:
                 logger.info("[GPSReader] Serial connection closed.")
             except Exception:
                 pass
-
