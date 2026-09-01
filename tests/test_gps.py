@@ -9,6 +9,20 @@ from unittest.mock import MagicMock
 from edge.drivers.gps import GPSReader
 
 
+def compute_nmea_checksum(sentence_body: str) -> str:
+    """Computes standard XOR NMEA checksum hex string for a sentence without $ or *."""
+    c = 0
+    for char in sentence_body:
+        c ^= ord(char)
+    return f"{c:02X}"
+
+
+def format_nmea(sentence_body: str) -> bytes:
+    """Formats a full valid NMEA sentence with leading $ and trailing *<CHECKSUM>\n."""
+    chk = compute_nmea_checksum(sentence_body)
+    return f"${sentence_body}*{chk}\n".encode("utf-8")
+
+
 class TestGPSReader(unittest.TestCase):
     """Test suite for GPSReader driver class."""
 
@@ -25,12 +39,12 @@ class TestGPSReader(unittest.TestCase):
         self.assertEqual(data["satellites"], 0)
 
     def test_gps_reader_gpgga_sentence_parsing(self):
-        """Verify parsing of valid $GPGGA NMEA sentences."""
+        """Verify parsing of valid $GPGGA NMEA sentences with exact checksum (*40)."""
         reader = GPSReader(port="/dev/ttyS0", baudrate=9600)
 
-        # Simulated NMEA stream with a valid $GPGGA sentence
-        # Coordinates: 14.5995 N, 120.9842 E (Manila), 8 satellites, fix=1
-        gpgga_line = b"$GPGGA,123519,1435.9700,N,12059.0520,E,1,08,0.9,545.4,M,46.9,M,,*47\n"
+        # Coordinates: 14.5995 N, 120.9842 E (Manila), 8 satellites, fix=1, alt=545.4m
+        gpgga_line = format_nmea("GPGGA,123519,1435.9700,N,12059.0520,E,1,08,0.9,545.4,M,46.9,M,,")
+        self.assertTrue(gpgga_line.endswith(b"*40\n"))
 
         mock_serial = MagicMock()
         mock_serial.is_open = True
@@ -46,11 +60,12 @@ class TestGPSReader(unittest.TestCase):
         self.assertAlmostEqual(data["longitude"], 120.9842, places=4)
 
     def test_gps_reader_gprmc_sentence_parsing(self):
-        """Verify parsing of valid $GPRMC NMEA sentences."""
+        """Verify parsing of valid $GPRMC NMEA sentences with exact checksum (*6D)."""
         reader = GPSReader(port="/dev/ttyS0", baudrate=9600)
 
-        # Simulated NMEA stream with a valid $GPRMC sentence (status "A" = Active)
-        gprmc_line = b"$GPRMC,123519,A,1435.9700,N,12059.0520,E,022.4,084.4,230394,003.1,W*6A\n"
+        # Active status "A", Coordinates: 14.5995 N, 120.9842 E
+        gprmc_line = format_nmea("GPRMC,123519,A,1435.9700,N,12059.0520,E,022.4,084.4,230394,003.1,W")
+        self.assertTrue(gprmc_line.endswith(b"*6D\n"))
 
         mock_serial = MagicMock()
         mock_serial.is_open = True
@@ -93,4 +108,3 @@ class TestGPSReader(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
