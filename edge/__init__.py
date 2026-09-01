@@ -1,2 +1,0 @@
-"""AgriSentinel Edge Subsystem Package."""
-
