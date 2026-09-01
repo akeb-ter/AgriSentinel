@@ -26,7 +26,7 @@ This document serves as the technical master plan and implementation blueprint f
 * **Dual Obstacle Detection:** Dual HC-SR04 Ultrasonic Distance Sensors (Front & Rear) for 360° bidirectional collision avoidance and reverse protection.
 * **Chassis Actuation:** L298N Dual H-Bridge Motor Driver governing 4x 12V DC Gear Motors attached to chassis wheels.
 * **Adaptive Audio Repellent:** TPA3116D2 Class-D Audio Amplifier connected to a Piezoelectric Horn Tweeter for high-frequency sweeps.
-* **Localization Subsystem:** GY-NEO6MV2 GPS Module for live NMEA field coordinate logging.
+* **Localization Subsystem:** GY-NEO6MV2 / GY-GPS6MV2 GPS Module for live NMEA field coordinate logging.
 
 ---
 
@@ -42,7 +42,7 @@ This document serves as the technical master plan and implementation blueprint f
 | | `GND` | Pin 9 | `GND` | Common Ground | Connected to common system ground |
 | | `Trig` | Pin 13 | `GPIO 27` | Rear Trigger Output | 3.3V Logic Digital Output |
 | | `Echo` | Pin 15 | `GPIO 22` | Rear Echo Input | 5V to 3.3V via 1kΩ / 2kΩ voltage divider |
-| **GY-NEO6MV2 GPS Module** | `VCC` | Pin 1 | `3.3V Power` | GPS Power Supply | Powered by Pi 3.3V rail |
+| **GY-NEO6MV2 / GY-GPS6MV2 GPS Module** | `VCC` | Pin 1 | `3.3V Power` | GPS Power Supply | Powered by Pi 3.3V rail |
 | | `GND` | Pin 14 | `GND` | Common Ground | Connected to common system ground |
 | | `TX` | Pin 10 | `GPIO 15` | UART Serial Data In (`RXD0`) | Pi UART `/dev/ttyS0` (9600 baud NMEA) |
 | | `RX` | Pin 8 | `GPIO 14` | UART Serial Data Out (`TXD0`) | Pi UART `/dev/ttyS0` |
@@ -130,7 +130,7 @@ agrisentinel/
 │   │   ├── motors.py                # L298N Motor driver (GPIO 5, 6, 12, 13, 19, 26)
 │   │   ├── servo.py                 # SG90/MG996R Pan-tilt servo driver (GPIO 18)
 │   │   ├── ultrasonic.py            # Dual HC-SR04 Obstacle readers (Front: 23/24, Rear: 27/22)
-│   │   ├── gps.py                   # GY-NEO6MV2 serial reader (/dev/ttyS0 @ 9600 baud)
+│   │   ├── gps.py                   # GY-NEO6MV2 / GY-GPS6MV2 serial reader (/dev/ttyS0 @ 9600 baud)
 │   │   └── synthesizer.py           # Dynamic adaptive audio generator
 │   ├── vision.py                    # EI Linux Runner & OpenCV capture
 │   ├── camera_test.py               # Local FastAPI camera preview & streaming server
@@ -170,7 +170,7 @@ Autonomous drive routines and manual overrides continuously monitor both **Front
 
 ### 4.3 GPS Telemetry Flow
 
-The GY-NEO6MV2 GPS module streams NMEA data over Pi hardware UART `/dev/ttyS0` at 9600 baud:
+The GY-NEO6MV2 / GY-GPS6MV2 GPS module streams NMEA data over Pi hardware UART `/dev/ttyS0` at 9600 baud:
 * **Parsed NMEA Sentences:** `$GPGGA` (Global Positioning System Fix Data) and `$GPRMC` (Recommended Minimum Specific GPS Data).
 * **Telemetry Payload Integration:** Extracted latitude, longitude, altitude, and fix status are combined with dual ultrasonic clearance metrics (`front_obstacle_cm`, `rear_obstacle_cm`) and pest detection events in real time.
 

@@ -69,9 +69,9 @@ Open your browser and navigate to:
 
 ---
 
-## 3. GPS Module Testing & Verification (`GY-NEO6MV2`)
+## 3. GPS Module Testing & Verification (`GY-NEO6MV2` / `GY-GPS6MV2`)
 
-The GY-NEO6MV2 GPS module streams NMEA data over hardware UART `/dev/ttyS0` at 9600 baud.
+The GY-NEO6MV2 and GY-GPS6MV2 GPS modules stream NMEA data over hardware UART `/dev/ttyS0` at 9600 baud. Both modules use the u-blox NEO-6M core and are fully interchangeable in this system.
 
 ### Running GPS Unit Tests
 

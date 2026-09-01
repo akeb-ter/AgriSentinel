@@ -1,5 +1,5 @@
 """
-Unit tests for edge.drivers.gps module (GY-NEO6MV2 GPS Driver).
+Unit tests for edge.drivers.gps module (GY-NEO6MV2 / GY-GPS6MV2 GPS Driver).
 Uses standard unittest framework for maximum compatibility.
 """
 
@@ -25,6 +25,15 @@ def format_nmea(sentence_body: str) -> bytes:
 
 class TestGPSReader(unittest.TestCase):
     """Test suite for GPSReader driver class."""
+
+    def setUp(self):
+        import logging
+        self.logger = logging.getLogger("AgriSentinel-GPS")
+        self.original_level = self.logger.level
+        self.logger.setLevel(logging.CRITICAL)
+
+    def tearDown(self):
+        self.logger.setLevel(self.original_level)
 
     def test_gps_reader_mock_fallback_mode(self):
         """Verify GPSReader returns mock/default telemetry when serial interface is unavailable."""

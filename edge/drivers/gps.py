@@ -1,6 +1,7 @@
 """
-AgriSentinel Edge Driver - GY-NEO6MV2 GPS Module
+AgriSentinel Edge Driver - GY-NEO6MV2 / GY-GPS6MV2 GPS Module
 Reads NMEA sentences ($GPGGA, $GPRMC) from /dev/ttyS0 at 9600 baud.
+Compatible with both GY-NEO6MV2 and GY-GPS6MV2 (u-blox NEO-6M core) modules.
 """
 
 import os
@@ -30,7 +31,7 @@ def _parse_nmea_degrees(raw_val: str, direction: str, is_lon: bool = False) -> f
 
 
 class GPSReader:
-    """GY-NEO6MV2 GPS Serial Reader and NMEA Parser with zero-dependency fallback."""
+    """GY-NEO6MV2 / GY-GPS6MV2 GPS Serial Reader and NMEA Parser with zero-dependency fallback."""
 
     def __init__(self, port: str = GPS_SERIAL_PORT, baudrate: int = GPS_BAUD_RATE):
         self.port = port
