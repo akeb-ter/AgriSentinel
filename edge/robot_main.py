@@ -14,6 +14,7 @@ from typing import Dict, Any
 from edge.drivers.servo import ServoController
 from edge.drivers.ultrasonic import FrontSensor, RearSensor, DualUltrasonicSensors
 from edge.drivers.gps import GPSReader
+from edge.drivers.motors import MotorController
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("AgriSentinel-Robot")
@@ -27,17 +28,17 @@ class RobotController:
 
     def __init__(self):
         self.mode = "AUTO"  # "AUTO" or "MANUAL"
-        self.motor_state = "STOPPED"
         self.front_obstacle_cm = 100.0
         self.rear_obstacle_cm = 100.0
         self.pan_angle = 0.0
 
         # Hardware Drivers
+        self.motors = MotorController()
         self.servo = ServoController()
         self.ultrasonics = DualUltrasonicSensors()
         self.gps = GPSReader()
 
-        logger.info("[RobotController] Initialized robot control loop with dual ultrasonic and GPS drivers.")
+        logger.info("[RobotController] Initialized robot control loop with motors, dual ultrasonic, and GPS drivers.")
 
     def update_sensors(self):
         """Reads sensor telemetry (Dual Ultrasonic distance, GPS, & Camera pan sweep)."""
@@ -54,31 +55,33 @@ class RobotController:
         if self.mode != "AUTO":
             return
 
+        current_state = self.motors.get_state()
+
         # Bidirectional Failsafe Rules (30.0 cm threshold)
-        if self.motor_state == "FORWARD" and self.front_obstacle_cm < OBSTACLE_CLEARANCE_THRESHOLD_CM:
+        if current_state == "FORWARD" and self.front_obstacle_cm < OBSTACLE_CLEARANCE_THRESHOLD_CM:
             logger.warning(
                 f"[RobotController] Front obstacle detected ({self.front_obstacle_cm:.1f} cm)! Stopping motors."
             )
-            self.motor_state = "STOPPED"
-        elif self.motor_state == "REVERSE" and self.rear_obstacle_cm < OBSTACLE_CLEARANCE_THRESHOLD_CM:
+            self.motors.stop()
+        elif current_state == "REVERSE" and self.rear_obstacle_cm < OBSTACLE_CLEARANCE_THRESHOLD_CM:
             logger.warning(
                 f"[RobotController] Rear obstacle detected ({self.rear_obstacle_cm:.1f} cm)! Stopping motors."
             )
-            self.motor_state = "STOPPED"
-        elif self.motor_state == "STOPPED":
+            self.motors.stop()
+        elif current_state == "STOPPED":
             if self.front_obstacle_cm >= OBSTACLE_CLEARANCE_THRESHOLD_CM:
                 logger.info("[RobotController] Front path clear. Moving forward.")
-                self.motor_state = "FORWARD"
+                self.motors.forward()
             elif self.rear_obstacle_cm >= OBSTACLE_CLEARANCE_THRESHOLD_CM:
                 logger.info("[RobotController] Front blocked. Performing reverse correction maneuver.")
-                self.motor_state = "REVERSE"
+                self.motors.backward()
 
     def get_telemetry(self) -> Dict[str, Any]:
         """Returns unified system telemetry payload including dual clearance & GPS tags."""
         gps_data = self.gps.read_gps_data()
         return {
             "mode": self.mode,
-            "motor_state": self.motor_state,
+            "motor_state": self.motors.get_state(),
             "front_obstacle_cm": self.front_obstacle_cm,
             "rear_obstacle_cm": self.rear_obstacle_cm,
             "obstacle_distance_cm": self.front_obstacle_cm,  # Legacy field compatibility
@@ -99,6 +102,7 @@ class RobotController:
     def shutdown(self):
         """Cleans up hardware driver resources."""
         logger.info("[RobotController] Shutting down robot subsystems.")
+        self.motors.cleanup()
         self.servo.center()
         self.servo.close()
         self.ultrasonics.cleanup()

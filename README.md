@@ -69,7 +69,35 @@ Open your browser and navigate to:
 
 ---
 
-## 3. Running Subsystems & Autonomous Control
+## 3. Motor Driver Subsystem Testing (`L298N Dual H-Bridge`)
+
+The `edge/drivers/motors.py` module governs directional movement (Forward, Backward, Left Spin, Right Spin, Pivot Left, Pivot Right, Stop) for the 4WD chassis.
+
+### Hardware Wiring & 5V Jumper Configuration:
+* **`ENA` / `ENB`**: Jumpered to onboard 5V pins (100% full speed duty cycle, freeing Pi PWM pins).
+* **`IN1`**: Pin 29 (`GPIO 5`) - Left Motor Forward
+* **`IN2`**: Pin 31 (`GPIO 6`) - Left Motor Reverse
+* **`IN3`**: Pin 35 (`GPIO 19`) - Right Motor Forward
+* **`IN4`**: Pin 37 (`GPIO 26`) - Right Motor Reverse
+* **`GND`**: Pin 20 (or any Pi GND) connected to Common Ground Bus
+
+### Running Motor Unit Tests:
+
+```bash
+python tests/test_motors.py
+```
+
+### Running Standalone Hardware Directional Test Sequence:
+
+To run the interactive automated test sequence (Forward -> Reverse -> Left Spin -> Right Spin -> Pivot Left -> Pivot Right -> Stop):
+
+```bash
+python -m edge.drivers.motors
+```
+
+---
+
+## 4. Running Subsystems & Autonomous Control
 
 ### Main Robot Control Loop
 
@@ -79,6 +107,10 @@ python -m edge.robot_main
 
 ### Running Automated Tests
 
+```bash
+python tests/test_motors.py
+```
+*or via pytest:*
 ```bash
 pytest tests/ -v
 ```

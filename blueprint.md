@@ -46,8 +46,7 @@ This document serves as the technical master plan and implementation blueprint f
 | | `GND` | Pin 14 | `GND` | Common Ground | Connected to common system ground |
 | | `TX` | Pin 10 | `GPIO 15` | UART Serial Data In (`RXD0`) | Pi UART `/dev/ttyS0` (9600 baud NMEA) |
 | | `RX` | Pin 8 | `GPIO 14` | UART Serial Data Out (`TXD0`) | Pi UART `/dev/ttyS0` |
-| **L298N Motor Driver** | `ENA` | Pin 32 | `GPIO 12` | Left Motors Speed (PWM) | Hardware PWM0 speed control |
-| | `ENB` | Pin 33 | `GPIO 13` | Right Motors Speed (PWM) | Hardware PWM1 speed control |
+| **L298N Motor Driver** | `ENA` / `ENB` | - | `5V Jumper` | Motor Enable (Full Speed) | Hardware 5V jumpers attached (100% duty cycle) |
 | | `IN1` | Pin 29 | `GPIO 5` | Left Motor Direction 1 | Digital Output (High/Low) |
 | | `IN2` | Pin 31 | `GPIO 6` | Left Motor Direction 2 | Digital Output (High/Low) |
 | | `IN3` | Pin 35 | `GPIO 19` | Right Motor Direction 1 | Digital Output (High/Low) |
@@ -127,7 +126,7 @@ agrisentinel/
 │   │   └── model.eim                # Edge Impulse FOMO binary
 │   ├── drivers/
 │   │   ├── __init__.py
-│   │   ├── motors.py                # L298N Motor driver (GPIO 5, 6, 12, 13, 19, 26)
+│   │   ├── motors.py                # L298N Motor driver (GPIO 5, 6, 19, 26; ENA/ENB 5V jumpered)
 │   │   ├── servo.py                 # SG90/MG996R Pan-tilt servo driver (GPIO 18)
 │   │   ├── ultrasonic.py            # Dual HC-SR04 Obstacle readers (Front: 23/24, Rear: 27/22)
 │   │   ├── gps.py                   # GY-NEO6MV2 serial reader (/dev/ttyS0 @ 9600 baud)
@@ -144,7 +143,8 @@ agrisentinel/
 │   ├── src/                         # Dashboard UI components & WebSocket client
 │   └── dist/                        # Static build files served by FastAPI
 ├── markdowns/
-│   └── camera_test_plan.md          # Camera subsystem specification
+│   ├── camera_test_plan.md          # Camera subsystem specification
+│   └── motor_test_plan.md           # L298N Motor driver test specification
 ├── requirements.txt                 # Project dependencies (pyserial, pynmea2, gpiozero/RPi.GPIO)
 └── README.md
 ```
@@ -186,7 +186,7 @@ $$\text{Frequency Signal } S(t) = \sin\left(2\pi \cdot (f_0 + \Delta f \cdot \si
 
 ### Step 1: Hardware Driver Setup (`edge/drivers/`)
 
-* Implement `motors.py` governing L298N direction and PWM speed.
+* Implement `motors.py` governing L298N directional navigation (GPIO 5, 6, 19, 26; ENA/ENB jumpered to 5V).
 * Implement `servo.py` governing GPIO 18 PWM pan-tilt camera sweeps.
 * Implement `ultrasonic.py` instantiating `FrontSensor` (GPIO 23/24) and `RearSensor` (GPIO 27/22) for bidirectional distance clearance readings.
 * Implement `gps.py` using `pyserial` and `pynmea2` to stream NMEA `$GPGGA` / `$GPRMC` latitude/longitude coordinates over `/dev/ttyS0`.
