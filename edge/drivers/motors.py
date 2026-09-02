@@ -3,25 +3,29 @@ AgriSentinel Edge Drivers - L298N Dual H-Bridge Motor Controller
 
 Governs 4x 12V DC gear motors attached to 4WD chassis via L298N Dual H-Bridge.
 ENA and ENB speed pins are physically jumpered to 5V (100% full duty cycle / no PWM required).
-Directional control uses 4 Raspberry Pi GPIO pins:
-- Left Motor: IN1 (GPIO 5), IN2 (GPIO 6)
-- Right Motor: IN3 (GPIO 19), IN4 (GPIO 26)
+Directional control uses 4 Raspberry Pi GPIO pins (BCM numbering):
+- Left Motor: IN1 (BCM GPIO 5, Physical Pin 29), IN2 (BCM GPIO 6, Physical Pin 31)
+- Right Motor: IN3 (BCM GPIO 19, Physical Pin 35), IN4 (BCM GPIO 26, Physical Pin 37)
 
-Supports hardware RPi.GPIO execution with seamless synthetic/mock fallback for non-Pi development.
+Supports:
+1. gpiozero DigitalOutputDevice (Preferred for Raspberry Pi OS Bookworm & Bullseye on Pi 4)
+2. RPi.GPIO (Fallback for legacy environments)
+3. Synthetic / Mock mode with explicit warnings when no GPIO library is available.
 """
 
 import os
+import sys
 import time
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger("AgriSentinel-Motors")
 
-# Default GPIO Pin Assignments for Directional Control
-MOTOR_IN1_PIN = int(os.getenv("MOTOR_IN1_PIN", "5"))    # Left Motor Forward
-MOTOR_IN2_PIN = int(os.getenv("MOTOR_IN2_PIN", "6"))    # Left Motor Reverse
-MOTOR_IN3_PIN = int(os.getenv("MOTOR_IN3_PIN", "19"))   # Right Motor Forward
-MOTOR_IN4_PIN = int(os.getenv("MOTOR_IN4_PIN", "26"))   # Right Motor Reverse
+# Default GPIO Pin Assignments (BCM Numbering)
+MOTOR_IN1_PIN = int(os.getenv("MOTOR_IN1_PIN", "5"))    # BCM GPIO 5 (Pin 29) - Left Forward
+MOTOR_IN2_PIN = int(os.getenv("MOTOR_IN2_PIN", "6"))    # BCM GPIO 6 (Pin 31) - Left Reverse
+MOTOR_IN3_PIN = int(os.getenv("MOTOR_IN3_PIN", "19"))   # BCM GPIO 19 (Pin 35) - Right Forward
+MOTOR_IN4_PIN = int(os.getenv("MOTOR_IN4_PIN", "26"))   # BCM GPIO 26 (Pin 37) - Right Reverse
 
 
 class MotorController:
@@ -41,13 +45,38 @@ class MotorController:
 
         self.pins = [self.in1_pin, self.in2_pin, self.in3_pin, self.in4_pin]
         self.state = "STOPPED"
+        self.backend = "SYNTHETIC"  # "gpiozero", "RPi.GPIO", or "SYNTHETIC"
         self.is_synthetic = False
+
+        # Hardware handles
+        self._gpiozero_devices = {}
         self.GPIO = None
 
         self._init_gpio()
 
     def _init_gpio(self):
-        """Initializes Raspberry Pi GPIO outputs or falls back to synthetic mode."""
+        """Initializes hardware GPIO using gpiozero (preferred) or RPi.GPIO (fallback)."""
+        # Try Backend 1: gpiozero (Standard for Raspberry Pi 4 Bookworm / Bullseye)
+        try:
+            from gpiozero import DigitalOutputDevice
+
+            self._gpiozero_devices = {
+                self.in1_pin: DigitalOutputDevice(self.in1_pin, active_high=True, initial_value=False),
+                self.in2_pin: DigitalOutputDevice(self.in2_pin, active_high=True, initial_value=False),
+                self.in3_pin: DigitalOutputDevice(self.in3_pin, active_high=True, initial_value=False),
+                self.in4_pin: DigitalOutputDevice(self.in4_pin, active_high=True, initial_value=False),
+            }
+            self.backend = "gpiozero"
+            self.is_synthetic = False
+            logger.info(
+                f"[MotorController] Live hardware initialized using gpiozero (BCM pins: "
+                f"IN1={self.in1_pin}, IN2={self.in2_pin}, IN3={self.in3_pin}, IN4={self.in4_pin})."
+            )
+            return
+        except Exception as gz_err:
+            logger.debug(f"[MotorController] gpiozero unavailable: {gz_err}")
+
+        # Try Backend 2: RPi.GPIO
         try:
             import RPi.GPIO as GPIO
             self.GPIO = GPIO
@@ -55,31 +84,51 @@ class MotorController:
             self.GPIO.setwarnings(False)
 
             for pin in self.pins:
-                self.GPIO.setup(pin, self.GPIO.OUT)
-                self.GPIO.output(pin, False)
+                self.GPIO.setup(pin, self.GPIO.OUT, initial=self.GPIO.LOW)
 
+            self.backend = "RPi.GPIO"
+            self.is_synthetic = False
             logger.info(
-                f"[MotorController] Hardware GPIO initialized: "
-                f"Left=(IN1:{self.in1_pin}, IN2:{self.in2_pin}), Right=(IN3:{self.in3_pin}, IN4:{self.in4_pin}). "
-                f"ENA & ENB jumpered to 5V (Full Speed)."
+                f"[MotorController] Live hardware initialized using RPi.GPIO (BCM pins: "
+                f"IN1={self.in1_pin}, IN2={self.in2_pin}, IN3={self.in3_pin}, IN4={self.in4_pin})."
             )
-        except Exception as e:
-            self.is_synthetic = True
-            logger.warning(f"[MotorController] RPi GPIO unavailable ({e}). Operating in Synthetic Mode.")
+            return
+        except Exception as rpi_err:
+            logger.debug(f"[MotorController] RPi.GPIO unavailable: {rpi_err}")
+
+        # Backend 3: Synthetic / Mock Mode
+        self.backend = "SYNTHETIC"
+        self.is_synthetic = True
+        logger.warning(
+            "[MotorController] No physical GPIO library (gpiozero or RPi.GPIO) is available. "
+            "OPERATING IN SYNTHETIC MOCK MODE - PHYSICAL PINS WILL NOT BE DRIVEN!"
+        )
 
     def _write_pins(self, in1: bool, in2: bool, in3: bool, in4: bool):
-        """Internal helper to write logical boolean levels to directional GPIO pins."""
-        if self.GPIO and not self.is_synthetic:
+        """Writes boolean logic levels to directional pins using the active hardware backend."""
+        if self.backend == "gpiozero":
+            try:
+                self._gpiozero_devices[self.in1_pin].value = in1
+                self._gpiozero_devices[self.in2_pin].value = in2
+                self._gpiozero_devices[self.in3_pin].value = in3
+                self._gpiozero_devices[self.in4_pin].value = in4
+            except Exception as e:
+                logger.error(f"[MotorController] gpiozero write error: {e}")
+
+        elif self.backend == "RPi.GPIO" and self.GPIO:
             try:
                 self.GPIO.output(self.in1_pin, in1)
                 self.GPIO.output(self.in2_pin, in2)
                 self.GPIO.output(self.in3_pin, in3)
                 self.GPIO.output(self.in4_pin, in4)
             except Exception as e:
-                logger.error(f"[MotorController] GPIO write error: {e}")
+                logger.error(f"[MotorController] RPi.GPIO write error: {e}")
+
         else:
             logger.debug(
-                f"[MotorController (Synthetic)] Pins -> IN1:{int(in1)} IN2:{int(in2)} IN3:{int(in3)} IN4:{int(in4)}"
+                f"[MotorController (Synthetic)] BCM Pins -> "
+                f"IN1({self.in1_pin}):{int(in1)} IN2({self.in2_pin}):{int(in2)} "
+                f"IN3({self.in3_pin}):{int(in3)} IN4({self.in4_pin}):{int(in4)}"
             )
 
     def forward(self):
@@ -139,22 +188,29 @@ class MotorController:
         logger.info("[MotorController] Action: PIVOT_RIGHT (Left=FWD, Right=STOP)")
 
     def stop(self):
-        """Stops all motors by pulling all directional pins LOW."""
+        """Stops all motors by pulling all directional pins LOW (0V)."""
         self._write_pins(in1=False, in2=False, in3=False, in4=False)
         self.state = "STOPPED"
-        logger.info("[MotorController] Action: STOP (All pins LOW)")
+        logger.info("[MotorController] Action: STOP (All pins LOW / 0V)")
 
     def get_state(self) -> str:
         """Returns the current motor navigation state."""
         return self.state
 
     def cleanup(self):
-        """Stops motors and safely releases GPIO pins."""
+        """Stops motors and safely closes GPIO hardware handles."""
         self.stop()
-        if self.GPIO and not self.is_synthetic:
+        if self.backend == "gpiozero":
+            try:
+                for dev in self._gpiozero_devices.values():
+                    dev.close()
+                logger.info("[MotorController] gpiozero devices closed.")
+            except Exception:
+                pass
+        elif self.backend == "RPi.GPIO" and self.GPIO:
             try:
                 self.GPIO.cleanup(tuple(self.pins))
-                logger.info("[MotorController] GPIO pins cleaned up.")
+                logger.info("[MotorController] RPi.GPIO pins cleaned up.")
             except Exception:
                 pass
 
@@ -170,12 +226,30 @@ def run_test_sequence(move_duration: float = 2.0, pause_duration: float = 1.0):
     6. Pivot Right (1s) -> Stop (0.5s)
     """
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-    print("\n========================================================")
-    print("  AgriSentinel L298N Motor Driver Test Sequence")
-    print("  Note: ENA & ENB are 5V Jumpered (Full Speed Operation)")
-    print("========================================================\n")
+    print("\n=================================================================")
+    print("      AgriSentinel L298N Motor Driver Test Sequence")
+    print("=================================================================")
+    print("  Wiring Reference (BCM vs Physical Pin):")
+    print("    IN1 -> BCM GPIO  5 (Physical Pin 29) [Left FWD]")
+    print("    IN2 -> BCM GPIO  6 (Physical Pin 31) [Left REV]")
+    print("    IN3 -> BCM GPIO 19 (Physical Pin 35) [Right FWD]")
+    print("    IN4 -> BCM GPIO 26 (Physical Pin 37) [Right REV]")
+    print("    ENA & ENB -> Fitted with 5V Onboard Jumper Caps")
+    print("    GND       -> Common Ground Bus (e.g. Pin 20/39 to L298N GND)")
+    print("-----------------------------------------------------------------")
 
     motors = MotorController()
+
+    if motors.is_synthetic:
+        print("\n [!] CRITICAL WARNING: SYNTHETIC MOCK MODE IS ACTIVE!")
+        print("     Neither 'gpiozero' nor 'RPi.GPIO' could be accessed.")
+        print("     Physical pins are NOT receiving electrical signals.")
+        print("     To fix on Raspberry Pi OS Bookworm/Bullseye:")
+        print("         pip install gpiozero lgpio")
+        print("-----------------------------------------------------------------\n")
+    else:
+        print(f"\n [✓] HARDWARE ACTIVE: Using '{motors.backend}' backend.")
+        print("     Live electrical signals ARE being driven to GPIO pins.\n")
 
     try:
         # Step 1: Forward
@@ -240,4 +314,3 @@ def run_test_sequence(move_duration: float = 2.0, pause_duration: float = 1.0):
 
 if __name__ == "__main__":
     run_test_sequence()
-

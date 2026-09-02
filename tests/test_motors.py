@@ -42,6 +42,7 @@ class TestMotorController(unittest.TestCase):
         controller = MotorController(in1_pin=5, in2_pin=6, in3_pin=19, in4_pin=26)
         mock_gpio = MagicMock()
         controller.GPIO = mock_gpio
+        controller.backend = "RPi.GPIO"
         controller.is_synthetic = False
 
         controller.forward()
@@ -59,6 +60,7 @@ class TestMotorController(unittest.TestCase):
         controller = MotorController(in1_pin=5, in2_pin=6, in3_pin=19, in4_pin=26)
         mock_gpio = MagicMock()
         controller.GPIO = mock_gpio
+        controller.backend = "RPi.GPIO"
         controller.is_synthetic = False
 
         controller.backward()
@@ -85,6 +87,7 @@ class TestMotorController(unittest.TestCase):
         controller = MotorController(in1_pin=5, in2_pin=6, in3_pin=19, in4_pin=26)
         mock_gpio = MagicMock()
         controller.GPIO = mock_gpio
+        controller.backend = "RPi.GPIO"
         controller.is_synthetic = False
 
         controller.spin_left()
@@ -121,6 +124,7 @@ class TestMotorController(unittest.TestCase):
         controller = MotorController(in1_pin=5, in2_pin=6, in3_pin=19, in4_pin=26)
         mock_gpio = MagicMock()
         controller.GPIO = mock_gpio
+        controller.backend = "RPi.GPIO"
         controller.is_synthetic = False
 
         controller.spin_right()
@@ -157,6 +161,7 @@ class TestMotorController(unittest.TestCase):
         controller = MotorController(in1_pin=5, in2_pin=6, in3_pin=19, in4_pin=26)
         mock_gpio = MagicMock()
         controller.GPIO = mock_gpio
+        controller.backend = "RPi.GPIO"
         controller.is_synthetic = False
 
         # Pivot Left: Left wheels STOP (0, 0), Right wheels FWD (1, 0)
@@ -185,6 +190,7 @@ class TestMotorController(unittest.TestCase):
         controller = MotorController(in1_pin=5, in2_pin=6, in3_pin=19, in4_pin=26)
         mock_gpio = MagicMock()
         controller.GPIO = mock_gpio
+        controller.backend = "RPi.GPIO"
         controller.is_synthetic = False
 
         controller.forward()
@@ -204,6 +210,7 @@ class TestMotorController(unittest.TestCase):
         controller = MotorController(in1_pin=5, in2_pin=6, in3_pin=19, in4_pin=26)
         mock_gpio = MagicMock()
         controller.GPIO = mock_gpio
+        controller.backend = "RPi.GPIO"
         controller.is_synthetic = False
 
         controller.cleanup()
