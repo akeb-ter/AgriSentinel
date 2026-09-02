@@ -7,17 +7,22 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import asyncio
 import time
-from typing import List
+from typing import List, Optional, Dict, Any
 
 from .database import get_db_connection
 from .drivers.motors import MotorController
 from .drivers.servo import ServoController
+from .drivers.gps import GPSReader
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
 motors = MotorController()
 servo = ServoController()
+gps_reader = GPSReader()
+gps_task: Optional[asyncio.Task] = None
+
+
 
 
 # Simple active websocket connections for alerts
@@ -161,10 +166,43 @@ async def delete_pest(pest_id: int = Form(...)):
     conn.close()
     return RedirectResponse(url="/dashboard", status_code=303)
 
+# Periodic GPS broadcast loop
+async def ensure_gps_telemetry_loop():
+    global gps_task
+    if gps_task is None or gps_task.done():
+        gps_task = asyncio.create_task(gps_telemetry_loop())
+
+async def gps_telemetry_loop():
+    while True:
+        try:
+            if manager.active_connections:
+                raw_data = gps_reader.read_gps_data()
+                is_mock = gps_reader.is_synthetic or not raw_data.get("gps_fix")
+                
+                # Use real hardware coordinates if fix acquired, or demo coordinates in synthetic mode
+                lat = raw_data.get("latitude") if raw_data.get("gps_fix") else (14.599512 if is_mock else 0.0)
+                lon = raw_data.get("longitude") if raw_data.get("gps_fix") else (120.984222 if is_mock else 0.0)
+                alt = raw_data.get("altitude") or (24.5 if is_mock else 0.0)
+                sats = raw_data.get("satellites") if raw_data.get("gps_fix") else (8 if gps_reader.is_synthetic else 0)
+
+                await manager.broadcast({
+                    "type": "GPS_TELEMETRY",
+                    "latitude": round(lat, 6),
+                    "longitude": round(lon, 6),
+                    "altitude": round(alt, 1),
+                    "satellites": sats,
+                    "gps_fix": bool(raw_data.get("gps_fix")),
+                    "is_synthetic": gps_reader.is_synthetic,
+                })
+        except Exception:
+            pass
+        await asyncio.sleep(1.0)
+
 # --- WebSocket ---
 @router.websocket("/ws/alerts")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
+    await ensure_gps_telemetry_loop()
     try:
         while True:
             # We don't really expect the client to send us data, but we need to keep connection open
@@ -186,6 +224,26 @@ async def trigger_pest_alert(pest_name: str, confidence: float, action: str, sig
 async def simulate_alert():
     await trigger_pest_alert("Armyworm", 0.92, "Apply Bt pesticide", "High")
     return {"status": "simulated"}
+
+@router.get("/api/gps")
+async def get_gps():
+    raw_data = gps_reader.read_gps_data()
+    is_mock = gps_reader.is_synthetic or not raw_data.get("gps_fix")
+    lat = raw_data.get("latitude") if raw_data.get("gps_fix") else (14.599512 if is_mock else 0.0)
+    lon = raw_data.get("longitude") if raw_data.get("gps_fix") else (120.984222 if is_mock else 0.0)
+    alt = raw_data.get("altitude") or (24.5 if is_mock else 0.0)
+    sats = raw_data.get("satellites") if raw_data.get("gps_fix") else (8 if gps_reader.is_synthetic else 0)
+
+    return {
+        "status": "success",
+        "latitude": round(lat, 6),
+        "longitude": round(lon, 6),
+        "altitude": round(alt, 1),
+        "satellites": sats,
+        "gps_fix": bool(raw_data.get("gps_fix")),
+        "is_synthetic": gps_reader.is_synthetic,
+    }
+
 
 @router.websocket("/ws/control")
 async def control_endpoint(websocket: WebSocket):

@@ -6,6 +6,8 @@
     <title>AgriSentinel · Pest Alert AI</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="/static/css/leaflet.css"/>
+    <script src="/static/js/leaflet.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #f6f9f2; color: #1f2a1c; line-height: 1.6; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
@@ -154,6 +156,32 @@
         .kbd-key { width: 44px; height: 44px; background: white; border: 2px solid #cde0c4; border-bottom-width: 4px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #3d5a42; transition: all 0.1s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
         .kbd-key i { font-size: 18px; }
         .kbd-key.pressed { transform: translateY(2px); border-bottom-width: 2px; background: #2b6e3c; color: white; border-color: #1f4a2a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+        /* GPS & Location Card */
+        .gps-card { background: #fafff8; border-radius: 24px; border: 1px solid #dce8d6; padding: 20px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .gps-info-group { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .gps-icon-circle { width: 46px; height: 46px; border-radius: 16px; background: #eaf3e4; color: #2b6e3c; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 4px 10px rgba(43, 110, 60, 0.15); }
+        .gps-data-text h4 { font-size: 16px; font-weight: 700; color: #1a3a1e; display: flex; align-items: center; gap: 8px; }
+        .gps-data-text p { font-size: 13.5px; color: #567a5e; font-family: monospace; font-weight: 600; margin-top: 2px; }
+        .gps-stats-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .gps-stat-pill { background: #eaf3e4; color: #1f4a2a; padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+
+        /* Map Modal */
+        .map-modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 1000; animation: fadeOverlay 0.3s; }
+        .map-modal-overlay.active { display: flex; }
+        .map-modal-box { background: white; max-width: 960px; width: 95%; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4); animation: slideUp 0.35s ease; display: flex; flex-direction: column; }
+        .map-modal-header { padding: 18px 24px; background: #f4fcf0; border-bottom: 1px solid #dce8d6; display: flex; justify-content: space-between; align-items: center; }
+        .map-modal-header h3 { font-size: 18px; font-weight: 700; color: #1a3a1e; display: flex; align-items: center; gap: 10px; }
+        .map-view-wrapper { position: relative; width: 100%; height: 500px; background: #e2e8f0; }
+        #mapContainer { width: 100%; height: 100%; }
+        .map-hud { position: absolute; top: 12px; left: 12px; z-index: 500; background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(6px); padding: 8px 16px; border-radius: 14px; font-size: 13px; font-weight: 600; color: #1f3a22; box-shadow: 0 4px 14px rgba(0,0,0,0.12); border: 1px solid #dce8d6; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+        .map-controls-bar { padding: 14px 24px; background: white; border-top: 1px solid #eaf3e4; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+
+        /* Pulsing Robot Marker on Map */
+        .robot-pulse-icon { position: relative; width: 24px; height: 24px; }
+        .robot-pulse-center { width: 18px; height: 18px; background: #2b6e3c; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(43, 110, 60, 0.9); position: absolute; top: 3px; left: 3px; }
+        .robot-pulse-ring { width: 36px; height: 36px; border-radius: 50%; border: 3px solid #2b6e3c; position: absolute; top: -6px; left: -6px; animation: markerPulse 1.6s infinite ease-out; }
+        @keyframes markerPulse { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
     </style>
 </head>
 <body>
@@ -249,6 +277,30 @@
                     <div class="kbd-key" id="key-arrowdown"><i class="fas fa-caret-down" style="color:#dce8d6;"></i></div>
                     <div class="kbd-key" id="key-arrowright"><i class="fas fa-caret-right"></i></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- GPS & Location Details Card -->
+        <div class="gps-card">
+            <div class="gps-info-group">
+                <div class="gps-icon-circle"><i class="fas fa-location-dot"></i></div>
+                <div class="gps-data-text">
+                    <h4>Robot Location Telemetry <span id="gpsFixBadge" class="badge" style="display:inline-flex; padding:2px 10px; font-size:11px; background:#dff0d8; color:#1f4a2a;"><span class="pulse-dot" style="margin-right:4px;"></span> Fix Active</span></h4>
+                    <p id="gpsCoordsText"><i class="fas fa-crosshairs" style="color:#2b6e3c; margin-right:4px;"></i> 14.599512° N, 120.984222° E</p>
+                </div>
+            </div>
+            <div class="gps-stats-bar">
+                <div class="gps-stat-pill" title="Connected GPS Satellites">
+                    <i class="fas fa-satellite" style="color:#2b6e3c;"></i>
+                    <span id="gpsSatellites">8 Sats</span>
+                </div>
+                <div class="gps-stat-pill" title="Altitude above sea level">
+                    <i class="fas fa-mountain" style="color:#2b6e3c;"></i>
+                    <span id="gpsAltitude">24.5 m</span>
+                </div>
+                <button class="btn btn-primary" style="padding:8px 18px; font-size:13px;" onclick="openMapModal()">
+                    <i class="fas fa-map-location-dot"></i> View Live Map
+                </button>
             </div>
         </div>
 
@@ -449,6 +501,40 @@
         </div>
     </div>
 
+    <!-- ═══ MAP MODAL (Offline Leaflet) ═══ -->
+    <div class="map-modal-overlay" id="mapModal">
+        <div class="map-modal-box">
+            <div class="map-modal-header">
+                <h3><i class="fas fa-map-location-dot" style="color:#2b6e3c;"></i> AgriSentinel Live Field Map</h3>
+                <button class="btn btn-secondary" style="padding:6px 14px; font-size:13px;" onclick="closeMapModal()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+            <div class="map-view-wrapper">
+                <div id="mapContainer"></div>
+                <div class="map-hud">
+                    <span><i class="fas fa-robot" style="color:#2b6e3c;"></i> <strong>Pos:</strong> <span id="hudCoords">14.599512, 120.984222</span></span>
+                    <span><i class="fas fa-satellite" style="color:#3b82f6;"></i> <span id="hudSats">8 Sats</span></span>
+                    <span id="hudFixBadge" style="color:#10b981;">● Online Fix</span>
+                </div>
+            </div>
+            <div class="map-controls-bar">
+                <div style="font-size:12.5px; color:#567a5e; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-circle-info" style="color:#2b6e3c;"></i>
+                    <span>Offline tiles loaded from <code>/static/tiles/{z}/{x}/{y}.png</code></span>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-secondary" style="padding:7px 14px; font-size:12.5px;" onclick="clearMapTrail()">
+                        <i class="fas fa-eraser"></i> Clear Trail
+                    </button>
+                    <button class="btn btn-primary" style="padding:7px 16px; font-size:12.5px;" onclick="recenterMap()">
+                        <i class="fas fa-crosshairs"></i> Center Robot
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -509,6 +595,8 @@
                 const data = JSON.parse(event.data);
                 if (data.type === 'PEST_DETECTED') {
                     handleDetection(data);
+                } else if (data.type === 'GPS_TELEMETRY') {
+                    handleGpsTelemetry(data);
                 }
             } catch (e) {
                 console.error('Error parsing WebSocket event:', e);
@@ -910,7 +998,189 @@
         inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') runCropAdvisor(); });
     });
 
-    console.log('🐛 AgriSentinel Pest AI ready. Database-driven detection with automatic log saving.');
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 11. GPS TELEMETRY & OFFLINE LEAFLET MAP
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    let currentGps = {
+        lat: 14.599512,
+        lon: 120.984222,
+        alt: 24.5,
+        sats: 8,
+        fix: true,
+        isSynthetic: false
+    };
+
+    const mapModal = document.getElementById('mapModal');
+    let mapInstance = null;
+    let robotMarker = null;
+    let trailPolyline = null;
+    let pathHistory = [];
+
+    function handleGpsTelemetry(data) {
+        currentGps = {
+            lat: data.latitude || 14.599512,
+            lon: data.longitude || 120.984222,
+            alt: data.altitude || 0.0,
+            sats: data.satellites || 0,
+            fix: Boolean(data.gps_fix),
+            isSynthetic: Boolean(data.is_synthetic)
+        };
+
+        // Format Lat/Lon string (e.g. 14.599512° N, 120.984222° E)
+        const latDir = currentGps.lat >= 0 ? 'N' : 'S';
+        const lonDir = currentGps.lon >= 0 ? 'E' : 'W';
+        const coordsStr = `${Math.abs(currentGps.lat).toFixed(6)}° ${latDir}, ${Math.abs(currentGps.lon).toFixed(6)}° ${lonDir}`;
+
+        const gpsCoordsText = document.getElementById('gpsCoordsText');
+        if (gpsCoordsText) {
+            gpsCoordsText.innerHTML = `<i class="fas fa-crosshairs" style="color:#2b6e3c; margin-right:4px;"></i> ${coordsStr}`;
+        }
+
+        const gpsFixBadge = document.getElementById('gpsFixBadge');
+        if (gpsFixBadge) {
+            if (currentGps.fix) {
+                gpsFixBadge.style.background = '#dff0d8';
+                gpsFixBadge.style.color = '#1f4a2a';
+                gpsFixBadge.innerHTML = '<span class="pulse-dot" style="margin-right:4px;"></span> 3D Fix';
+            } else if (currentGps.isSynthetic) {
+                gpsFixBadge.style.background = '#fef9e7';
+                gpsFixBadge.style.color = '#b7950b';
+                gpsFixBadge.innerHTML = '<i class="fas fa-microchip" style="margin-right:4px;"></i> Synthetic Mock';
+            } else {
+                gpsFixBadge.style.background = '#fdeaea';
+                gpsFixBadge.style.color = '#c0392b';
+                gpsFixBadge.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:4px;"></i> Searching GPS...';
+            }
+        }
+
+        const gpsSatellites = document.getElementById('gpsSatellites');
+        if (gpsSatellites) {
+            gpsSatellites.textContent = `${currentGps.sats} Sats`;
+        }
+
+        const gpsAltitude = document.getElementById('gpsAltitude');
+        if (gpsAltitude) {
+            gpsAltitude.textContent = `${currentGps.alt.toFixed(1)} m`;
+        }
+
+        // Update Map HUD & Marker if map is active
+        updateMapMarker();
+    }
+
+    function initLeafletMap() {
+        if (mapInstance) return;
+
+        const mapContainer = document.getElementById('mapContainer');
+        if (!mapContainer || typeof L === 'undefined') return;
+
+        mapInstance = L.map('mapContainer', {
+            center: [currentGps.lat, currentGps.lon],
+            zoom: 16,
+            zoomControl: true,
+            attributionControl: false
+        });
+
+        // 100% Offline Tile Layer from /static/tiles/{z}/{x}/{y}.png
+        // Graceful fallback: If local file is missing, displays an elegant vector radar grid
+        L.tileLayer('/static/tiles/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            minZoom: 10,
+            errorTileUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" style="background:%23eaf3e4"><rect width="256" height="256" fill="%23f4fcf0" stroke="%23cde0c4" stroke-width="1"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%238ab87a" font-family="sans-serif" font-size="12">AgriSentinel Grid</text></svg>'
+        }).addTo(mapInstance);
+
+        // Custom Pulsing Robot Marker Icon
+        const robotIcon = L.divIcon({
+            className: 'robot-custom-marker',
+            html: `
+                <div class="robot-pulse-icon">
+                    <div class="robot-pulse-ring"></div>
+                    <div class="robot-pulse-center"></div>
+                </div>
+            `,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+        });
+
+        robotMarker = L.marker([currentGps.lat, currentGps.lon], { icon: robotIcon }).addTo(mapInstance);
+        robotMarker.bindPopup(`<b>AgriSentinel Rover</b><br>Lat: ${currentGps.lat.toFixed(6)}<br>Lon: ${currentGps.lon.toFixed(6)}`);
+
+        // Movement Breadcrumb Trail (Polyline)
+        trailPolyline = L.polyline([], {
+            color: '#2b6e3c',
+            weight: 4,
+            opacity: 0.85,
+            dashArray: '4, 8',
+            lineJoin: 'round'
+        }).addTo(mapInstance);
+
+        pathHistory.push([currentGps.lat, currentGps.lon]);
+        trailPolyline.setLatLngs(pathHistory);
+    }
+
+    function updateMapMarker() {
+        const hudCoords = document.getElementById('hudCoords');
+        if (hudCoords) hudCoords.textContent = `${currentGps.lat.toFixed(6)}, ${currentGps.lon.toFixed(6)}`;
+
+        const hudSats = document.getElementById('hudSats');
+        if (hudSats) hudSats.textContent = `${currentGps.sats} Sats`;
+
+        const hudFixBadge = document.getElementById('hudFixBadge');
+        if (hudFixBadge) {
+            hudFixBadge.textContent = currentGps.fix ? '● 3D Fix Active' : (currentGps.isSynthetic ? '● Mock Mode' : '○ Searching...');
+            hudFixBadge.style.color = currentGps.fix ? '#10b981' : (currentGps.isSynthetic ? '#e67e22' : '#c0392b');
+        }
+
+        if (mapInstance && robotMarker) {
+            const newPos = [currentGps.lat, currentGps.lon];
+            robotMarker.setLatLng(newPos);
+            robotMarker.getPopup().setContent(`<b>AgriSentinel Rover</b><br>Lat: ${currentGps.lat.toFixed(6)}<br>Lon: ${currentGps.lon.toFixed(6)}<br>Alt: ${currentGps.alt} m`);
+
+            // Append to trail if moved significantly (> 0.000005 deg)
+            if (pathHistory.length === 0 || 
+                Math.abs(pathHistory[pathHistory.length - 1][0] - currentGps.lat) > 0.000005 ||
+                Math.abs(pathHistory[pathHistory.length - 1][1] - currentGps.lon) > 0.000005) {
+                pathHistory.push(newPos);
+                if (trailPolyline) trailPolyline.setLatLngs(pathHistory);
+            }
+        }
+    }
+
+    function openMapModal() {
+        if (mapModal) {
+            mapModal.classList.add('active');
+            setTimeout(() => {
+                initLeafletMap();
+                if (mapInstance) {
+                    mapInstance.invalidateSize();
+                    mapInstance.setView([currentGps.lat, currentGps.lon], 16);
+                }
+            }, 100);
+        }
+    }
+
+    function closeMapModal() {
+        if (mapModal) mapModal.classList.remove('active');
+    }
+
+    function recenterMap() {
+        if (mapInstance) {
+            mapInstance.setView([currentGps.lat, currentGps.lon], 17, { animate: true });
+            if (robotMarker) robotMarker.openPopup();
+        }
+    }
+
+    function clearMapTrail() {
+        pathHistory = [[currentGps.lat, currentGps.lon]];
+        if (trailPolyline) trailPolyline.setLatLngs(pathHistory);
+    }
+
+    if (mapModal) {
+        mapModal.addEventListener('click', function(e) {
+            if (e.target === this) closeMapModal();
+        });
+    }
+
+    console.log('🐛 AgriSentinel Pest AI & GPS Telemetry ready.');
 </script>
 </body>
 </html>
