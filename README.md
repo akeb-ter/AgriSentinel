@@ -11,8 +11,11 @@ To avoid system package conflicts (such as Python's `externally-managed-environm
 ### Step 1: Create Virtual Environment
 
 ```bash
-# On Linux / Raspberry Pi OS / macOS / Windows:
-python3 -m venv venv
+# On Raspberry Pi OS (recommended to inherit system GPIO packages):
+python3 -m venv --system-site-packages venv
+
+# On Windows / macOS / Generic Linux:
+python -m venv venv
 ```
 
 ### Step 2: Activate Virtual Environment

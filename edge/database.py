@@ -1,7 +1,8 @@
 import sqlite3
 import os
 
-DB_PATH = 'agrisentinel.db'
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, 'agrisentinel.db')
 
 def init_db():
     # Only initialize if it doesn't exist
@@ -72,6 +73,8 @@ def init_db():
     print("Database initialized successfully.")
 
 def get_db_connection():
+    if not os.path.exists(DB_PATH):
+        init_db()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn

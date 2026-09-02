@@ -1,6 +1,7 @@
 import os
 import datetime
-from fastapi import APIRouter, Request, Form, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Request, Form, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
+import shutil
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -46,12 +47,16 @@ def get_current_user(request: Request):
 
 # --- Web Routes ---
 
+@router.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
+
 @router.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
     user = get_current_user(request)
     if user:
         return RedirectResponse(url="/dashboard", status_code=302)
-    return templates.TemplateResponse("login.html", {"request": request, "message": None})
+    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": None})
 
 @router.post("/login", response_class=HTMLResponse)
 async def do_login(request: Request, account: str = Form(...), password: str = Form(...)):
@@ -64,7 +69,7 @@ async def do_login(request: Request, account: str = Form(...), password: str = F
         response.set_cookie(key="user_id", value=str(user['ID']))
         return response
     
-    return templates.TemplateResponse("login.html", {"request": request, "message": "Invalid credentials"})
+    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": "Invalid credentials"})
 
 @router.get("/logout")
 async def logout():
@@ -83,7 +88,7 @@ async def dashboard_page(request: Request):
     logs = conn.execute("SELECT * FROM logs ORDER BY ID DESC LIMIT 50").fetchall()
     conn.close()
 
-    return templates.TemplateResponse("dashboard.html", {
+    return templates.TemplateResponse(request=request, name="dashboard.html", context={
         "request": request,
         "user": user,
         "db_pests": [dict(p) for p in pests],
@@ -104,6 +109,50 @@ async def save_log(pest: str = Form(...), result: str = Form(...)):
     conn.commit()
     conn.close()
     return {"status": "success"}
+
+@router.post("/api/pests")
+async def save_pest(
+    request: Request,
+    pest_name: str = Form(...),
+    description: str = Form(...),
+    suggested_action: str = Form(...),
+    signal_range: str = Form(...),
+    pest_id: str = Form(None),
+    existing_image: str = Form(None),
+    image_file: UploadFile = File(None)
+):
+    image_path = existing_image if existing_image else "default_pest.jpg"
+    
+    if image_file and image_file.filename:
+        os.makedirs("web/static/images", exist_ok=True)
+        filename = f"{int(datetime.datetime.now().timestamp())}_{image_file.filename}"
+        target_path = os.path.join("web/static/images", filename)
+        with open(target_path, "wb") as buffer:
+            shutil.copyfileobj(image_file.file, buffer)
+        image_path = f"images/{filename}"
+
+    conn = get_db_connection()
+    if pest_id and pest_id.strip():
+        conn.execute("""
+            UPDATE pest SET PEST = ?, DESCRIPTION = ?, SUGGESTED_ACTION = ?, SIGNAL_RANGE = ?, IMAGE = ?
+            WHERE ID = ?
+        """, (pest_name, description, suggested_action, signal_range, image_path, int(pest_id)))
+    else:
+        conn.execute("""
+            INSERT INTO pest (PEST, DESCRIPTION, SUGGESTED_ACTION, SIGNAL_RANGE, IMAGE)
+            VALUES (?, ?, ?, ?, ?)
+        """, (pest_name, description, suggested_action, signal_range, image_path))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@router.post("/api/pests/delete")
+async def delete_pest(pest_id: int = Form(...)):
+    conn = get_db_connection()
+    conn.execute("DELETE FROM pest WHERE ID = ?", (pest_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 # --- WebSocket ---
 @router.websocket("/ws/alerts")

@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>AgriSentinel · Pest Alert AI</title>
-    <link rel="icon" href="/static/images/favicon.ico" type="image/ico" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet"/>
     <style>
@@ -173,7 +172,7 @@
                     <span class="user-role">{{ user.USER_TYPE }}</span>
                 </div>
             </div>
-            <a href="logout.php" class="logout-btn">
+            <a href="/logout" class="logout-btn">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </a>
             <button class="btn btn-secondary" style="padding:8px 18px; font-size:13px;" onclick="resetAll()">
@@ -185,9 +184,11 @@
     <!-- ═══ NAV ═══ -->
     <nav class="nav-tabs" id="navTabs">
         <button class="nav-tab active" data-panel="panelPest">
-            <i class="fas fa-camera"></i> <span>Pest Detect</span>
+            <i class="fas fa-camera"></i> <span>Pest Detect & Stream</span>
         </button>
-
+        <button class="nav-tab" data-panel="panelCrop">
+            <i class="fas fa-seedling"></i> <span>Crop Advisor</span>
+        </button>
         <button class="nav-tab" data-panel="panelDB">
             <i class="fas fa-database"></i> <span>Pest Database</span>
         </button>
@@ -198,49 +199,39 @@
 
     <!-- ═══ PANEL 1: PEST DETECTION ═══ -->
     <section class="panel active" id="panelPest">
-        <h2 class="panel-title"><i class="fas fa-bug" style="color:#2b6e3c; margin-right:10px;"></i>Insect Pest Detection</h2>
-        <p class="panel-sub">Upload an insect image or use your camera. AgriSentinel will identify it based on the <strong>pest database</strong> and sound an alert if a high‑risk pest is detected. <strong style="color:#1f8b4c;">(Logs are saved automatically)</strong></p>
+        <h2 class="panel-title"><i class="fas fa-robot" style="color:#2b6e3c; margin-right:10px;"></i>Live Camera Feed &amp; AI Detection</h2>
+        <p class="panel-sub">Real-time video feed streamed directly from the AgriSentinel robot camera. AI pest detection events from Python will alert here automatically.</p>
 
-        <div class="input-zone">
-            <div class="upload-zone" id="uploadZone">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <h4>Upload image</h4>
-                <p>JPG, PNG, WEBP</p>
-                <input type="file" id="fileInput" accept="image/*" />
+        <!-- Live Video Stream -->
+        <div style="background:#0f172a; border-radius:24px; overflow:hidden; margin-bottom:20px; box-shadow:0 10px 25px rgba(0,0,0,0.15);">
+            <div style="padding:10px 18px; background:rgba(30,41,59,0.9); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
+                <span style="color:#f8fafc; font-weight:600; font-size:13px;"><i class="fas fa-video" style="color:#10b981; margin-right:8px;"></i>Robot Live Stream (/video_feed)</span>
+                <span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:600;">● STREAMING</span>
             </div>
-            <div class="camera-zone" id="cameraZone">
-                <div class="camera-placeholder">
-                    <i class="fas fa-video"></i>
-                    <h4>Camera capture</h4>
-                    <p>Click to open camera</p>
-                </div>
-                <video id="video" autoplay muted playsinline></video>
-                <div class="camera-controls">
-                    <button class="btn btn-primary" id="captureBtn"><i class="fas fa-camera"></i> Capture</button>
-                    <button class="btn btn-secondary" id="closeCamBtn"><i class="fas fa-times"></i> Close</button>
-                </div>
+            <div style="width:100%; aspect-ratio:4/3; max-height:460px; background:#000; display:flex; align-items:center; justify-content:center;">
+                <img id="streamVideo" src="/video_feed" alt="Robot Live Camera Stream" style="width:100%; height:100%; object-fit:contain;" />
             </div>
         </div>
 
-        <div id="previewArea" class="preview-box" style="display:none;">
-            <img id="previewImg" src="#" alt="Insect preview" />
-            <div class="result-box" id="resultBox">
+        <!-- Detection Status Box -->
+        <div id="previewArea" class="preview-box" style="display:flex; margin-bottom:20px;">
+            <div class="result-box" id="resultBox" style="width:100%;">
                 <div class="label">
-                    <i class="fas fa-stethoscope"></i> Detection
+                    <i class="fas fa-stethoscope"></i> Latest AI Detection Status
                     <span class="alert-icon"><i class="fas fa-exclamation-triangle"></i></span>
                 </div>
                 <div class="value" id="insectName">—</div>
                 <div class="confidence" id="insectConfidence">Confidence: —</div>
                 <div class="recommendation" id="insectAction">
-                    <i class="fas fa-lightbulb" style="color:#f5a623;"></i> Action will appear here.
+                    <i class="fas fa-lightbulb" style="color:#f5a623;"></i> Standing by for robot detection telemetry...
                 </div>
             </div>
         </div>
 
-        <div style="margin-top:20px; background:#f4fcf0; border-radius:20px; padding:16px 22px; border:1px solid #dce8d6;">
+        <div style="background:#f4fcf0; border-radius:20px; padding:16px 22px; border:1px solid #dce8d6;">
             <p style="font-size:14px; color:#2a4f32; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                 <i class="fas fa-info-circle" style="color:#2b6e3c; font-size:18px;"></i>
-                <span><strong>Database pests ({{ db_pests|length }}):</strong> {{ db_pests | map(attribute='PEST') | join(', ') }}</span>
+                <span><strong>Configured Pests ({{ db_pests|length }}):</strong> {{ db_pests | map(attribute='PEST') | join(', ') }}</span>
                 <span class="tag"><i class="fas fa-exclamation-circle" style="color:#c0392b;"></i> Alert triggers for high‑risk pests</span>
             </p>
         </div>
@@ -273,14 +264,7 @@
     <!-- ═══ PANEL 3: PEST DATABASE CRUD ═══ -->
     <section class="panel" id="panelDB">
         <h2 class="panel-title"><i class="fas fa-database" style="color:#2b6e3c; margin-right:10px;"></i>Pest Database</h2>
-        <p class="panel-sub">Manage pest records with image upload. Images are saved to the <strong>images/</strong> folder. <span style="color:#c0392b; font-weight:600;">Duplicate images will trigger a warning.</span></p>
-
-        <!-- ═══ MESSAGE BOX ═══ -->
-        
-                </div>
-                <button onclick="this.parentElement.style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:inherit;margin-left:auto;">&times;</button>
-            </div>
-        {% endif %}
+        <p class="panel-sub">Manage pest records with image upload. Images are stored in static assets. <span style="color:#c0392b; font-weight:600;">Alerts will trigger based on configured species.</span></p>
 
         <button class="btn btn-primary" style="margin-bottom:16px;" onclick="openModal('add')">
             <i class="fas fa-plus"></i> Add New Pest
@@ -310,12 +294,12 @@
                             <td>{{ p.DESCRIPTION[:50] }}{% if p.DESCRIPTION|length > 50 %}…{% endif %}</td>
                             <td>{{ p.SUGGESTED_ACTION[:40] }}{% if p.SUGGESTED_ACTION|length > 40 %}…{% endif %}</td>
                             <td><span class="tag" style="background:#dff0d8;">{{ p.SIGNAL_RANGE }}</span></td>
-                            <td><img src="{{ p.IMAGE }}" alt="pest" class="pest-img" onerror="this.src='default_pest.jpg'"></td>
+                            <td><img src="/static/images/{{ p.IMAGE.split('/')[-1] }}" alt="pest" class="pest-img" onerror="this.src='/static/images/logo.png'"></td>
                             <td>
-                                <button class="btn btn-warning" style="padding:6px 12px; font-size:12px;" onclick="editPest({{ p.ID }}, '{{ p.PEST }}', '{{ p.DESCRIPTION }}', '{{ p.SUGGESTED_ACTION }}', '{{ p.SIGNAL_RANGE }}', '{{ p.IMAGE }}')">
+                                <button type="button" class="btn btn-warning" style="padding:6px 12px; font-size:12px;" onclick='editPest({{ p.ID }}, {{ p.PEST | tojson }}, {{ p.DESCRIPTION | tojson }}, {{ p.SUGGESTED_ACTION | tojson }}, {{ p.SIGNAL_RANGE | tojson }}, {{ p.IMAGE | tojson }})'>
                                     <i class="fas fa-edit"></i>
                                 </button>
-                                <form method="POST" style="display:inline-block;" onsubmit="return confirm('Delete this pest?')">
+                                <form method="POST" action="/api/pests/delete" style="display:inline-block;" onsubmit="return confirm('Delete this pest?')">
                                     <input type="hidden" name="pest_id" value="{{ p.ID }}">
                                     <button type="submit" name="delete_pest" class="btn btn-danger" style="padding:6px 12px; font-size:12px;"><i class="fas fa-trash"></i></button>
                                 </form>
@@ -328,7 +312,7 @@
         </div>
         <p style="margin-top:12px; font-size:13px; color:#6a8a70;">
             <i class="fas fa-info-circle"></i> Table: <code>pest</code> (ID, PEST, DESCRIPTION, SUGGESTED_ACTION, SIGNAL_RANGE, IMAGE) &nbsp;|&nbsp; 
-            <i class="fas fa-folder"></i> Images stored in: <code>images/</code>
+            <i class="fas fa-folder"></i> Images stored in: <code>web/static/images/</code>
         </p>
     </section>
 
@@ -384,7 +368,7 @@
     <div class="modal-overlay" id="crudModal">
         <div class="modal-box">
             <h2 id="modalTitle">Add New Pest</h2>
-            <form method="POST" enctype="multipart/form-data" id="crudForm">
+            <form method="POST" action="/api/pests" enctype="multipart/form-data" id="crudForm">
                 <input type="hidden" name="pest_id" id="editId" value="">
                 <input type="hidden" name="existing_image" id="existingImage" value="">
                 
@@ -444,7 +428,9 @@
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             Object.keys(panels).forEach(key => {
-                panels[key].classList.toggle('active', key === tab.dataset.panel);
+                if (panels[key]) {
+                    panels[key].classList.toggle('active', key === tab.dataset.panel);
+                }
             });
         });
     });
@@ -452,12 +438,9 @@
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 2. PEST DATABASE FROM SERVER
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const pestDB = {{ db_pests | tojson }};
-    const targetPests = {{ db_pests | map(attribute="PEST") | list | tojson }};
+    const pestDB = {{ db_pests | tojson | safe }};
+    const targetPests = {{ db_pests | map(attribute="PEST") | list | tojson | safe }};
 
-    
-
-    
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 3. WEBSOCKET REALTIME ALERTS
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -467,36 +450,54 @@
     const resultBox = document.getElementById('resultBox');
     let alertActive = false;
 
-    // Connect to FastAPI WebSocket
-    const wsUrl = `ws://${window.location.host}/ws/alerts`;
-    const ws = new WebSocket(wsUrl);
+    // Connect to FastAPI WebSocket with auto-reconnect
+    let ws = null;
+    function connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/alerts`;
+        ws = new WebSocket(wsUrl);
 
-    ws.onmessage = function(event) {
-        const data = JSON.parse(event.data);
-        if (data.type === 'PEST_DETECTED') {
-            handleDetection(data);
-        }
-    };
+        ws.onopen = () => console.log('✅ Connected to AgriSentinel alert stream.');
+        ws.onmessage = function(event) {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'PEST_DETECTED') {
+                    handleDetection(data);
+                }
+            } catch (e) {
+                console.error('Error parsing WebSocket event:', e);
+            }
+        };
+        ws.onclose = () => {
+            console.warn('⚠️ WebSocket disconnected. Reconnecting in 3 seconds...');
+            setTimeout(connectWebSocket, 3000);
+        };
+        ws.onerror = (err) => console.error('WebSocket error:', err);
+    }
+    connectWebSocket();
 
     function handleDetection(data) {
         const confidencePercent = (data.confidence * 100).toFixed(0);
 
-        insectName.textContent = data.name;
-        insectConfidence.textContent = `Confidence: ${confidencePercent}%`;
-        insectAction.innerHTML = `<i class="fas fa-lightbulb" style="color:#f5a623;"></i> ${data.action}`;
-
-        if (data.confidence > 0.85) insectConfidence.style.color = '#1f8b4c';
-        else if (data.confidence > 0.70) insectConfidence.style.color = '#e67e22';
-        else insectConfidence.style.color = '#c0392b';
+        if (insectName) insectName.textContent = data.name;
+        if (insectConfidence) {
+            insectConfidence.textContent = `Confidence: ${confidencePercent}%`;
+            if (data.confidence > 0.85) insectConfidence.style.color = '#1f8b4c';
+            else if (data.confidence > 0.70) insectConfidence.style.color = '#e67e22';
+            else insectConfidence.style.color = '#c0392b';
+        }
+        if (insectAction) {
+            insectAction.innerHTML = `<i class="fas fa-lightbulb" style="color:#f5a623;"></i> ${data.action}`;
+        }
 
         const isHighRisk = data.signal && data.signal.toLowerCase().includes('high');
         
         if (isHighRisk && data.confidence > 0.75) {
-            resultBox.classList.add('alert');
+            if (resultBox) resultBox.classList.add('alert');
             triggerSignal(data.name, data.action);
             addAlertLog(`🚨 ${data.name} detected! (${confidencePercent}%)`);
         } else {
-            resultBox.classList.remove('alert');
+            if (resultBox) resultBox.classList.remove('alert');
             addAlertLog(`✅ ${data.name} identified (${confidencePercent}%) — Signal: ${data.signal || 'Unknown'}`);
         }
     }
@@ -703,7 +704,8 @@
             
             if (data.image && data.image !== 'default_pest.jpg') {
                 currentImagePreview.style.display = 'flex';
-                previewCurrentImage.src = data.image;
+                const imgSrc = data.image.startsWith('/static/') ? data.image : '/static/images/' + data.image.split('/').pop();
+                previewCurrentImage.src = imgSrc;
                 currentImageName.textContent = data.image.split('/').pop();
             } else {
                 currentImagePreview.style.display = 'none';
@@ -723,19 +725,25 @@
     // 9. RESET ALL
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function resetAll() {
-        closeCamera();
-        fileInput.value = '';
-        previewArea.style.display = 'none';
-        insectName.textContent = '—';
-        insectConfidence.textContent = 'Confidence: —';
-        insectAction.innerHTML = '<i class="fas fa-lightbulb" style="color:#f5a623;"></i> Action will appear here.';
-        resultBox.classList.remove('alert');
+        if (insectName) insectName.textContent = '—';
+        if (insectConfidence) {
+            insectConfidence.textContent = 'Confidence: —';
+            insectConfidence.style.color = '';
+        }
+        if (insectAction) {
+            insectAction.innerHTML = '<i class="fas fa-lightbulb" style="color:#f5a623;"></i> Standing by for robot detection telemetry...';
+        }
+        if (resultBox) resultBox.classList.remove('alert');
         dismissAlert();
         resetCropForm();
-        document.getElementById('dashHealth').textContent = '94%';
-        document.getElementById('dashRisks').textContent = '2';
-        document.getElementById('dashWeather').textContent = '26°C';
-        document.querySelector('[data-panel="panelPest"]').click();
+        const dHealth = document.getElementById('dashHealth');
+        const dRisks = document.getElementById('dashRisks');
+        const dWeather = document.getElementById('dashWeather');
+        if (dHealth) dHealth.textContent = '94%';
+        if (dRisks) dRisks.textContent = '2';
+        if (dWeather) dWeather.textContent = '26°C';
+        const pestTab = document.querySelector('[data-panel="panelPest"]');
+        if (pestTab) pestTab.click();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
