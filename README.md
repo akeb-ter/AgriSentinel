@@ -97,7 +97,32 @@ python -m edge.drivers.motors
 
 ---
 
-## 4. Running Subsystems & Autonomous Control
+## 4. Camera Pan Servo Subsystem Testing (`SG90` / `MG996R`)
+
+The `edge/drivers/servo.py` module governs the camera pan-tilt scanning mechanism on **GPIO 18 (Physical Pin 12, Hardware PWM0)**.
+
+### Hardware Wiring:
+* **`Signal` (Yellow/Orange)**: Physical Pin 12 (`GPIO 18`)
+* **`VCC` (Red)**: 5V Supply Rail (Pin 2, Pin 4, or L298N 5V Out)
+* **`GND` (Brown/Black)**: Common Ground Bus (Pin 6, Pin 9, Pin 14, or Pin 20)
+
+### Running Servo Unit Tests:
+
+```bash
+python tests/test_servo.py
+```
+
+### Running Standalone Hardware Calibration Sequence:
+
+To run the interactive calibration and pan sweep sequence (Center -> Far Left -> Center -> Far Right -> Smooth Sweep -> Safe Detach):
+
+```bash
+python -m edge.drivers.servo
+```
+
+---
+
+## 5. Running Subsystems & Autonomous Control
 
 ### Main Robot Control Loop
 
@@ -105,10 +130,11 @@ python -m edge.drivers.motors
 python -m edge.robot_main
 ```
 
-### Running Automated Tests
+### Running All Automated Tests
 
 ```bash
 python tests/test_motors.py
+python tests/test_servo.py
 ```
 *or via pytest:*
 ```bash

@@ -144,7 +144,8 @@ agrisentinel/
 │   └── dist/                        # Static build files served by FastAPI
 ├── markdowns/
 │   ├── camera_test_plan.md          # Camera subsystem specification
-│   └── motor_test_plan.md           # L298N Motor driver test specification
+│   ├── motor_test_plan.md           # L298N Motor driver test specification
+│   └── servo_test_plan.md           # Camera pan servo test specification
 ├── requirements.txt                 # Project dependencies (pyserial, pynmea2, gpiozero/RPi.GPIO)
 └── README.md
 ```
