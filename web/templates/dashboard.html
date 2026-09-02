@@ -286,7 +286,7 @@
                 <div class="gps-icon-circle"><i class="fas fa-location-dot"></i></div>
                 <div class="gps-data-text">
                     <h4>Robot Location Telemetry <span id="gpsFixBadge" class="badge" style="display:inline-flex; padding:2px 10px; font-size:11px; background:#dff0d8; color:#1f4a2a;"><span class="pulse-dot" style="margin-right:4px;"></span> Fix Active</span></h4>
-                    <p id="gpsCoordsText"><i class="fas fa-crosshairs" style="color:#2b6e3c; margin-right:4px;"></i> 14.599512° N, 120.984222° E</p>
+                    <p id="gpsCoordsText"><i class="fas fa-crosshairs" style="color:#2b6e3c; margin-right:4px;"></i> 6.681023° N, 124.689331° E</p>
                 </div>
             </div>
             <div class="gps-stats-bar">
@@ -1002,8 +1002,8 @@
     // 11. GPS TELEMETRY & OFFLINE LEAFLET MAP
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     let currentGps = {
-        lat: 14.599512,
-        lon: 120.984222,
+        lat: 6.681023,
+        lon: 124.689331,
         alt: 24.5,
         sats: 8,
         fix: true,
@@ -1018,8 +1018,8 @@
 
     function handleGpsTelemetry(data) {
         currentGps = {
-            lat: data.latitude || 14.599512,
-            lon: data.longitude || 120.984222,
+            lat: data.latitude || 6.681023,
+            lon: data.longitude || 124.689331,
             alt: data.altitude || 0.0,
             sats: data.satellites || 0,
             fix: Boolean(data.gps_fix),

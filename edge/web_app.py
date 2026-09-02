@@ -180,10 +180,8 @@ async def gps_telemetry_loop():
                 is_mock = gps_reader.is_synthetic or not raw_data.get("gps_fix")
                 
                 # Use real hardware coordinates if fix acquired, or demo coordinates in synthetic mode
-                lat = raw_data.get("latitude") if raw_data.get("gps_fix") else (14.599512 if is_mock else 0.0)
-                lon = raw_data.get("longitude") if raw_data.get("gps_fix") else (120.984222 if is_mock else 0.0)
-                alt = raw_data.get("altitude") or (24.5 if is_mock else 0.0)
-                sats = raw_data.get("satellites") if raw_data.get("gps_fix") else (8 if gps_reader.is_synthetic else 0)
+                lat = raw_data.get("latitude") if raw_data.get("gps_fix") else (6.681023 if is_mock else 0.0)
+                lon = raw_data.get("longitude") if raw_data.get("gps_fix") else (124.689331 if is_mock else 0.0)
 
                 await manager.broadcast({
                     "type": "GPS_TELEMETRY",
@@ -229,12 +227,10 @@ async def simulate_alert():
 async def get_gps():
     raw_data = gps_reader.read_gps_data()
     is_mock = gps_reader.is_synthetic or not raw_data.get("gps_fix")
-    lat = raw_data.get("latitude") if raw_data.get("gps_fix") else (14.599512 if is_mock else 0.0)
-    lon = raw_data.get("longitude") if raw_data.get("gps_fix") else (120.984222 if is_mock else 0.0)
+    lat = raw_data.get("latitude") if raw_data.get("gps_fix") else (6.681023 if is_mock else 0.0)
+    lon = raw_data.get("longitude") if raw_data.get("gps_fix") else (124.689331 if is_mock else 0.0)
     alt = raw_data.get("altitude") or (24.5 if is_mock else 0.0)
     sats = raw_data.get("satellites") if raw_data.get("gps_fix") else (8 if gps_reader.is_synthetic else 0)
-
-    return {
         "status": "success",
         "latitude": round(lat, 6),
         "longitude": round(lon, 6),
