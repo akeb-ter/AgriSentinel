@@ -6,12 +6,19 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 import asyncio
+import time
 from typing import List
 
 from .database import get_db_connection
+from .drivers.motors import MotorController
+from .drivers.servo import ServoController
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
+
+motors = MotorController()
+servo = ServoController()
+
 
 # Simple active websocket connections for alerts
 class ConnectionManager:
@@ -179,4 +186,58 @@ async def trigger_pest_alert(pest_name: str, confidence: float, action: str, sig
 async def simulate_alert():
     await trigger_pest_alert("Armyworm", 0.92, "Apply Bt pesticide", "High")
     return {"status": "simulated"}
+
+@router.websocket("/ws/control")
+async def control_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    last_command_time = time.time()
+    
+    async def deadman_switch():
+        nonlocal last_command_time
+        while True:
+            if time.time() - last_command_time > 0.5:
+                if motors.get_state() != "STOPPED":
+                    motors.stop()
+                # To prevent servo jitter, detach if idle
+                servo.detach()
+            await asyncio.sleep(0.1)
+    
+    deadman_task = asyncio.create_task(deadman_switch())
+    
+    try:
+        while True:
+            data = await websocket.receive_json()
+            last_command_time = time.time()
+            action = data.get("action")
+            device = data.get("device")
+            
+            if device == "motor":
+                if action == "forward":
+                    motors.forward()
+                elif action == "backward":
+                    motors.backward()
+                elif action == "left":
+                    motors.left()
+                elif action == "right":
+                    motors.right()
+                elif action == "stop":
+                    if motors.get_state() != "STOPPED":
+                        motors.stop()
+            elif device == "servo":
+                if action == "left":
+                    servo.set_angle(servo.get_angle() - 5)
+                elif action == "right":
+                    servo.set_angle(servo.get_angle() + 5)
+                elif action == "center":
+                    servo.center()
+            elif action == "heartbeat":
+                pass # last_command_time is already updated
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        print(f"Control WebSocket error: {e}")
+    finally:
+        deadman_task.cancel()
+        motors.stop()
+        servo.detach()
 

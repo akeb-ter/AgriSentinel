@@ -165,6 +165,10 @@
                 <span>AI · Live</span>
                 <span class="pulse-dot" style="margin-left:4px;"></span>
             </div>
+            <div class="badge" id="controlBadge" style="background:#f4fcf0; color:#567a5e;">
+                <i class="fas fa-gamepad"></i>
+                <span>Controls: <b id="controlStatus">Offline</b></span>
+            </div>
             <div class="user-info">
                 <div class="avatar"><i class="fas fa-user"></i></div>
                 <div class="user-details">
@@ -475,6 +479,97 @@
         ws.onerror = (err) => console.error('WebSocket error:', err);
     }
     connectWebSocket();
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 4. WEBSOCKET REALTIME CONTROL
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    let controlWs = null;
+    let heartbeatInterval = null;
+    const controlStatus = document.getElementById('controlStatus');
+    const controlBadge = document.getElementById('controlBadge');
+
+    function connectControlWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/control`;
+        controlWs = new WebSocket(wsUrl);
+
+        controlWs.onopen = () => {
+            console.log('🎮 Connected to AgriSentinel control stream.');
+            if (controlStatus) {
+                controlStatus.textContent = 'Active';
+                controlBadge.style.background = '#dff0d8';
+                controlBadge.style.color = '#1f4a2a';
+            }
+            // Start heartbeat
+            heartbeatInterval = setInterval(() => {
+                if (controlWs.readyState === WebSocket.OPEN) {
+                    controlWs.send(JSON.stringify({ action: 'heartbeat' }));
+                }
+            }, 200); // 200ms heartbeat
+        };
+
+        controlWs.onclose = () => {
+            console.warn('⚠️ Control WebSocket disconnected.');
+            if (controlStatus) {
+                controlStatus.textContent = 'Offline';
+                controlBadge.style.background = '#fdeaea';
+                controlBadge.style.color = '#c0392b';
+            }
+            clearInterval(heartbeatInterval);
+            setTimeout(connectControlWebSocket, 3000);
+        };
+        
+        controlWs.onerror = (err) => console.error('Control WebSocket error:', err);
+    }
+    connectControlWebSocket();
+
+    // Keyboard event listeners for controls
+    const activeKeys = new Set();
+    
+    document.addEventListener('keydown', (event) => {
+        // Ignore if typing in input fields
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+        
+        const key = event.key;
+        if (activeKeys.has(key)) return; // Prevent auto-repeat triggers
+        
+        let handled = false;
+        if (controlWs && controlWs.readyState === WebSocket.OPEN) {
+            switch(key.toLowerCase()) {
+                case 'w': controlWs.send(JSON.stringify({ device: 'motor', action: 'forward' })); handled = true; break;
+                case 'a': controlWs.send(JSON.stringify({ device: 'motor', action: 'left' })); handled = true; break;
+                case 's': controlWs.send(JSON.stringify({ device: 'motor', action: 'backward' })); handled = true; break;
+                case 'd': controlWs.send(JSON.stringify({ device: 'motor', action: 'right' })); handled = true; break;
+                case 'arrowleft': controlWs.send(JSON.stringify({ device: 'servo', action: 'left' })); handled = true; break;
+                case 'arrowright': controlWs.send(JSON.stringify({ device: 'servo', action: 'right' })); handled = true; break;
+                case 'arrowup': 
+                case 'r': controlWs.send(JSON.stringify({ device: 'servo', action: 'center' })); handled = true; break;
+            }
+        }
+        
+        if (handled) {
+            activeKeys.add(key);
+            if(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) {
+                event.preventDefault(); // Prevent page scrolling
+            }
+        }
+    });
+
+    document.addEventListener('keyup', (event) => {
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+        
+        const key = event.key;
+        if (activeKeys.has(key)) {
+            activeKeys.delete(key);
+            
+            // Send stop command for motor keys
+            if (['w', 'a', 's', 'd'].includes(key.toLowerCase())) {
+                if (controlWs && controlWs.readyState === WebSocket.OPEN) {
+                    controlWs.send(JSON.stringify({ device: 'motor', action: 'stop' }));
+                }
+            }
+        }
+    });
 
     function handleDetection(data) {
         const confidencePercent = (data.confidence * 100).toFixed(0);
