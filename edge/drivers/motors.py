@@ -148,16 +148,16 @@ class MotorController:
         self.backward()
 
     def spin_left(self):
-        """Performs zero-radius skid-steer turn left (Left wheels reverse, Right wheels forward)."""
-        self._write_pins(in1=False, in2=True, in3=True, in4=False)
+        """Performs zero-radius skid-steer turn left (Left wheels forward, Right wheels reverse)."""
+        self._write_pins(in1=True, in2=False, in3=False, in4=True)
         self.state = "LEFT"
-        logger.info("[MotorController] Action: SPIN_LEFT (Left=REV, Right=FWD)")
+        logger.info("[MotorController] Action: SPIN_LEFT (Left=FWD, Right=REV)")
 
     def spin_right(self):
-        """Performs zero-radius skid-steer turn right (Left wheels forward, Right wheels reverse)."""
-        self._write_pins(in1=True, in2=False, in3=False, in4=True)
+        """Performs zero-radius skid-steer turn right (Left wheels reverse, Right wheels forward)."""
+        self._write_pins(in1=False, in2=True, in3=True, in4=False)
         self.state = "RIGHT"
-        logger.info("[MotorController] Action: SPIN_RIGHT (Left=FWD, Right=REV)")
+        logger.info("[MotorController] Action: SPIN_RIGHT (Left=REV, Right=FWD)")
 
     def turn_left(self):
         """Default left turn behavior: zero-radius skid-steer spin left."""
@@ -176,16 +176,16 @@ class MotorController:
         self.turn_right()
 
     def pivot_left(self):
-        """Performs pivot turn left by stopping left wheels and driving right wheels forward."""
-        self._write_pins(in1=False, in2=False, in3=True, in4=False)
+        """Performs pivot turn left by driving left wheels forward and stopping right wheels."""
+        self._write_pins(in1=True, in2=False, in3=False, in4=False)
         self.state = "LEFT"
-        logger.info("[MotorController] Action: PIVOT_LEFT (Left=STOP, Right=FWD)")
+        logger.info("[MotorController] Action: PIVOT_LEFT (Left=FWD, Right=STOP)")
 
     def pivot_right(self):
-        """Performs pivot turn right by driving left wheels forward and stopping right wheels."""
-        self._write_pins(in1=True, in2=False, in3=False, in4=False)
+        """Performs pivot turn right by stopping left wheels and driving right wheels forward."""
+        self._write_pins(in1=False, in2=False, in3=True, in4=False)
         self.state = "RIGHT"
-        logger.info("[MotorController] Action: PIVOT_RIGHT (Left=FWD, Right=STOP)")
+        logger.info("[MotorController] Action: PIVOT_RIGHT (Left=STOP, Right=FWD)")
 
     def stop(self):
         """Stops all motors by pulling all directional pins LOW (0V)."""

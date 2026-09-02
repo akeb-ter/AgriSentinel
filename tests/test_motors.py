@@ -83,7 +83,7 @@ class TestMotorController(unittest.TestCase):
         ])
 
     def test_motor_skid_steer_spin_left_and_turn_left(self):
-        """Verify spin_left(), turn_left(), and left() perform counter-rotation: IN1=0, IN2=1, IN3=1, IN4=0."""
+        """Verify spin_left(), turn_left(), and left() perform: IN1=1, IN2=0, IN3=0, IN4=1."""
         controller = MotorController(in1_pin=5, in2_pin=6, in3_pin=19, in4_pin=26)
         mock_gpio = MagicMock()
         controller.GPIO = mock_gpio
@@ -93,34 +93,34 @@ class TestMotorController(unittest.TestCase):
         controller.spin_left()
         self.assertEqual(controller.get_state(), "LEFT")
         mock_gpio.output.assert_has_calls([
-            call(5, False),
-            call(6, True),
-            call(19, True),
-            call(26, False),
+            call(5, True),
+            call(6, False),
+            call(19, False),
+            call(26, True),
         ])
 
         mock_gpio.reset_mock()
         controller.turn_left()
         self.assertEqual(controller.get_state(), "LEFT")
         mock_gpio.output.assert_has_calls([
-            call(5, False),
-            call(6, True),
-            call(19, True),
-            call(26, False),
+            call(5, True),
+            call(6, False),
+            call(19, False),
+            call(26, True),
         ])
 
         mock_gpio.reset_mock()
         controller.left()
         self.assertEqual(controller.get_state(), "LEFT")
         mock_gpio.output.assert_has_calls([
-            call(5, False),
-            call(6, True),
-            call(19, True),
-            call(26, False),
+            call(5, True),
+            call(6, False),
+            call(19, False),
+            call(26, True),
         ])
 
     def test_motor_skid_steer_spin_right_and_turn_right(self):
-        """Verify spin_right(), turn_right(), and right() perform counter-rotation: IN1=1, IN2=0, IN3=0, IN4=1."""
+        """Verify spin_right(), turn_right(), and right() perform: IN1=0, IN2=1, IN3=1, IN4=0."""
         controller = MotorController(in1_pin=5, in2_pin=6, in3_pin=19, in4_pin=26)
         mock_gpio = MagicMock()
         controller.GPIO = mock_gpio
@@ -130,30 +130,30 @@ class TestMotorController(unittest.TestCase):
         controller.spin_right()
         self.assertEqual(controller.get_state(), "RIGHT")
         mock_gpio.output.assert_has_calls([
-            call(5, True),
-            call(6, False),
-            call(19, False),
-            call(26, True),
+            call(5, False),
+            call(6, True),
+            call(19, True),
+            call(26, False),
         ])
 
         mock_gpio.reset_mock()
         controller.turn_right()
         self.assertEqual(controller.get_state(), "RIGHT")
         mock_gpio.output.assert_has_calls([
-            call(5, True),
-            call(6, False),
-            call(19, False),
-            call(26, True),
+            call(5, False),
+            call(6, True),
+            call(19, True),
+            call(26, False),
         ])
 
         mock_gpio.reset_mock()
         controller.right()
         self.assertEqual(controller.get_state(), "RIGHT")
         mock_gpio.output.assert_has_calls([
-            call(5, True),
-            call(6, False),
-            call(19, False),
-            call(26, True),
+            call(5, False),
+            call(6, True),
+            call(19, True),
+            call(26, False),
         ])
 
     def test_motor_pivot_left_and_pivot_right(self):
@@ -164,24 +164,24 @@ class TestMotorController(unittest.TestCase):
         controller.backend = "RPi.GPIO"
         controller.is_synthetic = False
 
-        # Pivot Left: Left wheels STOP (0, 0), Right wheels FWD (1, 0)
+        # Pivot Left: Left wheels FWD (1, 0), Right wheels STOP (0, 0)
         controller.pivot_left()
         self.assertEqual(controller.get_state(), "LEFT")
-        mock_gpio.output.assert_has_calls([
-            call(5, False),
-            call(6, False),
-            call(19, True),
-            call(26, False),
-        ])
-
-        # Pivot Right: Left wheels FWD (1, 0), Right wheels STOP (0, 0)
-        mock_gpio.reset_mock()
-        controller.pivot_right()
-        self.assertEqual(controller.get_state(), "RIGHT")
         mock_gpio.output.assert_has_calls([
             call(5, True),
             call(6, False),
             call(19, False),
+            call(26, False),
+        ])
+
+        # Pivot Right: Left wheels STOP (0, 0), Right wheels FWD (1, 0)
+        mock_gpio.reset_mock()
+        controller.pivot_right()
+        self.assertEqual(controller.get_state(), "RIGHT")
+        mock_gpio.output.assert_has_calls([
+            call(5, False),
+            call(6, False),
+            call(19, True),
             call(26, False),
         ])
 

@@ -42,10 +42,10 @@ The 4WD chassis supports both zero-radius skid-steer spin maneuvers and pivot tu
 | :--- | :---: | :---: | :---: | :---: | :--- |
 | **`FORWARD`** | `HIGH` | `LOW` | `HIGH` | `LOW` | Left wheels FWD, Right wheels FWD |
 | **`BACKWARD`** | `LOW` | `HIGH` | `LOW` | `HIGH` | Left wheels REV, Right wheels REV |
-| **`SPIN_LEFT` (Default Left)** | `LOW` | `HIGH` | `HIGH` | `LOW` | Left wheels REV, Right wheels FWD (Zero-radius spin) |
-| **`SPIN_RIGHT` (Default Right)**| `HIGH` | `LOW` | `LOW` | `HIGH` | Left wheels FWD, Right wheels REV (Zero-radius spin) |
-| **`PIVOT_LEFT`** | `LOW` | `LOW` | `HIGH` | `LOW` | Left wheels STOP, Right wheels FWD |
-| **`PIVOT_RIGHT`** | `HIGH` | `LOW` | `LOW` | `LOW` | Left wheels FWD, Right wheels STOP |
+| **`SPIN_LEFT` (Default Left)** | `HIGH` | `LOW` | `LOW` | `HIGH` | Left wheels FWD, Right wheels REV (Zero-radius spin left) |
+| **`SPIN_RIGHT` (Default Right)**| `LOW` | `HIGH` | `HIGH` | `LOW` | Left wheels REV, Right wheels FWD (Zero-radius spin right) |
+| **`PIVOT_LEFT`** | `HIGH` | `LOW` | `LOW` | `LOW` | Left wheels FWD, Right wheels STOP (Pivot turn left) |
+| **`PIVOT_RIGHT`** | `LOW` | `LOW` | `HIGH` | `LOW` | Left wheels STOP, Right wheels FWD (Pivot turn right) |
 | **`STOP`** | `LOW` | `LOW` | `LOW` | `LOW` | All motors de-energized |
 
 ---
