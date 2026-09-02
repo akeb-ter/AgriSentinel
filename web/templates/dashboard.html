@@ -145,6 +145,15 @@
             .app-header { flex-direction: column; align-items: flex-start; }
             .stat-grid { grid-template-columns: 1fr 1fr; }
         }
+
+        /* Virtual Keyboard Controls */
+        .kbd-wrapper { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; margin-bottom: 24px; padding: 20px; background: #f4fcf0; border-radius: 20px; border: 1px solid #dce8d6; }
+        .kbd-group { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .kbd-group-title { font-size: 13px; font-weight: 600; color: #4b7a54; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kbd-row { display: flex; gap: 8px; justify-content: center; }
+        .kbd-key { width: 44px; height: 44px; background: white; border: 2px solid #cde0c4; border-bottom-width: 4px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #3d5a42; transition: all 0.1s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .kbd-key i { font-size: 18px; }
+        .kbd-key.pressed { transform: translateY(2px); border-bottom-width: 2px; background: #2b6e3c; color: white; border-color: #1f4a2a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -214,6 +223,32 @@
             </div>
             <div style="width:100%; aspect-ratio:4/3; max-height:460px; background:#000; display:flex; align-items:center; justify-content:center;">
                 <img id="streamVideo" src="/video_feed" alt="Robot Live Camera Stream" style="width:100%; height:100%; object-fit:contain;" />
+            </div>
+        </div>
+
+        <!-- Interactive Control Guide -->
+        <div class="kbd-wrapper">
+            <div class="kbd-group">
+                <div class="kbd-group-title">Motors (Drive)</div>
+                <div class="kbd-row">
+                    <div class="kbd-key" id="key-w">W</div>
+                </div>
+                <div class="kbd-row">
+                    <div class="kbd-key" id="key-a">A</div>
+                    <div class="kbd-key" id="key-s">S</div>
+                    <div class="kbd-key" id="key-d">D</div>
+                </div>
+            </div>
+            <div class="kbd-group">
+                <div class="kbd-group-title">Camera Servo</div>
+                <div class="kbd-row">
+                    <div class="kbd-key" id="key-arrowup" style="font-size:12px;">R</div>
+                </div>
+                <div class="kbd-row">
+                    <div class="kbd-key" id="key-arrowleft"><i class="fas fa-caret-left"></i></div>
+                    <div class="kbd-key" id="key-arrowdown"><i class="fas fa-caret-down" style="color:#dce8d6;"></i></div>
+                    <div class="kbd-key" id="key-arrowright"><i class="fas fa-caret-right"></i></div>
+                </div>
             </div>
         </div>
 
@@ -436,6 +471,13 @@
                     panels[key].classList.toggle('active', key === tab.dataset.panel);
                 }
             });
+            
+            // Safety: Auto-stop motors if navigating away from Pest Detect tab
+            if (tab.dataset.panel !== 'panelPest') {
+                if (typeof controlWs !== 'undefined' && controlWs && controlWs.readyState === WebSocket.OPEN) {
+                    controlWs.send(JSON.stringify({ device: 'motor', action: 'stop' }));
+                }
+            }
         });
     });
 
@@ -534,8 +576,9 @@
         if (activeKeys.has(key)) return; // Prevent auto-repeat triggers
         
         let handled = false;
+        const lowerKey = key.toLowerCase();
         if (controlWs && controlWs.readyState === WebSocket.OPEN) {
-            switch(key.toLowerCase()) {
+            switch(lowerKey) {
                 case 'w': controlWs.send(JSON.stringify({ device: 'motor', action: 'forward' })); handled = true; break;
                 case 'a': controlWs.send(JSON.stringify({ device: 'motor', action: 'left' })); handled = true; break;
                 case 's': controlWs.send(JSON.stringify({ device: 'motor', action: 'backward' })); handled = true; break;
@@ -549,6 +592,15 @@
         
         if (handled) {
             activeKeys.add(key);
+            // Visual feedback
+            const keyEl = document.getElementById('key-' + lowerKey);
+            if (keyEl) keyEl.classList.add('pressed');
+            // If 'r' is pressed, also highlight arrowup visually (since R is on the up arrow spot)
+            if (lowerKey === 'r') {
+                const rEl = document.getElementById('key-arrowup');
+                if (rEl) rEl.classList.add('pressed');
+            }
+            
             if(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) {
                 event.preventDefault(); // Prevent page scrolling
             }
@@ -562,8 +614,17 @@
         if (activeKeys.has(key)) {
             activeKeys.delete(key);
             
+            // Remove visual feedback
+            const lowerKey = key.toLowerCase();
+            const keyEl = document.getElementById('key-' + lowerKey);
+            if (keyEl) keyEl.classList.remove('pressed');
+            if (lowerKey === 'r') {
+                const rEl = document.getElementById('key-arrowup');
+                if (rEl) rEl.classList.remove('pressed');
+            }
+            
             // Send stop command for motor keys
-            if (['w', 'a', 's', 'd'].includes(key.toLowerCase())) {
+            if (['w', 'a', 's', 'd'].includes(lowerKey)) {
                 if (controlWs && controlWs.readyState === WebSocket.OPEN) {
                     controlWs.send(JSON.stringify({ device: 'motor', action: 'stop' }));
                 }
