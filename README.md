@@ -90,7 +90,34 @@ python edge/gps_test.py
 ```bash
 python -m edge.gps_test
 ```
-*(Options: `--raw` to show all incoming NMEA sentences, `--interval 0.5` for faster refresh, `--port /dev/ttyS0`)*
+*or directly from the driver:*
+```bash
+python -m edge.drivers.gps
+```
+
+#### Diagnostic & Debug CLI Options:
+
+| Option | Flag | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--raw` | `-r` | *Disabled* | Print all incoming raw NMEA sentences (`$GPGGA`, `$GPRMC`, etc.) in real time |
+| `--interval` | `-i` | `1.0` | Telemetry refresh interval in seconds (e.g. `0.5` for faster polling) |
+| `--port` | `-p` | `/dev/ttyS0` | Serial port device path (or set via `$GPS_SERIAL_PORT`) |
+| `--baud` | `-b` | `9600` | Serial baud rate (or set via `$GPS_BAUD_RATE`) |
+
+#### Debugging Usage Examples:
+
+* **Real-time Raw NMEA Inspection** (verify serial transmission even before satellite lock):
+  ```bash
+  python edge/gps_test.py --raw
+  ```
+* **Fast 0.5s Refresh with Verbose Raw Data:**
+  ```bash
+  python edge/gps_test.py --raw --interval 0.5
+  ```
+* **Custom Serial Device (e.g., USB-to-UART bridge):**
+  ```bash
+  python edge/gps_test.py --port /dev/ttyUSB0 --baud 9600
+  ```
 
 ### Hardware Setup & Verification on Raspberry Pi 4
 
