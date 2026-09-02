@@ -6,8 +6,9 @@
     <title>AgriSentinel · Pest Alert AI</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="/static/css/leaflet.css"/>
-    <script src="/static/js/leaflet.js"></script>
+    <link rel="stylesheet" href="/static/css/maplibre-gl.css"/>
+    <script src="/static/js/maplibre-gl.js"></script>
+    <script src="/static/js/pmtiles.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #f6f9f2; color: #1f2a1c; line-height: 1.6; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
@@ -501,11 +502,11 @@
         </div>
     </div>
 
-    <!-- ═══ MAP MODAL (Offline Leaflet) ═══ -->
+    <!-- ═══ MAP MODAL (Offline MapLibre GL JS & PMTiles) ═══ -->
     <div class="map-modal-overlay" id="mapModal">
         <div class="map-modal-box">
             <div class="map-modal-header">
-                <h3><i class="fas fa-map-location-dot" style="color:#2b6e3c;"></i> AgriSentinel Live Field Map</h3>
+                <h3><i class="fas fa-map-location-dot" style="color:#2b6e3c;"></i> AgriSentinel Live Field Map <span style="font-size:12px; background:#eaf3e4; color:#2b6e3c; padding:3px 10px; border-radius:12px; font-weight:600; margin-left:6px;"><i class="fas fa-layer-group"></i> Satellite Hybrid Vector</span></h3>
                 <button class="btn btn-secondary" style="padding:6px 14px; font-size:13px;" onclick="closeMapModal()">
                     <i class="fas fa-times"></i> Close
                 </button>
@@ -513,17 +514,20 @@
             <div class="map-view-wrapper">
                 <div id="mapContainer"></div>
                 <div class="map-hud">
-                    <span><i class="fas fa-robot" style="color:#2b6e3c;"></i> <strong>Pos:</strong> <span id="hudCoords">14.599512, 120.984222</span></span>
+                    <span><i class="fas fa-robot" style="color:#2b6e3c;"></i> <strong>Pos:</strong> <span id="hudCoords">6.681023, 124.689331</span></span>
                     <span><i class="fas fa-satellite" style="color:#3b82f6;"></i> <span id="hudSats">8 Sats</span></span>
                     <span id="hudFixBadge" style="color:#10b981;">● Online Fix</span>
                 </div>
             </div>
             <div class="map-controls-bar">
                 <div style="font-size:12.5px; color:#567a5e; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-circle-info" style="color:#2b6e3c;"></i>
-                    <span>Offline tiles loaded from <code>/static/tiles/{z}/{x}/{y}.png</code></span>
+                    <i class="fas fa-cube" style="color:#2b6e3c;"></i>
+                    <span>Offline PMTiles vector roads + satellite tiles · Right-drag or Ctrl-drag to pitch/rotate 3D</span>
                 </div>
-                <div style="display:flex; gap:10px;">
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-secondary" style="padding:7px 14px; font-size:12.5px;" onclick="reset3DView()">
+                        <i class="fas fa-compass"></i> Reset 3D
+                    </button>
                     <button class="btn btn-secondary" style="padding:7px 14px; font-size:12.5px;" onclick="clearMapTrail()">
                         <i class="fas fa-eraser"></i> Clear Trail
                     </button>
@@ -999,7 +1003,7 @@
     });
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 11. GPS TELEMETRY & OFFLINE LEAFLET MAP
+    // 11. GPS TELEMETRY & OFFLINE MAPLIBRE + PMTILES
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     let currentGps = {
         lat: 6.681023,
@@ -1013,8 +1017,102 @@
     const mapModal = document.getElementById('mapModal');
     let mapInstance = null;
     let robotMarker = null;
-    let trailPolyline = null;
-    let pathHistory = [];
+    let pathHistory = [[6.689331, 6.681023]]; // Array of [lon, lat] GeoJSON coordinates
+
+    // Register PMTiles protocol in MapLibre
+    if (typeof pmtiles !== 'undefined' && typeof maplibregl !== 'undefined') {
+        const protocol = new pmtiles.Protocol();
+        maplibregl.addProtocol("pmtiles", protocol.tile);
+    }
+
+    // Satellite Hybrid Style: Satellite raster basemap + PMTiles vector roads & boundaries
+    const satelliteHybridStyle = {
+        version: 8,
+        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+        sources: {
+            "satellite-tiles": {
+                type: "raster",
+                tiles: ["/static/tiles/satellite/{z}/{x}/{y}.jpg"],
+                tileSize: 256,
+                maxzoom: 17,
+                minzoom: 10
+            },
+            "protomaps": {
+                type: "vector",
+                url: "pmtiles:///static/basemap.pmtiles"
+            }
+        },
+        layers: [
+            {
+                id: "satellite-layer",
+                type: "raster",
+                source: "satellite-tiles",
+                minzoom: 0,
+                maxzoom: 20
+            },
+            {
+                id: "water",
+                type: "fill",
+                source: "protomaps",
+                "source-layer": "water",
+                paint: {
+                    "fill-color": "#2563eb",
+                    "fill-opacity": 0.35
+                }
+            },
+            {
+                id: "roads-casing",
+                type: "line",
+                source: "protomaps",
+                "source-layer": "roads",
+                paint: {
+                    "line-color": "#000000",
+                    "line-width": [
+                        "interpolate", ["linear"], ["zoom"],
+                        10, 2,
+                        14, 4.5,
+                        17, 7
+                    ],
+                    "line-opacity": 0.65
+                }
+            },
+            {
+                id: "roads-surface",
+                type: "line",
+                source: "protomaps",
+                "source-layer": "roads",
+                paint: {
+                    "line-color": [
+                        "match",
+                        ["get", "pmap:kind"],
+                        "highway", "#f59e0b",
+                        "major_road", "#fbbf24",
+                        "medium_road", "#ffffff",
+                        "#f8fafc"
+                    ],
+                    "line-width": [
+                        "interpolate", ["linear"], ["zoom"],
+                        10, 1.2,
+                        14, 3,
+                        17, 5
+                    ],
+                    "line-opacity": 0.95
+                }
+            },
+            {
+                id: "boundaries",
+                type: "line",
+                source: "protomaps",
+                "source-layer": "boundaries",
+                paint: {
+                    "line-color": "#ef4444",
+                    "line-width": 1.5,
+                    "line-dasharray": [4, 4],
+                    "line-opacity": 0.7
+                }
+            }
+        ]
+    };
 
     function handleGpsTelemetry(data) {
         currentGps = {
@@ -1026,7 +1124,7 @@
             isSynthetic: Boolean(data.is_synthetic)
         };
 
-        // Format Lat/Lon string (e.g. 14.599512° N, 120.984222° E)
+        // Format Lat/Lon string (e.g. 6.681023° N, 124.689331° E)
         const latDir = currentGps.lat >= 0 ? 'N' : 'S';
         const lonDir = currentGps.lon >= 0 ? 'E' : 'W';
         const coordsStr = `${Math.abs(currentGps.lat).toFixed(6)}° ${latDir}, ${Math.abs(currentGps.lon).toFixed(6)}° ${lonDir}`;
@@ -1067,54 +1165,75 @@
         updateMapMarker();
     }
 
-    function initLeafletMap() {
+    function initMapLibreMap() {
         if (mapInstance) return;
 
         const mapContainer = document.getElementById('mapContainer');
-        if (!mapContainer || typeof L === 'undefined') return;
+        if (!mapContainer || typeof maplibregl === 'undefined') return;
 
-        mapInstance = L.map('mapContainer', {
-            center: [currentGps.lat, currentGps.lon],
-            zoom: 16,
-            zoomControl: true,
+        mapInstance = new maplibregl.Map({
+            container: 'mapContainer',
+            style: satelliteHybridStyle,
+            center: [currentGps.lon, currentGps.lat], // GeoJSON uses [lon, lat]
+            zoom: 15,
+            pitch: 35,
+            bearing: 0,
             attributionControl: false
         });
 
-        // 100% Offline Tile Layer from /static/tiles/{z}/{x}/{y}.png
-        // Graceful fallback: If local file is missing, displays an elegant vector radar grid
-        L.tileLayer('/static/tiles/{z}/{x}/{y}.png', {
-            maxZoom: 18,
-            minZoom: 10,
-            errorTileUrl: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" style="background:%23eaf3e4"><rect width="256" height="256" fill="%23f4fcf0" stroke="%23cde0c4" stroke-width="1"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%238ab87a" font-family="sans-serif" font-size="12">AgriSentinel Grid</text></svg>'
-        }).addTo(mapInstance);
+        mapInstance.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 
-        // Custom Pulsing Robot Marker Icon
-        const robotIcon = L.divIcon({
-            className: 'robot-custom-marker',
-            html: `
-                <div class="robot-pulse-icon">
-                    <div class="robot-pulse-ring"></div>
-                    <div class="robot-pulse-center"></div>
-                </div>
-            `,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
+        // Custom Pulsing Robot Marker
+        const el = document.createElement('div');
+        el.className = 'robot-pulse-icon';
+        el.innerHTML = '<div class="robot-pulse-ring"></div><div class="robot-pulse-center"></div>';
+
+        robotMarker = new maplibregl.Marker({ element: el, anchor: 'center' })
+            .setLngLat([currentGps.lon, currentGps.lat])
+            .addTo(mapInstance);
+
+        const popup = new maplibregl.Popup({ offset: 18 })
+            .setHTML(`<b>AgriSentinel Rover</b><br>Lat: ${currentGps.lat.toFixed(6)}<br>Lon: ${currentGps.lon.toFixed(6)}<br>Alt: ${currentGps.alt} m`);
+        robotMarker.setPopup(popup);
+
+        mapInstance.on('load', () => {
+            mapInstance.addSource('robot-trail', {
+                type: 'geojson',
+                data: {
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: pathHistory
+                    }
+                }
+            });
+
+            mapInstance.addLayer({
+                id: 'robot-trail-glow',
+                type: 'line',
+                source: 'robot-trail',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': '#000000',
+                    'line-width': 6,
+                    'line-opacity': 0.4
+                }
+            });
+
+            mapInstance.addLayer({
+                id: 'robot-trail-line',
+                type: 'line',
+                source: 'robot-trail',
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': '#10b981',
+                    'line-width': 3.5,
+                    'line-opacity': 0.95,
+                    'line-dasharray': [2, 2]
+                }
+            });
         });
-
-        robotMarker = L.marker([currentGps.lat, currentGps.lon], { icon: robotIcon }).addTo(mapInstance);
-        robotMarker.bindPopup(`<b>AgriSentinel Rover</b><br>Lat: ${currentGps.lat.toFixed(6)}<br>Lon: ${currentGps.lon.toFixed(6)}`);
-
-        // Movement Breadcrumb Trail (Polyline)
-        trailPolyline = L.polyline([], {
-            color: '#2b6e3c',
-            weight: 4,
-            opacity: 0.85,
-            dashArray: '4, 8',
-            lineJoin: 'round'
-        }).addTo(mapInstance);
-
-        pathHistory.push([currentGps.lat, currentGps.lon]);
-        trailPolyline.setLatLngs(pathHistory);
     }
 
     function updateMapMarker() {
@@ -1131,16 +1250,28 @@
         }
 
         if (mapInstance && robotMarker) {
-            const newPos = [currentGps.lat, currentGps.lon];
-            robotMarker.setLatLng(newPos);
-            robotMarker.getPopup().setContent(`<b>AgriSentinel Rover</b><br>Lat: ${currentGps.lat.toFixed(6)}<br>Lon: ${currentGps.lon.toFixed(6)}<br>Alt: ${currentGps.alt} m`);
+            const newCoord = [currentGps.lon, currentGps.lat];
+            robotMarker.setLngLat(newCoord);
+            if (robotMarker.getPopup()) {
+                robotMarker.getPopup().setHTML(`<b>AgriSentinel Rover</b><br>Lat: ${currentGps.lat.toFixed(6)}<br>Lon: ${currentGps.lon.toFixed(6)}<br>Alt: ${currentGps.alt} m`);
+            }
 
             // Append to trail if moved significantly (> 0.000005 deg)
             if (pathHistory.length === 0 || 
-                Math.abs(pathHistory[pathHistory.length - 1][0] - currentGps.lat) > 0.000005 ||
-                Math.abs(pathHistory[pathHistory.length - 1][1] - currentGps.lon) > 0.000005) {
-                pathHistory.push(newPos);
-                if (trailPolyline) trailPolyline.setLatLngs(pathHistory);
+                Math.abs(pathHistory[pathHistory.length - 1][0] - currentGps.lon) > 0.000005 ||
+                Math.abs(pathHistory[pathHistory.length - 1][1] - currentGps.lat) > 0.000005) {
+                pathHistory.push(newCoord);
+                const trailSource = mapInstance.getSource('robot-trail');
+                if (trailSource) {
+                    trailSource.setData({
+                        type: 'Feature',
+                        properties: {},
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: pathHistory
+                        }
+                    });
+                }
             }
         }
     }
@@ -1149,10 +1280,14 @@
         if (mapModal) {
             mapModal.classList.add('active');
             setTimeout(() => {
-                initLeafletMap();
+                initMapLibreMap();
                 if (mapInstance) {
-                    mapInstance.invalidateSize();
-                    mapInstance.setView([currentGps.lat, currentGps.lon], 16);
+                    mapInstance.resize();
+                    mapInstance.easeTo({
+                        center: [currentGps.lon, currentGps.lat],
+                        zoom: 15,
+                        duration: 800
+                    });
                 }
             }, 100);
         }
@@ -1164,14 +1299,43 @@
 
     function recenterMap() {
         if (mapInstance) {
-            mapInstance.setView([currentGps.lat, currentGps.lon], 17, { animate: true });
-            if (robotMarker) robotMarker.openPopup();
+            mapInstance.flyTo({
+                center: [currentGps.lon, currentGps.lat],
+                zoom: 16,
+                pitch: 35,
+                speed: 1.2
+            });
+            if (robotMarker && robotMarker.getPopup()) {
+                robotMarker.togglePopup();
+            }
+        }
+    }
+
+    function reset3DView() {
+        if (mapInstance) {
+            mapInstance.easeTo({
+                pitch: 0,
+                bearing: 0,
+                duration: 600
+            });
         }
     }
 
     function clearMapTrail() {
-        pathHistory = [[currentGps.lat, currentGps.lon]];
-        if (trailPolyline) trailPolyline.setLatLngs(pathHistory);
+        pathHistory = [[currentGps.lon, currentGps.lat]];
+        if (mapInstance) {
+            const trailSource = mapInstance.getSource('robot-trail');
+            if (trailSource) {
+                trailSource.setData({
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: pathHistory
+                    }
+                });
+            }
+        }
     }
 
     if (mapModal) {
