@@ -6,3 +6,6 @@ gpiozero>=2.0
 lgpio>=0.2.2.0
 pyserial>=3.5
 pynmea2>=1.19.0
+
+websockets>=11.0
+jinja2>=3.0

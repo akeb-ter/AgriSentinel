@@ -26,6 +26,7 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("AgriSentinel-Camera")
@@ -336,6 +337,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+from edge.web_app import router as web_app_router
+app.include_router(web_app_router)
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
 def frame_generator() -> Generator[bytes, None, None]:
     """Generates MJPEG multipart stream chunks."""
@@ -387,7 +391,7 @@ def get_snapshot():
     return Response(content=frame_bytes, media_type="image/jpeg")
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/camera_diagnostic", response_class=HTMLResponse)
 def index_page():
     """Serves the test interface HTML page with live video preview and diagnostics."""
     return """
