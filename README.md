@@ -122,7 +122,77 @@ python -m edge.drivers.servo
 
 ---
 
-## 5. Running Subsystems & Autonomous Control
+## 5. GPS Module Testing & Verification (`GY-NEO6MV2` / `GY-GPS6MV2`)
+
+The GY-NEO6MV2 and GY-GPS6MV2 GPS modules stream NMEA data over hardware UART `/dev/ttyS0` at 9600 baud. Both modules use the u-blox NEO-6M core and are fully interchangeable in this system.
+
+### Running GPS Unit Tests
+
+```bash
+python tests/test_gps.py
+```
+
+### Running Standalone Continuous GPS Live Monitor (Press Ctrl+C to Stop)
+
+To continuously debug and view live coordinates, satellite count, fix status, and raw NMEA stream:
+
+```bash
+python edge/gps_test.py
+```
+*or via module execution:*
+```bash
+python -m edge.gps_test
+```
+*or directly from the driver:*
+```bash
+python -m edge.drivers.gps
+```
+
+#### Diagnostic & Debug CLI Options:
+
+| Option | Flag | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--raw` | `-r` | *Disabled* | Print all incoming raw NMEA sentences (`$GPGGA`, `$GPRMC`, etc.) in real time |
+| `--interval` | `-i` | `1.0` | Telemetry refresh interval in seconds (e.g. `0.5` for faster polling) |
+| `--port` | `-p` | `/dev/ttyS0` | Serial port device path (or set via `$GPS_SERIAL_PORT`) |
+| `--baud` | `-b` | `9600` | Serial baud rate (or set via `$GPS_BAUD_RATE`) |
+
+#### Debugging Usage Examples:
+
+* **Real-time Raw NMEA Inspection** (verify serial transmission even before satellite lock):
+  ```bash
+  python edge/gps_test.py --raw
+  ```
+* **Fast 0.5s Refresh with Verbose Raw Data:**
+  ```bash
+  python edge/gps_test.py --raw --interval 0.5
+  ```
+* **Custom Serial Device (e.g., USB-to-UART bridge):**
+  ```bash
+  python edge/gps_test.py --port /dev/ttyUSB0 --baud 9600
+  ```
+
+### Hardware Setup & Verification on Raspberry Pi 4
+
+1. **Enable UART Interface:**
+   Ensure hardware serial is enabled in `/boot/config.txt` (or `/boot/firmware/config.txt`):
+   ```text
+   enable_uart=1
+   ```
+2. **Wiring Verification:**
+   * `VCC` -> Pin 1 (3.3V)
+   * `GND` -> Pin 14 (Ground)
+   * `TX` -> Pin 10 (GPIO 15 / RXD0)
+   * `RX` -> Pin 8 (GPIO 14 / TXD0)
+
+3. **Running Main Robot Loop with Live GPS & Dual Ultrasonic Telemetry:**
+   ```bash
+   python -m edge.robot_main
+   ```
+
+---
+
+## 6. Running Subsystems & Autonomous Control
 
 ### Main Robot Control Loop
 
@@ -135,6 +205,7 @@ python -m edge.robot_main
 ```bash
 python tests/test_motors.py
 python tests/test_servo.py
+python tests/test_gps.py
 ```
 *or via pytest:*
 ```bash

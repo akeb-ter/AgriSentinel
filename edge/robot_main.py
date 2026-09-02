@@ -2,7 +2,7 @@
 AgriSentinel - Main Autonomous Control Loop
 
 Coordinates motor navigation, dual ultrasonic obstacle avoidance (Front & Rear),
-GY-NEO6MV2 GPS telemetry streaming, camera servo panning, and telemetry reporting.
+GY-NEO6MV2 / GY-GPS6MV2 GPS telemetry streaming, camera servo panning, and telemetry reporting.
 """
 
 import os
