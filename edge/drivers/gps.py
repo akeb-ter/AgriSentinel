@@ -42,6 +42,8 @@ class GPSReader:
         self.altitude = 0.0
         self.gps_fix = False
         self.satellites = 0
+        self.last_raw_sentence = ""
+        self.is_synthetic = False
 
         self._init_serial()
 
@@ -50,8 +52,10 @@ class GPSReader:
         try:
             import serial
             self.serial_conn = serial.Serial(self.port, baudrate=self.baudrate, timeout=1.0)
+            self.is_synthetic = False
             logger.info(f"[GPSReader] Connected to GPS module on {self.port} @ {self.baudrate} baud.")
         except Exception as e:
+            self.is_synthetic = True
             logger.warning(f"[GPSReader] Hardware serial fallback (Mock Mode): {e}")
 
     def read_gps_data(self) -> Dict[str, Any]:
@@ -62,6 +66,7 @@ class GPSReader:
         try:
             raw_bytes = self.serial_conn.readline()
             line = raw_bytes.decode("utf-8", errors="replace").strip() if isinstance(raw_bytes, bytes) else str(raw_bytes).strip()
+            self.last_raw_sentence = line
 
             parsed_successfully = False
 
@@ -123,6 +128,7 @@ class GPSReader:
             "altitude": self.altitude,
             "gps_fix": self.gps_fix,
             "satellites": self.satellites,
+            "raw_sentence": self.last_raw_sentence,
         }
 
     def close(self):
@@ -133,3 +139,8 @@ class GPSReader:
                 logger.info("[GPSReader] Serial connection closed.")
             except Exception:
                 pass
+
+
+if __name__ == "__main__":
+    from edge.gps_test import main
+    main()

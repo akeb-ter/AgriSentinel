@@ -75,17 +75,22 @@ The GY-NEO6MV2 and GY-GPS6MV2 GPS modules stream NMEA data over hardware UART `/
 
 ### Running GPS Unit Tests
 
-To run the GPS unit test suite using the standard Python `unittest` framework:
-
 ```bash
-python -m unittest tests/test_gps.py
+python tests/test_gps.py
 ```
 
-Alternatively, if `pytest` is installed in your virtual environment:
+### Running Standalone Continuous GPS Live Monitor (Press Ctrl+C to Stop)
+
+To continuously debug and view live coordinates, satellite count, fix status, and raw NMEA stream:
 
 ```bash
-pytest tests/test_gps.py -v
+python edge/gps_test.py
 ```
+*or via module execution:*
+```bash
+python -m edge.gps_test
+```
+*(Options: `--raw` to show all incoming NMEA sentences, `--interval 0.5` for faster refresh, `--port /dev/ttyS0`)*
 
 ### Hardware Setup & Verification on Raspberry Pi 4
 

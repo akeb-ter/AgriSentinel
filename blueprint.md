@@ -134,6 +134,7 @@ agrisentinel/
 │   │   └── synthesizer.py           # Dynamic adaptive audio generator
 │   ├── vision.py                    # EI Linux Runner & OpenCV capture
 │   ├── camera_test.py               # Local FastAPI camera preview & streaming server
+│   ├── gps_test.py                  # Standalone continuous GPS diagnostic & monitor
 │   └── robot_main.py                # Main autonomous control & dual failsafe loop
 ├── backend/
 │   ├── app.py                       # FastAPI application & WebSocket handlers
@@ -144,7 +145,8 @@ agrisentinel/
 │   ├── src/                         # Dashboard UI components & WebSocket client
 │   └── dist/                        # Static build files served by FastAPI
 ├── markdowns/
-│   └── camera_test_plan.md          # Camera subsystem specification
+│   ├── camera_test_plan.md          # Camera subsystem specification
+│   └── gps_test_plan.md             # GPS diagnostic and testing specification
 ├── requirements.txt                 # Project dependencies (pyserial, pynmea2, gpiozero/RPi.GPIO)
 └── README.md
 ```

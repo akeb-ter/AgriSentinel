@@ -1,10 +1,9 @@
-"""
-Unit tests for edge.drivers.gps module (GY-NEO6MV2 / GY-GPS6MV2 GPS Driver).
-Uses standard unittest framework for maximum compatibility.
-"""
-
+import os
+import sys
 import unittest
 from unittest.mock import MagicMock
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from edge.drivers.gps import GPSReader
 
