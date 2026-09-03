@@ -587,8 +587,8 @@
                     <p>Sign in to your AgriSentinel account</p>
                 </div>
 
-                {% if message %}
-                <div class="msg show error">{{ message }}</div>
+                {% if message and request.url.path != "/register" %}
+                <div class="msg show error" style="margin-bottom: 12px;">{{ message }}</div>
                 {% endif %}
 
                 <form method="POST" action="/login" id="loginFormElement">
@@ -627,9 +627,12 @@
                     <p>Join AgriSentinel — all fields are required</p>
                 </div>
 
-                <!-- Jinja message handled in login section -->
+                {% if message and not registration_success %}
+                <!-- Show error message if registration failed -->
+                <div class="msg show error" style="margin-bottom: 12px;">{{ message }}</div>
+                {% endif %}
 
-                <form method="POST" action="" id="registerFormElement">
+                <form method="POST" action="/register" id="registerFormElement">
                     <!-- Name fields -->
                     <div class="form-row">
                         <div class="form-group">
@@ -704,7 +707,7 @@
                     </div>
 
                     <!-- Register button + cancel -->
-                    <div id="registerActions">
+                    <div id="registerActions" style="margin-block: 16px;">
                         <button type="submit" name="register" class="btn btn-primary btn-block" id="registerBtn">
                             <span class="btn-text"><i class="fas fa-user-plus"></i> Create Account</span>
                             <span class="spinner"></span>
@@ -774,11 +777,23 @@
         });
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // 4. INIT — focus first field
+        // 4. INIT — Server State Handling
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         document.addEventListener('DOMContentLoaded', () => {
+            {% if registration_success %}
+            // Show register success view
+            showRegister();
+            document.getElementById('registerSuccess').classList.add('show');
+            document.getElementById('registerFormElement').style.display = 'none';
+            document.getElementById('registerActions').style.display = 'none';
+            {% elif message and request.url.path == "/register" %}
+            // Show register form with error
+            showRegister();
+            {% else %}
+            // Default login view
             const loginInput = document.getElementById('loginAccount');
             if (loginInput) loginInput.focus();
+            {% endif %}
         });
 
         console.log('🔐 AgriSentinel Login System ready (database: agrisentinel)');

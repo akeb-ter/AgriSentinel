@@ -70,7 +70,20 @@ async def login_page(request: Request):
     user = get_current_user(request)
     if user:
         return RedirectResponse(url="/dashboard", status_code=302)
-    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": None})
+    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": None, "registration_success": False})
+
+import hashlib
+
+def hash_password(password: str) -> str:
+    salt = os.urandom(16)
+    return salt.hex() + ":" + hashlib.sha256(salt + password.encode('utf-8')).hexdigest()
+
+def verify_password(password: str, hashed: str) -> bool:
+    if ":" not in hashed:
+        return password == hashed
+    salt_hex, hash_val = hashed.split(":", 1)
+    salt = bytes.fromhex(salt_hex)
+    return hashlib.sha256(salt + password.encode('utf-8')).hexdigest() == hash_val
 
 @router.post("/login", response_class=HTMLResponse)
 async def do_login(request: Request, account: str = Form(...), password: str = Form(...)):
@@ -78,12 +91,42 @@ async def do_login(request: Request, account: str = Form(...), password: str = F
     user = conn.execute("SELECT * FROM users_tbl WHERE ACCOUNT = ?", (account,)).fetchone()
     conn.close()
 
-    if user and user['PASSWORD'] == password: # In real app, use password_verify
+    if user and verify_password(password, user['PASSWORD']):
         response = RedirectResponse(url="/dashboard", status_code=302)
         response.set_cookie(key="user_id", value=str(user['ID']))
         return response
     
-    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": "Invalid credentials"})
+    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": "Invalid credentials", "registration_success": False})
+
+@router.post("/register", response_class=HTMLResponse)
+async def do_register(
+    request: Request, 
+    lastname: str = Form(...), 
+    firstname: str = Form(...), 
+    middlename: str = Form(""), 
+    user_type: str = Form(...), 
+    affiliation: str = Form(...), 
+    account: str = Form(...), 
+    password: str = Form(...)
+):
+    conn = get_db_connection()
+    # Check if account already exists
+    existing = conn.execute("SELECT ID FROM users_tbl WHERE ACCOUNT = ?", (account,)).fetchone()
+    
+    if existing:
+        conn.close()
+        return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": "Account username already exists. Please choose another.", "registration_success": False})
+
+    hashed_pw = hash_password(password)
+    conn.execute("""
+        INSERT INTO users_tbl (LASTNAME, FIRSTNAME, MIDDLENAME, USER_TYPE, AFFILIATION, ACCOUNT, PASSWORD)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (lastname, firstname, middlename, user_type, affiliation, account, hashed_pw))
+    conn.commit()
+    conn.close()
+
+    # Return success flag to frontend
+    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": None, "registration_success": True})
 
 @router.get("/logout")
 async def logout():
