@@ -325,20 +325,20 @@
     <!-- ═══ CARDS GRID ═══ -->
     <div class="cards-grid">
 
-        <!-- CARD 1: HOTSPOT & NETWORK -->
+        <!-- CARD 1: WI-FI CONFIGURATION -->
         <div class="dev-card">
             <div>
                 <div class="card-header">
                     <div class="card-title">
                         <i class="fas fa-wifi"></i>
-                        <span>Network &amp; Hotspot</span>
+                        <span>Network Connection</span>
                     </div>
                     <span id="netBadge" class="status-pill blue">
                         <span class="pulse-dot"></span> <span id="netBadgeText">Checking...</span>
                     </span>
                 </div>
 
-                <div class="info-list">
+                <div class="info-list" style="margin-bottom: 12px;">
                     <div class="info-row">
                         <span class="info-label">Active Connection:</span>
                         <span id="netConn" class="info-val">Detecting...</span>
@@ -351,20 +351,19 @@
                         <span class="info-label">Local mDNS Domain:</span>
                         <a id="netDomain" href="http://agrisentinel.local:8000" target="_blank" class="info-val" style="color:#2b6e3c; text-decoration:underline;">agrisentinel.local:8000</a>
                     </div>
-                    <div class="info-row">
-                        <span class="info-label">Hotspot SSID / Pass:</span>
-                        <span class="info-val">AgriSentinel / agri1234</span>
-                    </div>
                 </div>
-            </div>
 
-            <div>
-                <button id="hotspotToggleBtn" class="btn btn-amber" onclick="toggleHotspot()">
-                    <i class="fas fa-broadcast-tower"></i> <span id="hotspotBtnText">Toggle Hotspot</span>
-                </button>
-                <p style="font-size: 11.5px; color: #729276; margin-top: 8px; text-align: center;">
-                    Toggling persists across reboots automatically via NetworkManager.
-                </p>
+                <div style="background: #f4fcf0; border-radius: 12px; padding: 12px; border: 1px solid #dce8d6;">
+                    <div style="font-size: 13px; font-weight: 600; color: #2a4f32; margin-bottom: 8px;">Connect to Wi-Fi</div>
+                    <input type="text" id="wifiSsid" placeholder="Target SSID (Network Name)" style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;">
+                    <input type="password" id="wifiPass" placeholder="Password (leave blank if open)" style="width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px;">
+                    <button id="wifiConnectBtn" class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="connectWifi()">
+                        <i class="fas fa-link"></i> Connect & Save
+                    </button>
+                    <p style="font-size: 11px; color: #729276; margin-top: 8px; text-align: center;">
+                        This configures NetworkManager to connect on boot.
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -527,7 +526,6 @@
 
 <script>
     let currentPendingAction = null;
-    let currentHotspotState = false;
 
     // Fetch live developer diagnostic info
     async function fetchDevStatus() {
@@ -537,28 +535,16 @@
             const data = await res.json();
 
             // Network
-            currentHotspotState = data.network.is_hotspot;
             const netBadge = document.getElementById('netBadge');
             const netBadgeText = document.getElementById('netBadgeText');
             const netConn = document.getElementById('netConn');
             const netIp = document.getElementById('netIp');
-            const hotspotToggleBtn = document.getElementById('hotspotToggleBtn');
-            const hotspotBtnText = document.getElementById('hotspotBtnText');
 
             netConn.textContent = data.network.connection;
             netIp.textContent = data.network.ip_address;
 
-            if (currentHotspotState) {
-                netBadge.className = 'status-pill green';
-                netBadgeText.textContent = 'HOTSPOT ACTIVE';
-                hotspotToggleBtn.className = 'btn btn-amber';
-                hotspotBtnText.textContent = 'Disable Hotspot (Connect to Wi-Fi)';
-            } else {
-                netBadge.className = 'status-pill blue';
-                netBadgeText.textContent = 'WI-FI CLIENT';
-                hotspotToggleBtn.className = 'btn btn-green';
-                hotspotBtnText.textContent = 'Enable Hotspot (Broadcast Wi-Fi)';
-            }
+            netBadge.className = 'status-pill blue';
+            netBadgeText.textContent = 'WI-FI CLIENT';
 
             // Camera
             const cam = data.camera;
@@ -585,31 +571,39 @@
         }
     }
 
-    // Toggle Hotspot
-    async function toggleHotspot() {
-        const action = currentHotspotState ? 'disable' : 'enable';
-        const btn = document.getElementById('hotspotToggleBtn');
+    // Connect Wi-Fi
+    async function connectWifi() {
+        const ssid = document.getElementById('wifiSsid').value.trim();
+        const pass = document.getElementById('wifiPass').value;
+        const btn = document.getElementById('wifiConnectBtn');
+        
+        if (!ssid) {
+            showToast('SSID cannot be empty', true);
+            return;
+        }
+        
         btn.disabled = true;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Applying ${action}...`;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Connecting...`;
 
-        showToast(`Running hotspot ${action} script. Please wait...`);
+        showToast(`Attempting to connect to ${ssid}. Please wait...`);
 
         try {
-            const res = await fetch('/api/dev/hotspot/toggle', {
+            const res = await fetch('/api/dev/wifi/connect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: action })
+                body: JSON.stringify({ ssid: ssid, password: pass })
             });
             const data = await res.json();
             if (data.status === 'success') {
-                showToast(`Hotspot successfully ${action}d!`);
+                showToast(`Successfully connected to ${ssid}!`);
             } else {
-                showToast(`Error: ${data.stderr || data.message || 'Action failed'}`, true);
+                showToast(`Error: ${data.stderr || data.message || 'Connection failed'}`, true);
             }
         } catch (err) {
             showToast(`Request failed: ${err.message}`, true);
         } finally {
             btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-link"></i> Connect & Save`;
             fetchDevStatus();
             fetchLogs();
         }

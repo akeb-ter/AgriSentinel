@@ -382,8 +382,9 @@ async def control_endpoint(websocket: WebSocket):
 # Developer Settings Endpoints
 # ═══════════════════════════════════════════════════════════════════════
 
-class HotspotToggleRequest(BaseModel):
-    action: str  # "enable" or "disable"
+class WifiConnectRequest(BaseModel):
+    ssid: str
+    password: Optional[str] = None
 
 
 @router.get("/dev_settings", response_class=HTMLResponse)
@@ -400,7 +401,6 @@ async def dev_settings_page(request: Request):
 @router.get("/api/dev/status")
 async def dev_get_status():
     """Returns network mode, IP, camera diagnostics, and system info."""
-    is_hotspot = False
     ip_addr = "Unknown"
     active_connection = "Unknown"
 
@@ -413,8 +413,6 @@ async def dev_get_status():
             if res_conn.returncode == 0:
                 conn_line = res_conn.stdout.strip().split("\n")[0]
                 active_connection = conn_line.split(":")[-1]
-                if "AgriSentinel-Hotspot" in active_connection:
-                    is_hotspot = True
 
         if shutil.which("ip"):
             res_ip = subprocess.run(
@@ -444,12 +442,9 @@ async def dev_get_status():
     return {
         "status": "success",
         "network": {
-            "is_hotspot": is_hotspot,
             "connection": active_connection,
             "ip_address": ip_addr,
             "local_domain": "http://agrisentinel.local:8000",
-            "ssid": "AgriSentinel",
-            "password": "agri1234",
         },
         "camera": camera_info,
         "platform": sys.platform,
@@ -457,25 +452,28 @@ async def dev_get_status():
     }
 
 
-@router.post("/api/dev/hotspot/toggle")
-async def dev_toggle_hotspot(req: HotspotToggleRequest):
-    """Executes manage_hotspot.sh to enable or disable the Wi-Fi hotspot."""
-    action = req.action.lower().strip()
-    if action not in ["enable", "disable"]:
-        raise HTTPException(status_code=400, detail="Action must be 'enable' or 'disable'.")
+@router.post("/api/dev/wifi/connect")
+async def dev_wifi_connect(req: WifiConnectRequest):
+    """Executes set_wifi.sh to configure the target Wi-Fi network."""
+    ssid = req.ssid.strip()
+    if not ssid:
+        raise HTTPException(status_code=400, detail="SSID cannot be empty.")
 
-    script_path = os.path.abspath("scripts/manage_hotspot.sh")
+    script_path = os.path.abspath("scripts/set_wifi.sh")
     if not os.path.exists(script_path):
-        return JSONResponse(status_code=500, content={"status": "error", "message": "scripts/manage_hotspot.sh not found."})
+        return JSONResponse(status_code=500, content={"status": "error", "message": "scripts/set_wifi.sh not found."})
 
     try:
+        cmd = ["bash", script_path, f"--ssid={ssid}"]
+        if req.password:
+            cmd.append(f"--pass={req.password}")
+            
         proc = subprocess.run(
-            ["bash", script_path, action],
-            capture_output=True, text=True, timeout=20
+            cmd,
+            capture_output=True, text=True, timeout=30
         )
         return {
             "status": "success" if proc.returncode == 0 else "error",
-            "action": action,
             "stdout": proc.stdout,
             "stderr": proc.stderr,
             "returncode": proc.returncode
