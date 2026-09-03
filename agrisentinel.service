@@ -1,0 +1,27 @@
+[Unit]
+Description=AgriSentinel Main Loop Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=agrisentinel
+Group=agrisentinel
+WorkingDirectory=/home/agrisentinel/gh/remote/AgriSentinel
+
+# Load environment variables if you ever need to set HOST/PORT or credentials (optional)
+# EnvironmentFile=/home/agrisentinel/gh/remote/AgriSentinel/.env
+
+# The command to start the main loop
+ExecStart=/usr/bin/python3 main.py
+
+# Restart policy for robust error handling
+Restart=always
+RestartSec=5
+
+# Forward standard output and standard error to journalctl
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
