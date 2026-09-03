@@ -113,3 +113,11 @@ Run all unit tests via `pytest`:
 ```bash
 pytest tests/ -v
 ```
+
+### Individual Subsystem Test Plans
+For detailed calibration instructions, hardware checklists, and standalone debugging commands, refer to the dedicated Test Plan documents:
+
+* 📷 **[Camera Subsystem Test Plan](markdowns/camera_test_plan.md)** (rpicam & OpenCV diagnostics)
+* 📍 **[GPS Module Test Plan](markdowns/gps_test_plan.md)** (Raw NMEA streaming and baud rate testing)
+* ⚙️ **[Motor Driver Test Plan](markdowns/motor_test_plan.md)** (Directional mapping and H-Bridge validation)
+* 🔭 **[Servo Controller Test Plan](markdowns/servo_test_plan.md)** (PWM scanning and jitter mitigation)
