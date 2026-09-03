@@ -179,11 +179,34 @@ async def gps_telemetry_loop():
         try:
             if manager.active_connections:
                 raw_data = gps_reader.read_gps_data()
-                is_mock = gps_reader.is_synthetic or not raw_data.get("gps_fix")
+                is_synthetic = gps_reader.is_synthetic
+                has_fix = bool(raw_data.get("gps_fix"))
                 
+                is_live = False
+                data_status = "Unknown"
+                last_fix = getattr(gps_reader, "last_valid_fix_time", 0.0)
+                
+                if is_synthetic:
+                    data_status = "Synthetic"
+                elif has_fix and time.time() - last_fix < 5.0:
+                    is_live = True
+                    data_status = "Live"
+                elif last_fix > 0:
+                    data_status = "Cached"
+                else:
+                    data_status = "No Fix"
+
                 # Use real hardware coordinates if fix acquired, or demo coordinates in synthetic mode
-                lat = raw_data.get("latitude") if raw_data.get("gps_fix") else (6.681023 if is_mock else 0.0)
-                lon = raw_data.get("longitude") if raw_data.get("gps_fix") else (124.689331 if is_mock else 0.0)
+                lat = raw_data.get("latitude") if has_fix else (6.681023 if is_synthetic else 0.0)
+                lon = raw_data.get("longitude") if has_fix else (124.689331 if is_synthetic else 0.0)
+                alt = raw_data.get("altitude") or (24.5 if is_synthetic else 0.0)
+                sats = raw_data.get("satellites") if has_fix else (8 if is_synthetic else 0)
+
+                if data_status == "Cached":
+                    lat = gps_reader.latitude
+                    lon = gps_reader.longitude
+                    alt = gps_reader.altitude
+                    sats = gps_reader.satellites
 
                 await manager.broadcast({
                     "type": "GPS_TELEMETRY",
@@ -191,11 +214,14 @@ async def gps_telemetry_loop():
                     "longitude": round(lon, 6),
                     "altitude": round(alt, 1),
                     "satellites": sats,
-                    "gps_fix": bool(raw_data.get("gps_fix")),
-                    "is_synthetic": gps_reader.is_synthetic,
+                    "gps_fix": has_fix,
+                    "is_synthetic": is_synthetic,
+                    "is_live": is_live,
+                    "data_status": data_status,
+                    "last_fix_time": last_fix
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error in telemetry loop: {e}")
         await asyncio.sleep(1.0)
 
 # --- WebSocket ---
@@ -228,11 +254,36 @@ async def simulate_alert():
 @router.get("/api/gps")
 async def get_gps():
     raw_data = gps_reader.read_gps_data()
-    is_mock = gps_reader.is_synthetic or not raw_data.get("gps_fix")
-    lat = raw_data.get("latitude") if raw_data.get("gps_fix") else (6.681023 if is_mock else 0.0)
-    lon = raw_data.get("longitude") if raw_data.get("gps_fix") else (124.689331 if is_mock else 0.0)
-    alt = raw_data.get("altitude") or (24.5 if is_mock else 0.0)
-    sats = raw_data.get("satellites") if raw_data.get("gps_fix") else (8 if gps_reader.is_synthetic else 0)
+    is_synthetic = gps_reader.is_synthetic
+    has_fix = bool(raw_data.get("gps_fix"))
+    
+    # Calculate if the fix is recent (live) or cached
+    is_live = False
+    data_status = "Unknown"
+    last_fix = getattr(gps_reader, "last_valid_fix_time", 0.0)
+    
+    if is_synthetic:
+        data_status = "Synthetic"
+    elif has_fix and time.time() - last_fix < 5.0:
+        is_live = True
+        data_status = "Live"
+    elif last_fix > 0:
+        data_status = "Cached"
+    else:
+        data_status = "No Fix"
+
+    # Fallbacks for UI demonstration if hardware is mocking or no fix yet
+    lat = raw_data.get("latitude") if has_fix else (6.681023 if is_synthetic else 0.0)
+    lon = raw_data.get("longitude") if has_fix else (124.689331 if is_synthetic else 0.0)
+    alt = raw_data.get("altitude") or (24.5 if is_synthetic else 0.0)
+    sats = raw_data.get("satellites") if has_fix else (8 if is_synthetic else 0)
+
+    # Use old lat/lon if cached
+    if data_status == "Cached":
+        lat = gps_reader.latitude
+        lon = gps_reader.longitude
+        alt = gps_reader.altitude
+        sats = gps_reader.satellites
 
     return {
         "status": "success",
@@ -240,9 +291,36 @@ async def get_gps():
         "longitude": round(lon, 6),
         "altitude": round(alt, 1),
         "satellites": sats,
-        "gps_fix": bool(raw_data.get("gps_fix")),
-        "is_synthetic": gps_reader.is_synthetic,
+        "gps_fix": has_fix,
+        "is_synthetic": is_synthetic,
+        "is_live": is_live,
+        "data_status": data_status,
+        "last_fix_time": last_fix
     }
+
+@router.get("/api/dev/gps/raw")
+async def dev_get_gps_raw():
+    """Returns the buffered raw NMEA stream for debugging."""
+    raw_sentences = getattr(gps_reader, "get_raw_nmea", lambda: [])()
+    return {
+        "status": "success",
+        "raw_stream": raw_sentences,
+        "is_synthetic": gps_reader.is_synthetic,
+        "baudrate": gps_reader.baudrate,
+        "port": gps_reader.port
+    }
+
+@router.post("/api/dev/gps/restart")
+async def dev_restart_gps():
+    """Restarts the serial connection for the GPS module."""
+    try:
+        success = getattr(gps_reader, "reconnect", lambda: False)()
+        return {
+            "status": "success" if success else "warning",
+            "message": "GPS Serial connection restarted." if success else "Fallback mode enabled after restart."
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 @router.websocket("/ws/control")

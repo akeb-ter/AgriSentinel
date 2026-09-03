@@ -546,7 +546,8 @@
 
 <script>
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 1. TAB NAVIGATION
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 1. TAB NAVIGATION & SAFETY
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const tabs = document.querySelectorAll('.nav-tab');
     const panels = {
@@ -572,6 +573,15 @@
                 }
             }
         });
+    });
+
+    // Safety: Auto-stop motors if browser tab is hidden (user switches browser tabs or minimizes)
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (typeof controlWs !== 'undefined' && controlWs && controlWs.readyState === WebSocket.OPEN) {
+                controlWs.send(JSON.stringify({ device: 'motor', action: 'stop' }));
+            }
+        }
     });
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1124,7 +1134,9 @@
             alt: data.altitude || 0.0,
             sats: data.satellites || 0,
             fix: Boolean(data.gps_fix),
-            isSynthetic: Boolean(data.is_synthetic)
+            isSynthetic: Boolean(data.is_synthetic),
+            isLive: Boolean(data.is_live),
+            dataStatus: data.data_status || "Unknown"
         };
 
         // Format Lat/Lon string (e.g. 6.681023° N, 124.689331° E)
@@ -1139,18 +1151,22 @@
 
         const gpsFixBadge = document.getElementById('gpsFixBadge');
         if (gpsFixBadge) {
-            if (currentGps.fix) {
+            if (currentGps.dataStatus === 'Live') {
                 gpsFixBadge.style.background = '#dff0d8';
                 gpsFixBadge.style.color = '#1f4a2a';
-                gpsFixBadge.innerHTML = '<span class="pulse-dot" style="margin-right:4px;"></span> 3D Fix';
+                gpsFixBadge.innerHTML = '<span class="pulse-dot" style="margin-right:4px;"></span> Live Fix';
+            } else if (currentGps.dataStatus === 'Cached') {
+                gpsFixBadge.style.background = '#fef9e7';
+                gpsFixBadge.style.color = '#b7950b';
+                gpsFixBadge.innerHTML = '<i class="fas fa-history" style="margin-right:4px;"></i> Cached';
             } else if (currentGps.isSynthetic) {
                 gpsFixBadge.style.background = '#fef9e7';
                 gpsFixBadge.style.color = '#b7950b';
-                gpsFixBadge.innerHTML = '<i class="fas fa-microchip" style="margin-right:4px;"></i> Synthetic Mock';
+                gpsFixBadge.innerHTML = '<i class="fas fa-microchip" style="margin-right:4px;"></i> Synthetic';
             } else {
                 gpsFixBadge.style.background = '#fdeaea';
                 gpsFixBadge.style.color = '#c0392b';
-                gpsFixBadge.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:4px;"></i> Searching GPS...';
+                gpsFixBadge.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:4px;"></i> Searching...';
             }
         }
 

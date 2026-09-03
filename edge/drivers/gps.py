@@ -6,7 +6,9 @@ Compatible with both GY-NEO6MV2 and GY-GPS6MV2 (u-blox NEO-6M core) modules.
 
 import os
 import logging
-from typing import Dict, Any, Tuple
+import time
+from collections import deque
+from typing import Dict, Any, Tuple, List
 
 logger = logging.getLogger("AgriSentinel-GPS")
 
@@ -43,6 +45,8 @@ class GPSReader:
         self.gps_fix = False
         self.satellites = 0
         self.last_raw_sentence = ""
+        self.raw_buffer = deque(maxlen=20)
+        self.last_valid_fix_time = 0.0
         self.is_synthetic = False
 
         self._init_serial()
@@ -58,6 +62,17 @@ class GPSReader:
             self.is_synthetic = True
             logger.warning(f"[GPSReader] Hardware serial fallback (Mock Mode): {e}")
 
+    def reconnect(self) -> bool:
+        """Forces the serial port to close and reopen."""
+        self.close()
+        time.sleep(0.5)
+        self._init_serial()
+        return not self.is_synthetic
+
+    def get_raw_nmea(self) -> List[str]:
+        """Returns the most recent raw NMEA sentences buffered from the hardware."""
+        return list(self.raw_buffer)
+
     def read_gps_data(self) -> Dict[str, Any]:
         """Reads and parses NMEA sentences ($GPGGA / $GPRMC) from serial stream."""
         if not self.serial_conn or not self.serial_conn.is_open:
@@ -66,9 +81,12 @@ class GPSReader:
         try:
             raw_bytes = self.serial_conn.readline()
             line = raw_bytes.decode("utf-8", errors="replace").strip() if isinstance(raw_bytes, bytes) else str(raw_bytes).strip()
-            self.last_raw_sentence = line
+            if line:
+                self.last_raw_sentence = line
+                self.raw_buffer.append(line)
 
             parsed_successfully = False
+            fix_found = False
 
             # Try pynmea2 first if available
             try:
@@ -80,14 +98,14 @@ class GPSReader:
                         self.longitude = float(msg.longitude) if msg.longitude else 0.0
                         self.altitude = float(msg.altitude) if msg.altitude else 0.0
                         self.satellites = int(msg.num_sats) if msg.num_sats else 0
-                        self.gps_fix = True
+                        fix_found = True
                         parsed_successfully = True
                 elif line.startswith("$GPRMC") or line.startswith("$GNRMC"):
                     msg = pynmea2.parse(line, check=False)
                     if msg.status == "A":
                         self.latitude = float(msg.latitude) if msg.latitude else 0.0
                         self.longitude = float(msg.longitude) if msg.longitude else 0.0
-                        self.gps_fix = True
+                        fix_found = True
                         parsed_successfully = True
             except (ImportError, Exception) as e:
                 logger.debug(f"[GPSReader] pynmea2 parser fallback: {e}")
@@ -106,14 +124,20 @@ class GPSReader:
                         self.longitude = _parse_nmea_degrees(parts[4], parts[5], is_lon=True)
                         self.satellites = int(parts[7]) if parts[7].isdigit() else 0
                         self.altitude = float(parts[9]) if parts[9] else 0.0
-                        self.gps_fix = True
+                        fix_found = True
 
                 elif header in ["$GPRMC", "$GNRMC"] and len(parts) >= 7:
                     status = parts[2]
                     if status == "A":
                         self.latitude = _parse_nmea_degrees(parts[3], parts[4], is_lon=False)
                         self.longitude = _parse_nmea_degrees(parts[5], parts[6], is_lon=True)
-                        self.gps_fix = True
+                        fix_found = True
+
+            if fix_found:
+                self.gps_fix = True
+                self.last_valid_fix_time = time.time()
+            elif time.time() - self.last_valid_fix_time > 5.0:
+                self.gps_fix = False
 
         except Exception as e:
             logger.debug(f"[GPSReader] Parse error: {e}")

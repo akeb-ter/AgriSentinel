@@ -444,6 +444,37 @@
             </div>
         </div>
 
+        <!-- CARD 4: GPS & TELEMETRY -->
+        <div class="dev-card">
+            <div>
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-satellite-dish"></i>
+                        <span>GPS &amp; Telemetry</span>
+                    </div>
+                    <span id="gpsBadge" class="status-pill blue">
+                        <span class="pulse-dot"></span> <span id="gpsBadgeText">Checking...</span>
+                    </span>
+                </div>
+
+                <div class="info-list" style="margin-bottom: 12px;">
+                    <div class="info-row">
+                        <span class="info-label">Baud Rate / Port:</span>
+                        <span id="gpsPort" class="info-val">--</span>
+                    </div>
+                </div>
+
+                <div style="background: #0f172a; border-radius: 12px; padding: 12px; margin-bottom: 16px;">
+                    <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">Raw NMEA Stream (Last 5 lines)</div>
+                    <div id="gpsRawStream" style="font-family: 'Fira Code', monospace; font-size: 11.5px; color: #38bdf8; line-height: 1.5; height: 85px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">Loading stream...</div>
+                </div>
+            </div>
+
+            <button id="gpsRestartBtn" class="btn btn-secondary" onclick="restartGPS()">
+                <i class="fas fa-sync-alt"></i> Restart Serial Connection
+            </button>
+        </div>
+
     </div>
 
     <!-- ═══ SYSTEM LOGS TERMINAL ═══ -->
@@ -584,6 +615,58 @@
         }
     }
 
+    // Fetch GPS Raw Data
+    async function fetchGPSRaw() {
+        try {
+            const res = await fetch('/api/dev/gps/raw');
+            if (!res.ok) return;
+            const data = await res.json();
+            
+            const badge = document.getElementById('gpsBadge');
+            const badgeText = document.getElementById('gpsBadgeText');
+            
+            if (data.is_synthetic) {
+                badge.className = 'status-pill amber';
+                badgeText.textContent = 'HARDWARE OFFLINE (SYNTHETIC)';
+            } else {
+                badge.className = 'status-pill green';
+                badgeText.textContent = 'SERIAL ACTIVE';
+            }
+            
+            document.getElementById('gpsPort').textContent = `${data.baudrate} baud | ${data.port}`;
+            
+            const streamDiv = document.getElementById('gpsRawStream');
+            if (data.raw_stream && data.raw_stream.length > 0) {
+                // Show last 5 lines
+                const recent = data.raw_stream.slice(-5);
+                streamDiv.textContent = recent.join('\n');
+            } else {
+                streamDiv.textContent = '[No data received from serial yet...]';
+            }
+        } catch (err) {
+            console.error('Error fetching raw GPS:', err);
+        }
+    }
+
+    // Restart GPS
+    async function restartGPS() {
+        const btn = document.getElementById('gpsRestartBtn');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Restarting Serial...`;
+
+        try {
+            const res = await fetch('/api/dev/gps/restart', { method: 'POST' });
+            const data = await res.json();
+            showToast(data.message, data.status !== 'success');
+        } catch (err) {
+            showToast(`Error: ${err.message}`, true);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-sync-alt"></i> Restart Serial Connection`;
+            fetchGPSRaw();
+        }
+    }
+
     // Restart Camera
     async function restartCamera() {
         const btn = document.getElementById('camRestartBtn');
@@ -697,7 +780,9 @@
     // Initial Load & Polling
     fetchDevStatus();
     fetchLogs();
+    fetchGPSRaw();
     setInterval(fetchDevStatus, 5000);
+    setInterval(fetchGPSRaw, 2000); // refresh raw stream more frequently
 </script>
 
 </body>
