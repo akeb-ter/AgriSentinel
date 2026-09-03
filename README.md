@@ -14,6 +14,8 @@ AgriSentinel is an AI-assisted autonomous crop protection robot utilizing specie
 
 ## 1. Hardware Architecture & Wiring
 
+For a complete pinout summary table, refer to **[Hardware Pinouts & Wiring Guide](markdowns/pinouts.md)**.
+
 ### Motor Driver (`L298N Dual H-Bridge`)
 Governs directional movement for the 4WD chassis.
 * **`ENA` / `ENB`**: Jumpered to onboard 5V pins (100% full speed duty cycle, freeing Pi PWM pins).
