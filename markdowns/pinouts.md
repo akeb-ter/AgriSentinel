@@ -63,3 +63,4 @@ Streams NMEA sentence data over hardware UART `/dev/ttyS0` at 9600 baud.
 
 * **Common Ground Bus**: All grounds (Raspberry Pi GND, L298N GND, Servo GND, GPS GND) **MUST** be connected to a shared common ground to ensure signal integrity and prevent noise/floating pins.
 * **External Power**: Motors and high-torque servos should be powered by an external battery pack (e.g. 7.4V - 12V Li-Ion / LiPo) routed through the L298N power terminal or a step-down buck converter to avoid drawing excessive current from the Raspberry Pi GPIO 5V rail.
+
