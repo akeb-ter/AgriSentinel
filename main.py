@@ -31,6 +31,22 @@ def get_network_info():
         
     return mode, ip_address
 
+import threading
+import time
+
+def wifi_watchdog_loop():
+    """Background thread to force Wi-Fi rescan if disconnected, circumventing wpa_supplicant backoff."""
+    while True:
+        try:
+            time.sleep(15)
+            if subprocess.run(["which", "nmcli"], capture_output=True).returncode == 0:
+                res = subprocess.run(["nmcli", "-t", "-f", "DEVICE,STATE", "dev"], capture_output=True, text=True)
+                # If wlan0 is completely disconnected, trigger a manual active scan
+                if "wlan0:disconnected" in res.stdout:
+                    subprocess.run(["nmcli", "device", "wifi", "rescan"], capture_output=True)
+        except Exception:
+            pass
+
 def main():
     """Main entry point for AgriSentinel."""
     host = os.getenv("HOST", "0.0.0.0")
@@ -46,6 +62,10 @@ def main():
     print(f" Local Domain : http://agrisentinel.local:{port}")
     print(f" Web Interface: http://{display_ip}:{port}")
     print("==================================================\n")
+    
+    # Start the Wi-Fi watchdog
+    watchdog = threading.Thread(target=wifi_watchdog_loop, daemon=True)
+    watchdog.start()
     
     # Start the FastAPI server containing the camera stream and web interface
     uvicorn.run(app, host=host, port=port)
