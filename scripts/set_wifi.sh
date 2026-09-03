@@ -49,7 +49,15 @@ fi
 # Set to autoconnect on boot with infinite retries (0 = never give up)
 sudo nmcli connection modify "$SSID" connection.autoconnect yes
 sudo nmcli connection modify "$SSID" connection.autoconnect-retries 0
-echo "Autoconnect enabled with infinite retries for '$SSID'."
+
+# Set highest priority so this network beats any other saved networks
+sudo nmcli connection modify "$SSID" connection.autoconnect-priority 100
+
+# Disable Wi-Fi power management for this profile (2 = disable, 3 = enable)
+# This prevents the Pi's Wi-Fi chip from going to sleep and missing beacon frames when disconnected.
+sudo nmcli connection modify "$SSID" 802-11-wireless.powersave 2
+
+echo "Autoconnect enabled (Priority 100, PowerSave OFF, Infinite Retries) for '$SSID'."
 
 # Attempt to connect right now if the network is currently in range
 echo "Attempting to activate connection..."
