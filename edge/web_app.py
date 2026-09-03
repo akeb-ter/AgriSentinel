@@ -1,6 +1,8 @@
 import os
+import sys
+import subprocess
 import datetime
-from fastapi import APIRouter, Request, Form, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File
+from fastapi import APIRouter, Request, Form, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Response
 import shutil
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -296,4 +298,188 @@ async def control_endpoint(websocket: WebSocket):
         deadman_task.cancel()
         motors.stop()
         servo.detach()
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Developer Settings Endpoints
+# ═══════════════════════════════════════════════════════════════════════
+
+class HotspotToggleRequest(BaseModel):
+    action: str  # "enable" or "disable"
+
+
+@router.get("/dev_settings", response_class=HTMLResponse)
+async def dev_settings_page(request: Request):
+    """Serves the Developer Settings dashboard."""
+    user = get_current_user(request)
+    return templates.TemplateResponse(
+        request=request,
+        name="dev_settings.html",
+        context={"request": request, "user": user}
+    )
+
+
+@router.get("/api/dev/status")
+async def dev_get_status():
+    """Returns network mode, IP, camera diagnostics, and system info."""
+    is_hotspot = False
+    ip_addr = "Unknown"
+    active_connection = "Unknown"
+
+    try:
+        if shutil.which("nmcli"):
+            res_conn = subprocess.run(
+                ["nmcli", "-t", "-f", "GENERAL.CONNECTION", "device", "show", "wlan0"],
+                capture_output=True, text=True, timeout=3
+            )
+            if res_conn.returncode == 0:
+                conn_line = res_conn.stdout.strip().split("\n")[0]
+                active_connection = conn_line.split(":")[-1]
+                if "AgriSentinel-Hotspot" in active_connection:
+                    is_hotspot = True
+
+        if shutil.which("ip"):
+            res_ip = subprocess.run(
+                ["ip", "-4", "addr", "show", "wlan0"],
+                capture_output=True, text=True, timeout=3
+            )
+            if res_ip.returncode == 0:
+                for line in res_ip.stdout.splitlines():
+                    if "inet " in line:
+                        ip_addr = line.strip().split()[1].split("/")[0]
+                        break
+        elif sys.platform.startswith("win"):
+            import socket
+            hostname = socket.gethostname()
+            ip_addr = socket.gethostbyname(hostname)
+            active_connection = "Windows Dev Network"
+    except Exception as e:
+        active_connection = f"Error: {e}"
+
+    camera_info = {}
+    try:
+        from edge.camera_test import camera_manager
+        camera_info = camera_manager.get_status()
+    except Exception:
+        camera_info = {"is_running": False, "backend": "Unavailable (simulation/standalone)"}
+
+    return {
+        "status": "success",
+        "network": {
+            "is_hotspot": is_hotspot,
+            "connection": active_connection,
+            "ip_address": ip_addr,
+            "local_domain": "http://agrisentinel.local:8000",
+            "ssid": "AgriSentinel",
+            "password": "agri1234",
+        },
+        "camera": camera_info,
+        "platform": sys.platform,
+        "server_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+
+@router.post("/api/dev/hotspot/toggle")
+async def dev_toggle_hotspot(req: HotspotToggleRequest):
+    """Executes manage_hotspot.sh to enable or disable the Wi-Fi hotspot."""
+    action = req.action.lower().strip()
+    if action not in ["enable", "disable"]:
+        raise HTTPException(status_code=400, detail="Action must be 'enable' or 'disable'.")
+
+    script_path = os.path.abspath("scripts/manage_hotspot.sh")
+    if not os.path.exists(script_path):
+        return JSONResponse(status_code=500, content={"status": "error", "message": "scripts/manage_hotspot.sh not found."})
+
+    try:
+        proc = subprocess.run(
+            ["bash", script_path, action],
+            capture_output=True, text=True, timeout=20
+        )
+        return {
+            "status": "success" if proc.returncode == 0 else "error",
+            "action": action,
+            "stdout": proc.stdout,
+            "stderr": proc.stderr,
+            "returncode": proc.returncode
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+@router.post("/api/dev/camera/restart")
+async def dev_restart_camera():
+    """Stops and reinitializes the active camera backend without full restart."""
+    try:
+        from edge.camera_test import camera_manager
+        camera_manager.stop()
+        await asyncio.sleep(0.6)
+        camera_manager.start()
+        return {
+            "status": "success",
+            "message": "Camera subsystem restarted successfully.",
+            "camera_status": camera_manager.get_status()
+        }
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+
+
+@router.get("/api/dev/logs")
+async def dev_get_logs(lines: int = 60):
+    """Fetches recent system logs via journalctl."""
+    lines = min(max(lines, 10), 200)
+    output = ""
+    try:
+        if shutil.which("journalctl"):
+            proc = subprocess.run(
+                ["journalctl", "-u", "agrisentinel", "-n", str(lines), "--no-pager"],
+                capture_output=True, text=True, timeout=5
+            )
+            output = proc.stdout if proc.stdout.strip() else proc.stderr
+            if not output.strip():
+                # Fallback to last system entries
+                proc2 = subprocess.run(
+                    ["journalctl", "-n", str(lines), "--no-pager"],
+                    capture_output=True, text=True, timeout=5
+                )
+                output = proc2.stdout
+        else:
+            output = (
+                f"[INFO] journalctl is not present on this host ({sys.platform}).\n"
+                f"[INFO] Real systemd logs will appear here when running on Raspberry Pi.\n"
+                f"[TIMESTAMP] {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                f"[STATUS] AgriSentinel Edge Application is alive."
+            )
+    except Exception as e:
+        output = f"Error reading logs: {e}"
+
+    return {"status": "success", "logs": output}
+
+
+@router.post("/api/dev/system/reboot")
+async def dev_system_reboot():
+    """Gracefully reboots the Raspberry Pi."""
+    def _do_reboot():
+        time.sleep(1.0)
+        subprocess.run(["sudo", "reboot"])
+
+    asyncio.get_event_loop().run_in_executor(None, _do_reboot)
+    return {
+        "status": "success",
+        "message": "Reboot initiated. The system will restart in a few seconds."
+    }
+
+
+@router.post("/api/dev/system/shutdown")
+async def dev_system_shutdown():
+    """Safely shuts down the Raspberry Pi."""
+    def _do_shutdown():
+        time.sleep(1.0)
+        subprocess.run(["sudo", "shutdown", "-h", "now"])
+
+    asyncio.get_event_loop().run_in_executor(None, _do_shutdown)
+    return {
+        "status": "success",
+        "message": "Shutdown initiated. Safely wait for the activity LED to turn off before cutting power."
+    }
+
 
