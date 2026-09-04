@@ -17,6 +17,8 @@ Complete hardware pinout reference and GPIO mapping for the AgriSentinel autonom
 | **Pin 20** | `GND` | Motor Driver | `GND` | Ground Connection |
 | **Pin 29** | `GPIO 5` | L298N H-Bridge | `IN1` | Left Motor Forward |
 | **Pin 31** | `GPIO 6` | L298N H-Bridge | `IN2` | Left Motor Reverse |
+| **Pin 33** | `GPIO 13` | Piezo MOSFET | `Gate` | Hardware PWM1 Ultrasonic / Tone Deterrent |
+| **Pin 34** | `GND` | Piezo MOSFET | `Source / GND` | Ground Reference |
 | **Pin 35** | `GPIO 19` | L298N H-Bridge | `IN3` | Right Motor Forward |
 | **Pin 37** | `GPIO 26` | L298N H-Bridge | `IN4` | Right Motor Reverse |
 
@@ -56,6 +58,19 @@ Streams NMEA sentence data over hardware UART `/dev/ttyS0` at 9600 baud.
 
 > [!NOTE]
 > Hardware serial must be enabled on the Raspberry Pi by adding `enable_uart=1` to `/boot/config.txt` (or `/boot/firmware/config.txt`).
+
+---
+
+## 🔊 4. Piezo Transducer / Frequency Deterrent (`N-Channel MOSFET Driver`)
+
+Generates variable-frequency audible and ultrasonic sweeps (1 kHz – 28 kHz) using Hardware PWM1.
+
+* **`MOSFET Gate`**: Physical Pin 33 (`GPIO 13` / Hardware PWM1 Channel 1)
+  * *Circuit Protection*: Place a 10kΩ pull-down resistor between Gate and GND to keep the MOSFET securely OFF when the GPIO pin floats during boot.
+* **`MOSFET Source`**: Physical Pin 34 (`GND`) connected to Common Ground Bus
+* **`MOSFET Drain`**: Connected to Piezo Transducer **Negative (-)** terminal
+* **`Piezo Positive (+)`**: Connected to VCC supply rail (+5V or external +12V battery rail)
+* **`Flyback Diode (Optional/Recommended)`**: 1N4007 or 1N4148 across Piezo terminals (Cathode to +, Anode to -) to clamp inductive spikes.
 
 ---
 
