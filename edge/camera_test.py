@@ -15,10 +15,8 @@ Usage:
 import os
 import sys
 import time
-import shutil
 import logging
 import threading
-import subprocess
 from typing import Generator, Optional
 from contextlib import asynccontextmanager
 
@@ -34,139 +32,18 @@ logger = logging.getLogger("AgriSentinel-Camera")
 # Configuration via environment variables
 CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "0"))
 STREAM_FPS = int(os.getenv("STREAM_FPS", "30"))
-STREAM_WIDTH = int(os.getenv("STREAM_WIDTH", "640"))
-STREAM_HEIGHT = int(os.getenv("STREAM_HEIGHT", "480"))
+STREAM_WIDTH = int(os.getenv("STREAM_WIDTH", "1920"))
+STREAM_HEIGHT = int(os.getenv("STREAM_HEIGHT", "1080"))
 JPEG_QUALITY = int(os.getenv("JPEG_QUALITY", "80"))
 CAMERA_BACKEND_OVERRIDE = os.getenv("CAMERA_BACKEND", "").lower().strip()  # "rpicam", "opencv", "synthetic"
 
 
-class RpiCamReader:
-    """Spawns and reads raw MJPEG frames from rpicam-vid / libcamera-vid stdout stream."""
-
-    def __init__(self, width: int = STREAM_WIDTH, height: int = STREAM_HEIGHT, fps: int = STREAM_FPS):
-        self.width = width
-        self.height = height
-        self.fps = fps
-        self.process: Optional[subprocess.Popen] = None
-        self.thread: Optional[threading.Thread] = None
-        self.running = False
-        self.latest_frame: Optional[bytes] = None
-        self.lock = threading.Lock()
-        self.frame_count = 0
-        self.cmd_used = ""
-
-    @staticmethod
-    def detect_executable() -> Optional[str]:
-        """Detects if rpicam-vid (Bookworm) or libcamera-vid (Bullseye) exists on PATH."""
-        if shutil.which("rpicam-vid"):
-            return "rpicam-vid"
-        if shutil.which("libcamera-vid"):
-            return "libcamera-vid"
-        return None
-
-    def start(self, executable: str) -> bool:
-        """Starts the rpicam-vid / libcamera-vid subprocess and reading thread."""
-        self.cmd_used = executable
-        cmd = [
-            executable,
-            "-t", "0",
-            "--inline",
-            "--codec", "mjpeg",
-            "--width", str(self.width),
-            "--height", str(self.height),
-            "--framerate", str(self.fps),
-            "-o", "-",
-            "-n",  # No preview window on desktop
-        ]
-
-        logger.info(f"[RpiCamReader] Spawning camera subprocess: {' '.join(cmd)}")
-        try:
-            self.process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.DEVNULL,
-                bufsize=0,
-            )
-            self.running = True
-            self.thread = threading.Thread(target=self._read_stdout_loop, daemon=True)
-            self.thread.start()
-            return True
-        except Exception as e:
-            logger.error(f"[RpiCamReader] Failed to start {executable}: {e}")
-            self.running = False
-            return False
-
-    def _read_stdout_loop(self):
-        """Worker thread that parses MJPEG byte stream for SOI/EOI markers."""
-        buffer = b""
-        soi_marker = b"\xff\xd8"
-        eoi_marker = b"\xff\xd9"
-
-        while self.running and self.process and self.process.stdout:
-            try:
-                chunk = self.process.stdout.read(4096)
-                if not chunk:
-                    if self.process.poll() is not None:
-                        logger.warning("[RpiCamReader] Camera subprocess exited.")
-                        break
-                    time.sleep(0.01)
-                    continue
-
-                buffer += chunk
-                while True:
-                    soi = buffer.find(soi_marker)
-                    if soi == -1:
-                        # Retain only last byte in case marker was cut across chunks
-                        buffer = buffer[-1:] if buffer else b""
-                        break
-
-                    eoi = buffer.find(eoi_marker, soi + 2)
-                    if eoi == -1:
-                        # Keep from soi onwards to wait for eoi
-                        buffer = buffer[soi:]
-                        break
-
-                    # Complete JPEG frame found
-                    jpeg_frame = buffer[soi : eoi + 2]
-                    buffer = buffer[eoi + 2 :]
-
-                    with self.lock:
-                        self.latest_frame = jpeg_frame
-                        self.frame_count += 1
-
-            except Exception as e:
-                logger.error(f"[RpiCamReader] Error reading stdout stream: {e}")
-                break
-
-    def get_latest_frame(self) -> Optional[bytes]:
-        """Returns the most recently decoded JPEG frame bytes."""
-        with self.lock:
-            return self.latest_frame
-
-    def stop(self):
-        """Terminates the camera subprocess."""
-        self.running = False
-        if self.process:
-            try:
-                self.process.terminate()
-                self.process.wait(timeout=2.0)
-            except Exception:
-                try:
-                    self.process.kill()
-                except Exception:
-                    pass
-            self.process = None
-        if self.thread and self.thread.is_alive():
-            self.thread.join(timeout=1.0)
-
-
 class CameraManager:
-    """Unified camera manager handling rpicam, OpenCV, and Synthetic modes."""
+    """Unified camera manager handling OpenCV and Synthetic modes."""
 
     def __init__(self, camera_index: int = CAMERA_INDEX):
         self.camera_index = camera_index
         self.active_backend = "uninitialized"  # "rpicam", "opencv", "synthetic"
-        self.rpicam_reader: Optional[RpiCamReader] = None
         self.cap: Optional[cv2.VideoCapture] = None
         self.is_running = False
         self.lock = threading.Lock()
@@ -185,37 +62,25 @@ class CameraManager:
                 logger.info("[CameraManager] Backend forced to Synthetic.")
                 return
 
-            # 2. Check for native Raspberry Pi rpicam / libcamera
-            rpicam_bin = RpiCamReader.detect_executable()
-            if rpicam_bin and CAMERA_BACKEND_OVERRIDE != "opencv":
-                reader = RpiCamReader(STREAM_WIDTH, STREAM_HEIGHT, STREAM_FPS)
-                if reader.start(rpicam_bin):
-                    self.rpicam_reader = reader
-                    self.active_backend = f"rpicam ({rpicam_bin})"
-                    self.is_running = True
-                    logger.info(f"[CameraManager] Using native Raspberry Pi camera backend: {rpicam_bin}")
-                    return
-
-            # 3. Fallback to OpenCV (for USB webcams & desktop development)
-            if CAMERA_BACKEND_OVERRIDE != "rpicam":
-                logger.info(f"[CameraManager] Attempting OpenCV capture on device index {self.camera_index}...")
-                if sys.platform.startswith("win"):
-                    self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
-                    if not self.cap.isOpened():
-                        self.cap = cv2.VideoCapture(self.camera_index)
-                else:
+            # 2. Try OpenCV (for USB webcams)
+            logger.info(f"[CameraManager] Attempting OpenCV capture on device index {self.camera_index}...")
+            if sys.platform.startswith("win"):
+                self.cap = cv2.VideoCapture(self.camera_index, cv2.CAP_DSHOW)
+                if not self.cap.isOpened():
                     self.cap = cv2.VideoCapture(self.camera_index)
+            else:
+                self.cap = cv2.VideoCapture(self.camera_index)
 
-                if self.cap and self.cap.isOpened():
-                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, STREAM_WIDTH)
-                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, STREAM_HEIGHT)
-                    self.cap.set(cv2.CAP_PROP_FPS, STREAM_FPS)
-                    self.active_backend = f"opencv (index {self.camera_index})"
-                    self.is_running = True
-                    logger.info(f"[CameraManager] Hardware camera opened via OpenCV index {self.camera_index}.")
-                    return
+            if self.cap and self.cap.isOpened():
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, STREAM_WIDTH)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, STREAM_HEIGHT)
+                self.cap.set(cv2.CAP_PROP_FPS, STREAM_FPS)
+                self.active_backend = f"opencv (index {self.camera_index})"
+                self.is_running = True
+                logger.info(f"[CameraManager] Hardware camera opened via OpenCV index {self.camera_index}.")
+                return
 
-            # 4. Fallback to synthetic mode
+            # 3. Fallback to synthetic mode
             self.active_backend = "synthetic"
             self.is_running = True
             logger.warning("[CameraManager] No physical camera found/opened. Falling back to synthetic test pattern.")
@@ -224,9 +89,6 @@ class CameraManager:
         """Releases all active camera resources."""
         with self.lock:
             self.is_running = False
-            if self.rpicam_reader:
-                self.rpicam_reader.stop()
-                self.rpicam_reader = None
             if self.cap is not None:
                 if self.cap.isOpened():
                     self.cap.release()
@@ -293,13 +155,7 @@ class CameraManager:
         """Returns the current JPEG frame from the active backend."""
         self.frame_count += 1
 
-        # 1. From rpicam-vid process pipe
-        if self.rpicam_reader:
-            frame = self.rpicam_reader.get_latest_frame()
-            if frame:
-                return frame
-
-        # 2. From OpenCV VideoCapture
+        # 1. From OpenCV VideoCapture
         if self.cap and self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret and frame is not None:
@@ -309,14 +165,13 @@ class CameraManager:
                 if ret_enc:
                     return buffer.tobytes()
 
-        # 3. From Synthetic Generator
+        # 2. From Synthetic Generator
         synth_frame = self._generate_synthetic_frame()
         ret_enc, buffer = cv2.imencode(".jpg", synth_frame, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
         if ret_enc:
             return buffer.tobytes()
 
         return None
-
 
 # Global camera manager instance
 camera_manager = CameraManager()
