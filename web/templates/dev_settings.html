@@ -464,7 +464,13 @@
                 </div>
 
                 <div style="background: #0f172a; border-radius: 12px; padding: 12px; margin-bottom: 16px;">
-                    <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">Raw NMEA Stream (Last 5 lines)</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Raw NMEA Stream (Last 5 lines)</div>
+                        <label style="font-size: 11px; color: #94a3b8; font-weight: 600; display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="gpsAutoRefresh" checked style="cursor: pointer; accent-color: #2b6e3c;">
+                            <span>Auto Refresh</span>
+                        </label>
+                    </div>
                     <div id="gpsRawStream" style="font-family: 'Fira Code', monospace; font-size: 11.5px; color: #38bdf8; line-height: 1.5; height: 85px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">Loading stream...</div>
                 </div>
             </div>
@@ -610,7 +616,10 @@
     }
 
     // Fetch GPS Raw Data
-    async function fetchGPSRaw() {
+    async function fetchGPSRaw(force = false) {
+        const autoRefreshCb = document.getElementById('gpsAutoRefresh');
+        if (!force && autoRefreshCb && !autoRefreshCb.checked) return;
+
         try {
             const res = await fetch('/api/dev/gps/raw');
             if (!res.ok) return;
@@ -657,7 +666,7 @@
         } finally {
             btn.disabled = false;
             btn.innerHTML = `<i class="fas fa-sync-alt"></i> Restart Serial Connection`;
-            fetchGPSRaw();
+            fetchGPSRaw(true);
         }
     }
 
@@ -774,9 +783,17 @@
     // Initial Load & Polling
     fetchDevStatus();
     fetchLogs();
-    fetchGPSRaw();
+    fetchGPSRaw(true);
+    
+    const gpsAutoRefreshCb = document.getElementById('gpsAutoRefresh');
+    if (gpsAutoRefreshCb) {
+        gpsAutoRefreshCb.addEventListener('change', (e) => {
+            if (e.target.checked) fetchGPSRaw(true);
+        });
+    }
+
     setInterval(fetchDevStatus, 5000);
-    setInterval(fetchGPSRaw, 2000); // refresh raw stream more frequently
+    setInterval(fetchGPSRaw, 2000); // refresh raw stream more frequently when auto-refresh enabled
 </script>
 
 </body>
