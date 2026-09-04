@@ -12,8 +12,9 @@ IS_WINDOWS = platform.system() == 'Windows'
 if not IS_WINDOWS:
     try:
         from edge_impulse_linux.image import ImageImpulseRunner
-    except ImportError:
-        print("ERROR: edge_impulse_linux package not found. Install it with: pip3 install edge_impulse_linux")
+    except Exception as e:
+        print("ERROR: Failed to import edge_impulse_linux. It is installed, but a dependency might be missing.")
+        print(f"Exact Exception: {e}")
         sys.exit(1)
 
 def main(model_path, camera_index=0, headless=False):
