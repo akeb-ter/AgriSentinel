@@ -2,9 +2,8 @@
 AgriSentinel - Edge Camera Test Module
 
 This module provides a local FastAPI server streaming live video from:
-1. Native Raspberry Pi libcamera/rpicam-apps (`rpicam-vid` or `libcamera-vid` subprocess pipe)
-2. Standard OpenCV VideoCapture (fallback for USB webcams / desktop testing)
-3. Synthetic animated test pattern (fallback for headless / simulation environments)
+1. Standard OpenCV VideoCapture (Driverless USB webcam / UVC capture)
+2. Synthetic animated test pattern (fallback for headless / simulation environments)
 
 Usage:
     python -m edge.camera_test
@@ -35,7 +34,7 @@ STREAM_FPS = int(os.getenv("STREAM_FPS", "30"))
 STREAM_WIDTH = int(os.getenv("STREAM_WIDTH", "1920"))
 STREAM_HEIGHT = int(os.getenv("STREAM_HEIGHT", "1080"))
 JPEG_QUALITY = int(os.getenv("JPEG_QUALITY", "80"))
-CAMERA_BACKEND_OVERRIDE = os.getenv("CAMERA_BACKEND", "").lower().strip()  # "rpicam", "opencv", "synthetic"
+CAMERA_BACKEND_OVERRIDE = os.getenv("CAMERA_BACKEND", "").lower().strip()  # "opencv", "synthetic"
 
 
 class CameraManager:
@@ -444,7 +443,7 @@ def index_page():
     <div class="header">
         <div class="title-group">
             <h1>AgriSentinel Vision <span class="badge badge-live">Live Stream</span></h1>
-            <p>Hardware Vision Capture & Diagnostics (rpicam / OpenCV)</p>
+            <p>Hardware Vision Capture & Diagnostics (USB Webcam / OpenCV)</p>
         </div>
     </div>
 
