@@ -87,6 +87,8 @@ def set_log_confidence_threshold(val):
     global LOG_CONFIDENCE_THRESHOLD
     LOG_CONFIDENCE_THRESHOLD = float(val)
 
+latest_logged_entry = None
+
 latest_detection = {
     "name": "None",
     "confidence": 0.0,
@@ -398,13 +400,29 @@ class CameraManager:
                             time_str = dt.strftime("%H:%M:%S")
                             
                             conn = get_db_connection()
-                            conn.execute("""
+                            cursor = conn.cursor()
+                            cursor.execute("""
                                 INSERT INTO detection_logs (PEST, CONFIDENCE, LOCATION, DATE, TIME, IMAGE_PATH, IS_LIVE_LOCATION)
                                 VALUES (?, ?, ?, ?, ?, ?, ?)
                             """, (pest_tracker["name"], latest_detection["confidence"], loc_str, date_str, time_str, f"logs/{filename}", is_live))
+                            new_log_id = cursor.lastrowid
                             conn.commit()
                             conn.close()
-                            logger.info(f"Logged detection: {pest_tracker['name']} at {loc_str}")
+
+                            global latest_logged_entry
+                            latest_logged_entry = {
+                                "id": int(new_log_id),
+                                "pest": pest_tracker["name"],
+                                "confidence": int(round(latest_detection["confidence"] * 100)),
+                                "confidence_raw": float(latest_detection["confidence"]),
+                                "location": loc_str,
+                                "date": date_str,
+                                "time": time_str,
+                                "image_path": f"logs/{filename}",
+                                "is_live": bool(is_live),
+                                "timestamp": float(now)
+                            }
+                            logger.info(f"Logged detection: {pest_tracker['name']} (ID: {new_log_id}) at {loc_str}")
                         except Exception as e:
                             logger.error(f"Failed to log detection: {e}")
                 
@@ -476,7 +494,7 @@ def manual_buzzer(req: Optional[ManualBuzzRequest] = None):
 
 @app.get("/api/detection/status")
 def get_detection_status():
-    global latest_detection, pest_detected
+    global latest_detection, pest_detected, latest_logged_entry
     is_recent = (time.time() - latest_detection.get("timestamp", 0)) < 3.0
     return {
         "pest_detected": pest_detected and is_recent,
@@ -487,7 +505,8 @@ def get_detection_status():
             "signal": "Normal",
             "detected": False,
             "timestamp": 0
-        }
+        },
+        "latest_log": latest_logged_entry
     }
 
 def frame_generator() -> Generator[bytes, None, None]:

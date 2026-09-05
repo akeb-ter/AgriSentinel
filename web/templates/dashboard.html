@@ -538,6 +538,7 @@
     // 2. LOGS & MAP DATA PREPARATION
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     const rawDetectionLogs = {{ logs | tojson | safe }};
+    let lastSeenLogId = rawDetectionLogs.length > 0 ? Math.max(...rawDetectionLogs.map(l => l.ID || 0)) : 0;
     
     // REQUIREMENT: Only show it on the map if in the time of record, the location is live
     const livePestLogs = rawDetectionLogs.filter(l => Boolean(l.IS_LIVE_LOCATION));
@@ -570,6 +571,106 @@
         }).filter(Boolean)
     };
 
+    // Prepend newly recorded log entry in real-time without page refresh
+    function prependLogRow(l) {
+        const tbody = document.getElementById('logsTableBody');
+        if (!tbody) return;
+
+        // Prevent duplicate rows
+        if (document.getElementById(`log-row-${l.id}`)) return;
+
+        // Remove empty row placeholder if present
+        const emptyRow = tbody.querySelector('.empty-row');
+        if (emptyRow && emptyRow.closest('tr')) {
+            emptyRow.closest('tr').remove();
+        }
+
+        const tr = document.createElement('tr');
+        tr.id = `log-row-${l.id}`;
+        tr.style.transition = 'background 1.5s ease, transform 0.4s ease';
+        tr.style.background = '#eafaf1';
+
+        const isNoGps = (!l.location || l.location === "No GPS Fix" || l.location === "0.000000, 0.000000" || l.location === "0.0, 0.0" || l.location === "None");
+        const locationDisplay = isNoGps
+            ? '<span style="color:#8a99a8; font-style:italic;"><i class="fas fa-location-slash" style="margin-right:4px;"></i> No GPS Fix</span>'
+            : l.location;
+
+        const fixBadge = l.is_live
+            ? '<span class="tag" style="background:#dff0d8; color:#1f4a2a; font-weight:700;"><i class="fas fa-satellite-dish" style="margin-right:4px;"></i> Live</span>'
+            : '<span class="tag" style="background:#fef9e7; color:#8a6d3b; font-weight:600;"><i class="fas fa-microchip" style="margin-right:4px;"></i> Simulated</span>';
+
+        tr.innerHTML = `
+            <td>
+                <a href="/static/${l.image_path}" target="_blank">
+                    <img src="/static/${l.image_path}" alt="Detection" style="width:80px; height:80px; object-fit:cover; border-radius:12px; border:2px solid #eaf3e4;">
+                </a>
+            </td>
+            <td><strong>${l.date}</strong><br><span style="color:#6a8a70; font-size:12px;">${l.time}</span></td>
+            <td><strong style="color:#1a3a1e; font-size:15px;">${l.pest}</strong></td>
+            <td><span class="tag" style="background:#dff0d8; font-weight:700;">${l.confidence}%</span></td>
+            <td style="font-family:monospace; font-size:12.5px; color:#2c3e50;">${locationDisplay}</td>
+            <td>${fixBadge}</td>
+            <td>
+                <button type="button" class="btn btn-danger" style="padding:6px 12px; font-size:12px;" title="Delete log entry" onclick="deleteSingleLog(${l.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+
+        tbody.prepend(tr);
+
+        // Softly clear highlight background
+        setTimeout(() => {
+            tr.style.background = '';
+        }, 2000);
+
+        // Update count header
+        const remainingRows = tbody.querySelectorAll('tr[id^="log-row-"]');
+        const countHeader = document.getElementById('logCountHeader');
+        if (countHeader) countHeader.textContent = `Historical Logs (${remainingRows.length})`;
+
+        const delAllBtn = document.getElementById('btnDeleteAllLogs');
+        if (delAllBtn) {
+            delAllBtn.disabled = false;
+            delAllBtn.style.opacity = '1';
+            delAllBtn.style.cursor = 'pointer';
+        }
+
+        // Dynamically plot to field map if location was live
+        if (l.is_live && !isNoGps) {
+            const parts = l.location.split(',').map(s => parseFloat(s.trim()));
+            if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1]) && !(parts[0] === 0 && parts[1] === 0)) {
+                if (typeof pestGeoJson !== 'undefined' && pestGeoJson.features) {
+                    pestGeoJson.features.push({
+                        type: "Feature",
+                        geometry: {
+                            type: "Point",
+                            coordinates: [parts[1], parts[0]]
+                        },
+                        properties: {
+                            id: l.id,
+                            pest: l.pest,
+                            confidence: l.confidence,
+                            date: l.date,
+                            time: l.time,
+                            location: l.location,
+                            image: l.image_path
+                        }
+                    });
+
+                    if (mapInstance && mapInstance.getSource('pest-detections')) {
+                        mapInstance.getSource('pest-detections').setData(pestGeoJson);
+                    }
+
+                    const countBadge = document.getElementById('mapLivePestCount');
+                    if (countBadge) {
+                        countBadge.innerHTML = `<i class="fas fa-bug" style="color:#c0392b; margin-right:4px;"></i> ${pestGeoJson.features.length} Live Detections Plotted`;
+                    }
+                }
+            }
+        }
+    }
+
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 3. WEBSOCKET REALTIME ALERTS
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -593,6 +694,11 @@
                     handleDetection(data);
                 } else if (data.type === 'GPS_TELEMETRY') {
                     handleGpsTelemetry(data);
+                } else if (data.type === 'NEW_LOG_ENTRY' && data.log) {
+                    if (data.log.id > lastSeenLogId) {
+                        lastSeenLogId = data.log.id;
+                        prependLogRow(data.log);
+                    }
                 }
             } catch (e) {
                 console.error('Error parsing WebSocket event:', e);
@@ -1418,6 +1524,12 @@
                         badge.style.background = '#eaf3e4';
                         badge.style.color = '#2b6e3c';
                     }
+                }
+
+                // Dynamically prepend new log entries in real-time without page refresh
+                if (data.latest_log && data.latest_log.id && data.latest_log.id > lastSeenLogId) {
+                    lastSeenLogId = data.latest_log.id;
+                    prependLogRow(data.latest_log);
                 }
             }
         } catch (e) {}
