@@ -2,6 +2,12 @@
 
 AgriSentinel is an AI-assisted autonomous crop protection robot utilizing species-specific adaptive frequency repellent technology.
 
+## Core Features
+* 📷 **Real-Time AI Pest Detection**: Live video feed processing via OpenCV/TFLite to identify insect threats instantly.
+* 🗺️ **GPS Telemetry & Heatmap Logs**: Plots live and historical pest detections on an interactive MapLibre map with density heatmaps.
+* 🔊 **Acoustic Deterrent**: Triggers specific ultrasonic frequencies via a piezobuzzer to repel pests upon detection.
+* ⚙️ **On-Screen Teleoperation**: Full directional control of the 4WD chassis and camera pan servo directly from the web dashboard.
+
 ---
 
 ## Table of Contents
