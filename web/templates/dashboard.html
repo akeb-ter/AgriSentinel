@@ -263,15 +263,15 @@
         <div style="background: white; border: 2px solid #eaf3e4; border-radius: 18px; padding: 18px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
             <div>
                 <h3 style="font-size: 15px; color: #1a3a1e; margin-bottom: 4px;">Hardware Alarm Settings</h3>
-                <p style="font-size: 13px; color: #5a7b62;">Control the onboard buzzer. Press 'B' to trigger manually.</p>
+                <p style="font-size: 13px; color: #5a7b62;">Control the onboard buzzer. Hold 'B' or hold the button below to buzz.</p>
             </div>
             <div style="display: flex; align-items: center; gap: 16px;">
                 <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #2b6e3c; cursor: pointer; background: #eaf3e4; padding: 10px 16px; border-radius: 12px;">
                     <input type="checkbox" id="auto-buzz-check" onchange="toggleAutoBuzz(this.checked)" style="width: 18px; height: 18px; accent-color: #2b6e3c;">
                     Auto-Buzz on Detection
                 </label>
-                <button onclick="triggerManualBuzzer()" style="background: #2b6e3c; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(43, 110, 60, 0.2);">
-                    <i class="fas fa-bell"></i> Trigger Buzzer (B)
+                <button id="btn-buzzer-manual" style="background: #2b6e3c; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(43, 110, 60, 0.2); user-select: none;">
+                    <i class="fas fa-bell"></i> Hold to Buzz (B)
                 </button>
             </div>
         </div>
@@ -1386,6 +1386,8 @@
 
 <script>
         // Inference & Buzzer API Integration
+        let isBuzzerActive = false;
+
         async function toggleAutoBuzz(enabled) {
             try {
                 await fetch('/api/buzzer/auto', {
@@ -1398,28 +1400,68 @@
             }
         }
         
-        async function triggerManualBuzzer() {
+        async function setManualBuzzer(active) {
+            if (isBuzzerActive === active) return;
+            isBuzzerActive = active;
+
+            const btn = document.getElementById('btn-buzzer-manual');
+            if (btn) {
+                if (active) {
+                    btn.style.background = '#dc2626';
+                    btn.style.transform = 'scale(0.96)';
+                } else {
+                    btn.style.background = '#2b6e3c';
+                    btn.style.transform = 'scale(1)';
+                }
+            }
+
             try {
-                await fetch('/api/buzzer/manual', { method: 'POST' });
+                await fetch('/api/buzzer/manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: active })
+                });
             } catch(e) {
-                console.error("Failed to trigger manual buzzer", e);
+                console.error("Failed to update buzzer state", e);
             }
         }
 
-        // Add 'B' key listener
+        // Keyboard hold listeners ('B' key)
         document.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'b' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
-                triggerManualBuzzer();
-                
-                // Visual feedback for manual trigger
-                const btn = document.querySelector('button[onclick="triggerManualBuzzer()"]');
-                if(btn) {
-                    const oldBg = btn.style.background;
-                    btn.style.background = '#1a3a1e';
-                    setTimeout(() => btn.style.background = oldBg, 200);
-                }
+            if (e.key.toLowerCase() === 'b' && !e.repeat && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                setManualBuzzer(true);
             }
         });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() === 'b') {
+                setManualBuzzer(false);
+            }
+        });
+
+        // Failsafe if user tabs or clicks away while holding key
+        window.addEventListener('blur', () => {
+            if (isBuzzerActive) setManualBuzzer(false);
+        });
+
+        // Button mouse and touch hold listeners
+        const buzzerBtn = document.getElementById('btn-buzzer-manual');
+        if (buzzerBtn) {
+            buzzerBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                setManualBuzzer(true);
+            });
+            buzzerBtn.addEventListener('mouseup', () => setManualBuzzer(false));
+            buzzerBtn.addEventListener('mouseleave', () => {
+                if (isBuzzerActive) setManualBuzzer(false);
+            });
+            buzzerBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                setManualBuzzer(true);
+            });
+            buzzerBtn.addEventListener('touchend', () => setManualBuzzer(false));
+            buzzerBtn.addEventListener('touchcancel', () => setManualBuzzer(false));
+        }
 </script>
 </body>
 

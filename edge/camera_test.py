@@ -68,18 +68,20 @@ CAMERA_BACKEND_OVERRIDE = os.getenv("CAMERA_BACKEND", "").lower().strip()  # "op
 # Buzzer State
 auto_buzz = False
 pest_detected = False
+manual_buzz = False
 
 def buzzer_monitor_loop():
     while True:
-        if auto_buzz and pest_detected:
+        should_buzz = (auto_buzz and pest_detected) or manual_buzz
+        if should_buzz:
             if buzzer:
                 buzzer.start(duty_cycle=1.0)
-            time.sleep(0.05)
+            time.sleep(0.025)
             if buzzer:
                 buzzer.stop()
-            time.sleep(0.05)
+            time.sleep(0.025)
         else:
-            time.sleep(0.1)
+            time.sleep(0.03)
 
 # Start Buzzer Thread
 buzzer_thread = threading.Thread(target=buzzer_monitor_loop, daemon=True)
@@ -290,6 +292,9 @@ app.mount("/static", StaticFiles(directory="web/static"), name="static")
 class AutoBuzzRequest(BaseModel):
     enabled: bool
 
+class ManualBuzzRequest(BaseModel):
+    active: Optional[bool] = None
+
 @app.post("/api/buzzer/auto")
 def set_auto_buzz(req: AutoBuzzRequest):
     global auto_buzz
@@ -297,10 +302,18 @@ def set_auto_buzz(req: AutoBuzzRequest):
     return {"auto_buzz": auto_buzz}
 
 @app.post("/api/buzzer/manual")
-def manual_buzzer():
-    if buzzer:
-        threading.Thread(target=buzzer.beep, kwargs={'on_time': 0.1, 'off_time': 0.1, 'n': 5, 'duty_cycle': 1.0}).start()
-    return {"status": "triggered"}
+def manual_buzzer(req: Optional[ManualBuzzRequest] = None):
+    global manual_buzz
+    if req and req.active is not None:
+        manual_buzz = req.active
+    else:
+        def _pulse():
+            global manual_buzz
+            manual_buzz = True
+            time.sleep(0.2)
+            manual_buzz = False
+        threading.Thread(target=_pulse, daemon=True).start()
+    return {"status": "success", "manual_buzz": manual_buzz}
 
 def frame_generator() -> Generator[bytes, None, None]:
     """Generates MJPEG multipart stream chunks."""
@@ -638,6 +651,8 @@ def index_page():
         }
 
         
+        let isBuzzerHeld = false;
+
         async function toggleAutoBuzz(enabled) {
             await fetch('/api/buzzer/auto', {
                 method: 'POST',
@@ -646,13 +661,36 @@ def index_page():
             });
         }
         
-        async function triggerManualBuzzer() {
-            await fetch('/api/buzzer/manual', { method: 'POST' });
+        async function setManualBuzzer(active) {
+            try {
+                await fetch('/api/buzzer/manual', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: active })
+                });
+            } catch(e) {
+                console.error("Buzzer request failed", e);
+            }
         }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key.toLowerCase() === 'b' && document.activeElement.tagName !== 'INPUT') {
-                triggerManualBuzzer();
+            if (e.key.toLowerCase() === 'b' && !e.repeat && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                isBuzzerHeld = true;
+                setManualBuzzer(true);
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key.toLowerCase() === 'b' && isBuzzerHeld) {
+                isBuzzerHeld = false;
+                setManualBuzzer(false);
+            }
+        });
+
+        window.addEventListener('blur', () => {
+            if (isBuzzerHeld) {
+                isBuzzerHeld = false;
+                setManualBuzzer(false);
             }
         });
 
