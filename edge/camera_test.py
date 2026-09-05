@@ -23,6 +23,16 @@ from contextlib import asynccontextmanager
 import platform
 from pathlib import Path
 
+import cv2
+import numpy as np
+from fastapi import FastAPI, Response
+from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("AgriSentinel-Camera")
+
 # --- Edge Impulse & Buzzer Integration ---
 try:
     from edge.drivers.piezo import buzzer
@@ -44,15 +54,6 @@ if not IS_WINDOWS:
     except Exception as e:
         logger.error(f"Failed to initialize Edge Impulse runner: {e}")
         runner = None
-
-import cv2
-import numpy as np
-from fastapi import FastAPI, Response
-from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("AgriSentinel-Camera")
 
 # Configuration via environment variables
 CAMERA_INDEX = int(os.getenv("CAMERA_INDEX", "0"))
@@ -274,7 +275,18 @@ async def lifespan(app: FastAPI):
 
 
 
-from pydantic import BaseModel
+app = FastAPI(
+    title="AgriSentinel Camera Test Service",
+    description="Local camera stream preview and hardware diagnostic server supporting rpicam and OpenCV",
+    version="1.1.0",
+    lifespan=lifespan,
+)
+
+from edge.web_app import router as web_app_router
+app.include_router(web_app_router)
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
+
+
 class AutoBuzzRequest(BaseModel):
     enabled: bool
 
@@ -289,17 +301,6 @@ def manual_buzzer():
     if buzzer:
         threading.Thread(target=buzzer.beep, kwargs={'on_time': 0.1, 'off_time': 0.1, 'n': 5, 'duty_cycle': 1.0}).start()
     return {"status": "triggered"}
-
-app = FastAPI(
-    title="AgriSentinel Camera Test Service",
-    description="Local camera stream preview and hardware diagnostic server supporting rpicam and OpenCV",
-    version="1.1.0",
-    lifespan=lifespan,
-)
-
-from edge.web_app import router as web_app_router
-app.include_router(web_app_router)
-app.mount("/static", StaticFiles(directory="web/static"), name="static")
 
 def frame_generator() -> Generator[bytes, None, None]:
     """Generates MJPEG multipart stream chunks."""
