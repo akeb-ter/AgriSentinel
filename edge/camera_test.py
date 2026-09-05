@@ -390,7 +390,7 @@ class CameraManager:
                             is_live = bool(raw_gps.get("gps_fix"))
                             lat = raw_gps.get("latitude") if is_live else (6.681023 if is_synth else 0.0)
                             lon = raw_gps.get("longitude") if is_live else (124.689331 if is_synth else 0.0)
-                            loc_str = f"{lat:.6f}, {lon:.6f}"
+                            loc_str = f"{lat:.6f}, {lon:.6f}" if (is_live or is_synth) else "No GPS Fix"
                             
                             # 3. Insert into DB
                             dt = datetime.datetime.now()

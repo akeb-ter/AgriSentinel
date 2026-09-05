@@ -180,6 +180,23 @@ async def delete_detection_log(log_id: int = Form(...)):
     conn.close()
     return RedirectResponse(url="/dashboard", status_code=303)
 
+@router.post("/api/detection_logs/delete_all")
+async def delete_all_detection_logs():
+    conn = get_db_connection()
+    logs = conn.execute("SELECT IMAGE_PATH FROM detection_logs").fetchall()
+    for log_entry in logs:
+        if log_entry and log_entry['IMAGE_PATH']:
+            img_path = os.path.join("web", "static", log_entry['IMAGE_PATH'])
+            if os.path.exists(img_path):
+                try:
+                    os.remove(img_path)
+                except Exception as e:
+                    print(f"Error removing log image {img_path}: {e}")
+    conn.execute("DELETE FROM detection_logs")
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
 class LogSettingsRequest(BaseModel):
     threshold: float
 
