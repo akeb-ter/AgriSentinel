@@ -69,6 +69,24 @@ CAMERA_BACKEND_OVERRIDE = os.getenv("CAMERA_BACKEND", "").lower().strip()  # "op
 auto_buzz = False
 pest_detected = False
 manual_buzz = False
+
+# Logs Feature State
+LOG_CONFIDENCE_THRESHOLD = 0.5
+pest_tracker = {
+    "first_seen": 0.0,
+    "last_seen": 0.0,
+    "logged": False,
+    "name": ""
+}
+
+def get_log_confidence_threshold():
+    global LOG_CONFIDENCE_THRESHOLD
+    return LOG_CONFIDENCE_THRESHOLD
+
+def set_log_confidence_threshold(val):
+    global LOG_CONFIDENCE_THRESHOLD
+    LOG_CONFIDENCE_THRESHOLD = float(val)
+
 latest_detection = {
     "name": "None",
     "confidence": 0.0,
@@ -337,6 +355,57 @@ class CameraManager:
                             logger.error(f"Inference error: {e}")
                 
                 pest_detected = current_pest
+                
+                # --- Logs > 1s tracking ---
+                global pest_tracker, LOG_CONFIDENCE_THRESHOLD
+                now = time.time()
+                
+                # Determine if we should track this frame
+                if current_pest and latest_detection["confidence"] >= LOG_CONFIDENCE_THRESHOLD:
+                    if now - pest_tracker["last_seen"] > 2.0 or pest_tracker["name"] != latest_detection["name"]:
+                        # Reset tracking if grace period exceeded or pest changed
+                        pest_tracker["first_seen"] = now
+                        pest_tracker["logged"] = False
+                    
+                    pest_tracker["last_seen"] = now
+                    pest_tracker["name"] = latest_detection["name"]
+                    
+                    # If seen for > 1 second and not logged yet
+                    if now - pest_tracker["first_seen"] >= 1.0 and not pest_tracker["logged"]:
+                        pest_tracker["logged"] = True
+                        try:
+                            from edge.database import get_db_connection
+                            from edge.web_app import gps_reader
+                            import datetime
+                            
+                            # 1. Save frame to disk
+                            os.makedirs("web/static/logs", exist_ok=True)
+                            filename = f"{int(now)}_{pest_tracker['name']}.jpg"
+                            img_path = os.path.join("web", "static", "logs", filename)
+                            cv2.imwrite(img_path, frame)
+                            
+                            # 2. Get GPS
+                            raw_gps = gps_reader.read_gps_data()
+                            is_synth = gps_reader.is_synthetic
+                            lat = raw_gps.get("latitude") if raw_gps.get("gps_fix") else (6.681023 if is_synth else 0.0)
+                            lon = raw_gps.get("longitude") if raw_gps.get("gps_fix") else (124.689331 if is_synth else 0.0)
+                            loc_str = f"{lat:.6f}, {lon:.6f}"
+                            
+                            # 3. Insert into DB
+                            dt = datetime.datetime.now()
+                            date_str = dt.strftime("%Y-%m-%d")
+                            time_str = dt.strftime("%H:%M:%S")
+                            
+                            conn = get_db_connection()
+                            conn.execute("""
+                                INSERT INTO detection_logs (PEST, CONFIDENCE, LOCATION, DATE, TIME, IMAGE_PATH)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, (pest_tracker["name"], latest_detection["confidence"], loc_str, date_str, time_str, f"logs/{filename}"))
+                            conn.commit()
+                            conn.close()
+                            logger.info(f"Logged detection: {pest_tracker['name']} at {loc_str}")
+                        except Exception as e:
+                            logger.error(f"Failed to log detection: {e}")
                 
                 # Draw Timestamp
                 cv2.putText(frame, f"AgriSentinel Live | {ts_str}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)

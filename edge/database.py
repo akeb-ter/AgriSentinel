@@ -14,7 +14,7 @@ def init_db():
 
     # Create logs table
     cursor.execute("""
-    CREATE TABLE logs (
+    CREATE TABLE IF NOT EXISTS logs (
         ID INTEGER PRIMARY KEY AUTOINCREMENT,
         PEST TEXT NOT NULL,
         RESULT TEXT NOT NULL,
@@ -22,6 +22,20 @@ def init_db():
         TIME TEXT NOT NULL
     )
     """)
+
+    # Create detection logs table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS detection_logs (
+        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        PEST TEXT NOT NULL,
+        CONFIDENCE REAL NOT NULL,
+        LOCATION TEXT NOT NULL,
+        DATE TEXT NOT NULL,
+        TIME TEXT NOT NULL,
+        IMAGE_PATH TEXT NOT NULL
+    )
+    """)
+
 
     # Create pest table
     cursor.execute("""
@@ -77,6 +91,21 @@ def get_db_connection():
         init_db()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    
+    # Ensure detection_logs table exists if we're upgrading from an older schema
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS detection_logs (
+        ID INTEGER PRIMARY KEY AUTOINCREMENT,
+        PEST TEXT NOT NULL,
+        CONFIDENCE REAL NOT NULL,
+        LOCATION TEXT NOT NULL,
+        DATE TEXT NOT NULL,
+        TIME TEXT NOT NULL,
+        IMAGE_PATH TEXT NOT NULL
+    )
+    """)
+    conn.commit()
+    
     return conn
 
 if __name__ == '__main__':

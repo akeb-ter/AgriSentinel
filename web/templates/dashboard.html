@@ -235,16 +235,10 @@
     <!-- ═══ NAV ═══ -->
     <nav class="nav-tabs" id="navTabs">
         <button class="nav-tab active" data-panel="panelPest">
-            <i class="fas fa-camera"></i> <span>Pest Detect & Stream</span>
+            <i class="fas fa-camera"></i> <span>Live Stream</span>
         </button>
-        <button class="nav-tab" data-panel="panelCrop">
-            <i class="fas fa-seedling"></i> <span>Crop Advisor</span>
-        </button>
-        <button class="nav-tab" data-panel="panelDB">
-            <i class="fas fa-database"></i> <span>Pest Database</span>
-        </button>
-        <button class="nav-tab" data-panel="panelDashboard">
-            <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
+        <button class="nav-tab" data-panel="panelLogs">
+            <i class="fas fa-history"></i> <span>Logs</span>
         </button>
     </nav>
 
@@ -359,71 +353,49 @@
         </div>
     </section>
 
-    <!-- ═══ PANEL 2: CROP ADVISOR ═══ -->
-    <section class="panel" id="panelCrop">
-        <h2 class="panel-title"><i class="fas fa-hand-holding-seedling" style="color:#2b6e3c; margin-right:10px;"></i>Crop &amp; Fertilizer Advisor</h2>
-        <p class="panel-sub">Enter your soil &amp; climate data to get personalised crop and fertilizer recommendations.</p>
-        <div class="form-grid">
-            <div class="form-group"><label><i class="fas fa-flask"></i> Nitrogen (N) ppm</label><input type="number" id="nInput" value="120" min="0" max="300" step="1" /></div>
-            <div class="form-group"><label><i class="fas fa-flask"></i> Phosphorus (P) ppm</label><input type="number" id="pInput" value="45" min="0" max="200" step="1" /></div>
-            <div class="form-group"><label><i class="fas fa-flask"></i> Potassium (K) ppm</label><input type="number" id="kInput" value="180" min="0" max="400" step="1" /></div>
-            <div class="form-group"><label><i class="fas fa-vial"></i> pH</label><input type="number" id="phInput" value="6.5" min="3.5" max="9.5" step="0.1" /></div>
-            <div class="form-group"><label><i class="fas fa-temperature-high"></i> Temp (°C)</label><input type="number" id="tempInput" value="26" min="-5" max="45" step="0.5" /></div>
-            <div class="form-group"><label><i class="fas fa-tint"></i> Rainfall (mm/year)</label><input type="number" id="rainInput" value="850" min="100" max="3000" step="10" /></div>
+    <!-- ═══ PANEL 2: LOGS ═══ -->
+    <section class="panel" id="panelLogs">
+        <h2 class="panel-title"><i class="fas fa-history" style="color:#2b6e3c; margin-right:10px;"></i>Detection Logs</h2>
+        <p class="panel-sub">History of pests detected with high confidence for > 1 second.</p>
+        
+        <div style="background:#fafff8; border-radius:24px; padding:20px; border:1px solid #e4efe0; margin-bottom:20px; display:flex; align-items:center; gap:16px;">
+            <label style="font-weight:600; color:#1a3a1e; font-size:14px;"><i class="fas fa-sliders-h" style="color:#2b6e3c;"></i> Logging Confidence Threshold:</label>
+            <input type="range" id="logThresholdSlider" min="50" max="100" value="{{ (log_confidence_threshold * 100)|int }}" style="flex:1;" oninput="document.getElementById('logThresholdVal').innerText = this.value + '%'">
+            <span id="logThresholdVal" style="font-weight:700; color:#2b6e3c; font-size:16px;">{{ (log_confidence_threshold * 100)|int }}%</span>
+            <button class="btn btn-primary" onclick="saveLogThreshold()"><i class="fas fa-save"></i> Save</button>
         </div>
-        <div class="flex">
-            <button class="btn btn-primary" onclick="runCropAdvisor()"><i class="fas fa-seedling"></i> Get Recommendations</button>
-            <button class="btn btn-secondary" onclick="resetCropForm()"><i class="fas fa-undo"></i> Reset</button>
-        </div>
-        <div id="cropOutput" class="rec-output" style="display:none;">
-            <h4><i class="fas fa-check-circle" style="color:#2b6e3c;"></i> Recommended Crops</h4>
-            <div id="cropList"></div>
-            <h4 style="margin-top:16px;"><i class="fas fa-tint" style="color:#2b6e3c;"></i> Fertilizer Suggestion</h4>
-            <div id="fertilizerSuggestion"></div>
-        </div>
-    </section>
-
-    <!-- ═══ PANEL 3: PEST DATABASE CRUD ═══ -->
-    <section class="panel" id="panelDB">
-        <h2 class="panel-title"><i class="fas fa-database" style="color:#2b6e3c; margin-right:10px;"></i>Pest Database</h2>
-        <p class="panel-sub">Manage pest records with image upload. Images are stored in static assets. <span style="color:#c0392b; font-weight:600;">Alerts will trigger based on configured species.</span></p>
-
-        <button class="btn btn-primary" style="margin-bottom:16px;" onclick="openModal('add')">
-            <i class="fas fa-plus"></i> Add New Pest
-        </button>
-
+        
         <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Pest</th>
-                        <th>Description</th>
-                        <th>Suggested Action</th>
-                        <th>Signal Range</th>
                         <th>Image</th>
-                        <th style="width:140px;">Actions</th>
+                        <th>Date / Time</th>
+                        <th>Pest</th>
+                        <th>Confidence</th>
+                        <th>Location</th>
+                        <th style="width:80px;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% if db_pests|length == 0 %}
-                        <tr><td colspan="7" class="empty-row">No pests found. Add one!</td></tr>
+                    {% if logs|length == 0 %}
+                        <tr><td colspan="6" class="empty-row">No detection logs found.</td></tr>
                     {% else %}
-                        {% for p in db_pests %}
+                        {% for l in logs %}
                         <tr>
-                            <td><strong>#{{ p.ID }}</strong></td>
-                            <td><strong>{{ p.PEST }}</strong></td>
-                            <td>{{ p.DESCRIPTION[:50] }}{% if p.DESCRIPTION|length > 50 %}…{% endif %}</td>
-                            <td>{{ p.SUGGESTED_ACTION[:40] }}{% if p.SUGGESTED_ACTION|length > 40 %}…{% endif %}</td>
-                            <td><span class="tag" style="background:#dff0d8;">{{ p.SIGNAL_RANGE }}</span></td>
-                            <td><img src="/static/images/{{ p.IMAGE.split('/')[-1] }}" alt="pest" class="pest-img" onerror="this.src='/static/images/logo.png'"></td>
                             <td>
-                                <button type="button" class="btn btn-warning" style="padding:6px 12px; font-size:12px;" onclick='editPest({{ p.ID }}, {{ p.PEST | tojson }}, {{ p.DESCRIPTION | tojson }}, {{ p.SUGGESTED_ACTION | tojson }}, {{ p.SIGNAL_RANGE | tojson }}, {{ p.IMAGE | tojson }})'>
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <form method="POST" action="/api/pests/delete" style="display:inline-block;" onsubmit="return confirm('Delete this pest?')">
-                                    <input type="hidden" name="pest_id" value="{{ p.ID }}">
-                                    <button type="submit" name="delete_pest" class="btn btn-danger" style="padding:6px 12px; font-size:12px;"><i class="fas fa-trash"></i></button>
+                                <a href="/static/{{ l.IMAGE_PATH }}" target="_blank">
+                                    <img src="/static/{{ l.IMAGE_PATH }}" alt="Detection" style="width:80px; height:80px; object-fit:cover; border-radius:12px; border:2px solid #eaf3e4;">
+                                </a>
+                            </td>
+                            <td><strong>{{ l.DATE }}</strong><br><span style="color:#6a8a70; font-size:12px;">{{ l.TIME }}</span></td>
+                            <td><strong>{{ l.PEST }}</strong></td>
+                            <td><span class="tag" style="background:#dff0d8;">{{ (l.CONFIDENCE * 100)|int }}%</span></td>
+                            <td style="font-family:monospace; font-size:12px;">{{ l.LOCATION }}</td>
+                            <td>
+                                <form method="POST" action="/api/detection_logs/delete" onsubmit="return confirm('Delete this log entry?')">
+                                    <input type="hidden" name="log_id" value="{{ l.ID }}">
+                                    <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:12px;"><i class="fas fa-trash"></i></button>
                                 </form>
                             </td>
                         </tr>
@@ -432,49 +404,8 @@
                 </tbody>
             </table>
         </div>
-        <p style="margin-top:12px; font-size:13px; color:#6a8a70;">
-            <i class="fas fa-info-circle"></i> Table: <code>pest</code> (ID, PEST, DESCRIPTION, SUGGESTED_ACTION, SIGNAL_RANGE, IMAGE) &nbsp;|&nbsp; 
-            <i class="fas fa-folder"></i> Images stored in: <code>web/static/images/</code>
-        </p>
     </section>
-
-    <!-- ═══ PANEL 4: DASHBOARD ═══ -->
-    <section class="panel" id="panelDashboard">
-        <h2 class="panel-title"><i class="fas fa-chart-simple" style="color:#2b6e3c; margin-right:10px;"></i>Farm Dashboard</h2>
-        <p class="panel-sub">AgriSentinel's live insights — simulated farm health &amp; pest alerts.</p>
-        <div class="stat-grid">
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-leaf"></i></div><div class="stat-number" id="dashCrops">8</div><div class="stat-label">Crops Monitored</div></div>
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-heartbeat"></i></div><div class="stat-number" id="dashHealth">94%</div><div class="stat-label">Avg. Plant Health</div></div>
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="stat-number" id="dashRisks">2</div><div class="stat-label">Active Pest Risks</div></div>
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-cloud-sun"></i></div><div class="stat-number" id="dashWeather">26°C</div><div class="stat-label">Current Weather</div></div>
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top:8px;">
-            <div class="card" style="background:#fafff8;">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                    <div class="card-icon" style="background:#d4e8cc;"><i class="fas fa-thermometer-half"></i></div>
-                    <h3 style="font-size:16px;">Weather Forecast</h3>
-                </div>
-                <ul style="list-style:none; font-size:14px; color:#2a4f32;">
-                    <li style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eaf3e4;"><span>Today</span> <span><i class="fas fa-sun" style="color:#f5a623;"></i> 26°C · Sunny</span></li>
-                    <li style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eaf3e4;"><span>Tomorrow</span> <span><i class="fas fa-cloud-sun" style="color:#8ab87a;"></i> 24°C · Partly cloudy</span></li>
-                    <li style="display:flex; justify-content:space-between; padding:6px 0;"><span>Day 3</span> <span><i class="fas fa-cloud-rain" style="color:#4a8db7;"></i> 21°C · Light rain</span></li>
-                </ul>
-            </div>
-            <div class="card" style="background:#fafff8;">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                    <div class="card-icon" style="background:#d4e8cc;"><i class="fas fa-bell"></i></div>
-                    <h3 style="font-size:16px;">Recent Alerts</h3>
-                </div>
-                <ul style="list-style:none; font-size:14px; color:#2a4f32;" id="alertLog">
-                    <li style="padding:6px 0; border-bottom:1px solid #eaf3e4;"><i class="fas fa-check-circle" style="color:#27ae60;"></i> System ready</li>
-                </ul>
-            </div>
-        </div>
-        <div style="margin-top:24px; text-align:center; font-size:13px; color:#6a8a70; border-top:1px solid #eaf3e4; padding-top:18px;">
-            <i class="fas fa-sync-alt fa-spin" style="margin-right:6px;"></i> Dashboard updates every 15s · Simulated data
-        </div>
-    </section>
-
+    
     <!-- ═══ ALERT OVERLAY ═══ -->
     <div class="alert-overlay" id="alertOverlay">
         <div class="alert-modal">

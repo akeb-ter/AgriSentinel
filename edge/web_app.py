@@ -142,17 +142,55 @@ async def dashboard_page(request: Request):
     
     conn = get_db_connection()
     pests = conn.execute("SELECT * FROM pest").fetchall()
-    logs = conn.execute("SELECT * FROM logs ORDER BY ID DESC LIMIT 50").fetchall()
+    logs = conn.execute("SELECT * FROM detection_logs ORDER BY ID DESC LIMIT 100").fetchall()
     conn.close()
+
+    # Pass the threshold as a global setting to the template
+    from edge.camera_test import get_log_confidence_threshold
+    threshold = get_log_confidence_threshold()
 
     return templates.TemplateResponse(request=request, name="dashboard.html", context={
         "request": request,
         "user": user,
         "db_pests": [dict(p) for p in pests],
-        "logs": [dict(l) for l in logs]
+        "logs": [dict(l) for l in logs],
+        "log_confidence_threshold": threshold
     })
 
 # --- APIs ---
+
+@router.post("/api/detection_logs/delete")
+async def delete_detection_log(log_id: int = Form(...)):
+    conn = get_db_connection()
+    
+    # Try to delete the image file first
+    log_entry = conn.execute("SELECT IMAGE_PATH FROM detection_logs WHERE ID = ?", (log_id,)).fetchone()
+    if log_entry and log_entry['IMAGE_PATH']:
+        # IMAGE_PATH will be like "logs/timestamp_name.jpg" relative to static
+        # However, camera_test might just save absolute or relative. Let's assume it's relative to static
+        img_path = os.path.join("web", "static", log_entry['IMAGE_PATH'])
+        if os.path.exists(img_path):
+            try:
+                os.remove(img_path)
+            except Exception as e:
+                print(f"Error removing log image: {e}")
+                
+    conn.execute("DELETE FROM detection_logs WHERE ID = ?", (log_id,))
+    conn.commit()
+    conn.close()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+class LogSettingsRequest(BaseModel):
+    threshold: float
+
+@router.post("/api/logs/settings")
+async def update_log_settings(req: LogSettingsRequest):
+    from edge.camera_test import set_log_confidence_threshold
+    try:
+        set_log_confidence_threshold(req.threshold)
+        return {"status": "success", "threshold": req.threshold}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 @router.post("/api/logs")
 async def save_log(pest: str = Form(...), result: str = Form(...)):
