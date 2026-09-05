@@ -1384,13 +1384,14 @@
     async function deleteSingleLog(logId) {
         if (!confirm('Delete this log entry?')) return;
         try {
+            const formData = new FormData();
+            formData.append('log_id', logId);
             const res = await fetch('/api/detection_logs/delete', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ log_id: logId })
+                body: formData
             });
             if (res.ok) {
                 const row = document.getElementById(`log-row-${logId}`);
@@ -1427,7 +1428,12 @@
                     }
                 }
             } else {
-                alert('Failed to delete log entry.');
+                let errMsg = 'Failed to delete log entry.';
+                try {
+                    const errData = await res.json();
+                    if (errData.detail) errMsg += ' (' + (typeof errData.detail === 'string' ? errData.detail : JSON.stringify(errData.detail)) + ')';
+                } catch(e) {}
+                alert(errMsg);
             }
         } catch(e) {
             console.error(e);
@@ -1468,7 +1474,11 @@
                     }
                 }
             } else {
-                alert('Failed to delete all logs.');
+                let errMsg = 'Failed to delete all logs.';
+                if (res.status === 404) {
+                    errMsg += ' (Endpoint not found. Please restart the backend server on the Raspberry Pi: python edge/camera_test.py)';
+                }
+                alert(errMsg);
             }
         } catch(e) {
             console.error(e);

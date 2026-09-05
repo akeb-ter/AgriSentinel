@@ -168,6 +168,14 @@ async def delete_detection_log(request: Request, log_id: Optional[int] = Form(No
         except Exception:
             pass
             
+    if log_id is None:
+        try:
+            param = request.query_params.get("log_id")
+            if param is not None:
+                log_id = int(param)
+        except Exception:
+            pass
+            
     if not log_id:
         return JSONResponse(status_code=400, content={"status": "error", "message": "log_id is required"})
         
