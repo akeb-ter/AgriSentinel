@@ -17,6 +17,8 @@ Complete hardware pinout reference and GPIO mapping for the AgriSentinel autonom
 | **Pin 20** | `GND` | Motor Driver | `GND` | Ground Connection |
 | **Pin 29** | `GPIO 5` | L298N H-Bridge | `IN1` | Left Motor Forward |
 | **Pin 31** | `GPIO 6` | L298N H-Bridge | `IN2` | Left Motor Reverse |
+| **Pin 33** | `GPIO 13` | Standard Buzzer | `Positive (+)` | Buzzer Trigger / Audible Alert |
+| **Pin 34** | `GND` | Standard Buzzer | `Negative (-)` | Ground Reference |
 | **Pin 35** | `GPIO 19` | L298N H-Bridge | `IN3` | Right Motor Forward |
 | **Pin 37** | `GPIO 26` | L298N H-Bridge | `IN4` | Right Motor Reverse |
 
@@ -56,6 +58,20 @@ Streams NMEA sentence data over hardware UART `/dev/ttyS0` at 9600 baud.
 
 > [!NOTE]
 > Hardware serial must be enabled on the Raspberry Pi by adding `enable_uart=1` to `/boot/config.txt` (or `/boot/firmware/config.txt`).
+
+---
+
+## 🔊 4. Standard Buzzer / Deterrent (`2-Pin Buzzer`)
+
+Emits audible deterrent alerts and pulses (supports both Active and Passive buzzers).
+
+* **`Buzzer Positive (+)` (Long lead / marked +)**: Physical Pin 33 (`GPIO 13` / Hardware PWM1)
+* **`Buzzer Negative (-)` (Short lead / marked -)**: Physical Pin 34 (`GND` / Ground)
+
+> [!TIP]
+> * **Active Buzzer**: When GPIO 13 goes HIGH (3.3V), the active buzzer automatically sounds continuous beep (~2.3 kHz).
+> * **Passive Buzzer**: The driver sends an audible PWM square wave (default ~2.5 kHz) to produce loud clear tone.
+> * Both modes are fully supported out-of-the-box by `edge.piezo_test` and `edge.drivers.piezo`.
 
 ---
 
