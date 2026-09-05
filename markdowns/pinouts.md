@@ -17,8 +17,8 @@ Complete hardware pinout reference and GPIO mapping for the AgriSentinel autonom
 | **Pin 20** | `GND` | Motor Driver | `GND` | Ground Connection |
 | **Pin 29** | `GPIO 5` | L298N H-Bridge | `IN1` | Left Motor Forward |
 | **Pin 31** | `GPIO 6` | L298N H-Bridge | `IN2` | Left Motor Reverse |
-| **Pin 33** | `GPIO 13` | Piezo MOSFET | `Gate` | Hardware PWM1 Ultrasonic / Tone Deterrent |
-| **Pin 34** | `GND` | Piezo MOSFET | `Source / GND` | Ground Reference |
+| **Pin 33** | `GPIO 13` | Standard Buzzer | `Positive (+)` | Buzzer Trigger / Audible Alert |
+| **Pin 34** | `GND` | Standard Buzzer | `Negative (-)` | Ground Reference |
 | **Pin 35** | `GPIO 19` | L298N H-Bridge | `IN3` | Right Motor Forward |
 | **Pin 37** | `GPIO 26` | L298N H-Bridge | `IN4` | Right Motor Reverse |
 
@@ -61,16 +61,17 @@ Streams NMEA sentence data over hardware UART `/dev/ttyS0` at 9600 baud.
 
 ---
 
-## 🔊 4. Piezo Transducer / Frequency Deterrent (`N-Channel MOSFET Driver`)
+## 🔊 4. Standard Buzzer / Deterrent (`2-Pin Buzzer`)
 
-Generates variable-frequency audible and ultrasonic sweeps (1 kHz – 28 kHz) using Hardware PWM1.
+Emits audible deterrent alerts and pulses (supports both Active and Passive buzzers).
 
-* **`MOSFET Gate`**: Physical Pin 33 (`GPIO 13` / Hardware PWM1 Channel 1)
-  * *Circuit Protection*: Place a 10kΩ pull-down resistor between Gate and GND to keep the MOSFET securely OFF when the GPIO pin floats during boot.
-* **`MOSFET Source`**: Physical Pin 34 (`GND`) connected to Common Ground Bus
-* **`MOSFET Drain`**: Connected to Piezo Transducer **Negative (-)** terminal
-* **`Piezo Positive (+)`**: Connected to VCC supply rail (+5V or external +12V battery rail)
-* **`Flyback Diode (Optional/Recommended)`**: 1N4007 or 1N4148 across Piezo terminals (Cathode to +, Anode to -) to clamp inductive spikes.
+* **`Buzzer Positive (+)` (Long lead / marked +)**: Physical Pin 33 (`GPIO 13` / Hardware PWM1)
+* **`Buzzer Negative (-)` (Short lead / marked -)**: Physical Pin 34 (`GND` / Ground)
+
+> [!TIP]
+> * **Active Buzzer**: When GPIO 13 goes HIGH (3.3V), the active buzzer automatically sounds continuous beep (~2.3 kHz).
+> * **Passive Buzzer**: The driver sends an audible PWM square wave (default ~2.5 kHz) to produce loud clear tone.
+> * Both modes are fully supported out-of-the-box by `edge.piezo_test` and `edge.drivers.piezo`.
 
 ---
 

@@ -1,14 +1,14 @@
 """
-AgriSentinel Edge Driver - Piezo Transducer / Frequency Deterrent Controller
+AgriSentinel Edge Driver - Standard Buzzer & Deterrent Controller
 
-Governs acoustic and ultrasonic frequency emission (e.g., 1 kHz - 28 kHz)
-using an N-Channel MOSFET driver connected to a Raspberry Pi Hardware PWM pin
-(default: GPIO 13 / Physical Pin 33 / Hardware PWM1 Channel 1).
+Governs acoustic deterrent alerts using a standard 2-pin or 3-pin buzzer connected
+to Raspberry Pi BCM GPIO 13 (Physical Pin 33).
 
 Supports:
-1. gpiozero PWMOutputDevice (Preferred on Raspberry Pi OS Bookworm & Bullseye)
-2. Synthetic / Mock fallback when running in testing or off-Pi environments.
-3. Frequency sweep generation, single-tone bursts, and fail-safe zero-duty gate shutoff.
+1. Active Buzzers: Driven via digital logic (HIGH = sound ON, LOW = sound OFF).
+2. Passive Buzzers: Driven via audible PWM frequencies (e.g. 1 kHz - 3.5 kHz, centered at ~2.5 kHz).
+3. GPIO Zero PWMOutputDevice with automatic SYNTHETIC / MOCK fallback for off-Pi testing.
+4. Digital on/off, rhythmic beep pulses, rapid alert alarm patterns, and frequency sweeps.
 """
 
 import os
@@ -17,15 +17,15 @@ import time
 import logging
 from typing import Dict, Optional, Any
 
-logger = logging.getLogger("AgriSentinel-Piezo")
+logger = logging.getLogger("AgriSentinel-Buzzer")
 
-# Pin & Frequency Defaults
+# Pin & Audible Frequency Defaults
 PIEZO_GPIO_PIN = int(os.getenv("PIEZO_GPIO_PIN", "13"))  # BCM GPIO 13 (Physical Pin 33)
-DEFAULT_FREQUENCY = int(os.getenv("PIEZO_DEFAULT_FREQ", "20000"))  # 20 kHz ultrasonic default
+DEFAULT_FREQUENCY = int(os.getenv("BUZZER_DEFAULT_FREQ", "2500"))  # 2.5 kHz audible default
 
 
 class PiezoBuzzer:
-    """Piezo Buzzer & Ultrasonic Transducer Controller with MOSFET PWM Gate Driver."""
+    """Standard Buzzer & Acoustic Deterrent Controller (supports Active and Passive buzzers)."""
 
     def __init__(self, pin: int = PIEZO_GPIO_PIN, default_frequency: int = DEFAULT_FREQUENCY):
         self.pin = pin
@@ -38,11 +38,11 @@ class PiezoBuzzer:
         self._init_driver()
 
     def _init_driver(self):
-        """Initializes hardware PWM via gpiozero PWMOutputDevice or falls back to synthetic mode."""
+        """Initializes hardware PWM / digital pin via gpiozero PWMOutputDevice or falls back to synthetic mode."""
         try:
             from gpiozero import PWMOutputDevice
 
-            # Initialize with initial_value=0 (MOSFET Gate pulled LOW)
+            # Initialize with initial_value=0 (Pin pulled LOW)
             self._device = PWMOutputDevice(
                 self.pin,
                 active_high=True,
@@ -52,7 +52,7 @@ class PiezoBuzzer:
             self.backend = "gpiozero.PWMOutputDevice"
             self.is_synthetic = False
             logger.info(
-                f"[PiezoBuzzer] Initialized hardware PWM on GPIO {self.pin} "
+                f"[Buzzer] Initialized buzzer on GPIO {self.pin} "
                 f"at {self.frequency} Hz (Backend: {self.backend})."
             )
         except Exception as e:
@@ -60,21 +60,41 @@ class PiezoBuzzer:
             self.backend = "SYNTHETIC"
             self._device = None
             logger.warning(
-                f"[PiezoBuzzer] Hardware PWM unavailable on GPIO {self.pin}: {e}. "
+                f"[Buzzer] Hardware GPIO unavailable on GPIO {self.pin}: {e}. "
                 "Operating in SYNTHETIC MOCK MODE."
             )
 
     @property
     def is_active(self) -> bool:
-        """Returns True if the PWM signal is actively driving the gate (duty cycle > 0)."""
+        """Returns True if the buzzer is actively sounding (duty cycle > 0)."""
         return self.duty_cycle > 0.0
+
+    def on(self):
+        """
+        Turns the buzzer continuously ON (DC HIGH, 100% duty cycle).
+        Ideal for Active Buzzers.
+        """
+        self.duty_cycle = 1.0
+        if not self.is_synthetic and self._device is not None:
+            try:
+                self._device.value = 1.0
+            except Exception as e:
+                logger.error(f"[Buzzer] Failed to set ON state: {e}")
+        else:
+            logger.debug(f"[Buzzer MOCK] Turned ON (DC HIGH).")
+
+    def off(self):
+        """Turns the buzzer completely OFF (pin pulled LOW)."""
+        self.stop()
 
     def start(self, frequency: Optional[int] = None, duty_cycle: float = 0.5):
         """
-        Starts emitting continuous frequency signal.
-        
-        :param frequency: Frequency in Hertz (if None, uses current frequency).
-        :param duty_cycle: PWM duty cycle between 0.0 and 1.0 (default: 0.5 for square wave).
+        Starts emitting continuous sound.
+        For active buzzers, duty_cycle=1.0 provides steady DC voltage.
+        For passive buzzers, duty_cycle=0.5 generates a square wave tone at frequency.
+
+        :param frequency: Tone frequency in Hertz (if None, uses current frequency).
+        :param duty_cycle: Duty cycle between 0.0 and 1.0 (default 0.5).
         """
         if frequency is not None:
             self.set_frequency(frequency)
@@ -86,29 +106,26 @@ class PiezoBuzzer:
             try:
                 self._device.value = duty_cycle
             except Exception as e:
-                logger.error(f"[PiezoBuzzer] Failed to set PWM duty cycle: {e}")
+                logger.error(f"[Buzzer] Failed to set duty cycle: {e}")
         else:
-            logger.debug(f"[PiezoBuzzer MOCK] Emit @ {self.frequency} Hz, duty={duty_cycle:.2f}")
+            logger.debug(f"[Buzzer MOCK] Sound ON @ {self.frequency} Hz, duty={duty_cycle:.2f}")
 
     def stop(self):
-        """
-        Immediately drives the MOSFET gate LOW (duty cycle 0.0) to shut off power.
-        Crucial for preventing continuous DC current through the transducer.
-        """
+        """Immediately silences the buzzer by driving the pin LOW."""
         self.duty_cycle = 0.0
         if not self.is_synthetic and self._device is not None:
             try:
                 self._device.value = 0.0
             except Exception as e:
-                logger.error(f"[PiezoBuzzer] Error driving gate low: {e}")
+                logger.error(f"[Buzzer] Error driving pin LOW: {e}")
         else:
-            logger.debug("[PiezoBuzzer MOCK] Output stopped (Gate pulled LOW).")
+            logger.debug("[Buzzer MOCK] Output stopped (Pin pulled LOW).")
 
     def set_frequency(self, frequency: int):
         """
-        Adjusts the PWM frequency in Hertz.
-        
-        :param frequency: Target frequency in Hz (e.g., 1000 - 30000).
+        Adjusts the tone frequency in Hertz (for passive buzzers).
+
+        :param frequency: Target frequency in Hz (e.g., 500 - 5000 Hz).
         """
         if frequency <= 0:
             raise ValueError("Frequency must be a positive integer.")
@@ -119,17 +136,37 @@ class PiezoBuzzer:
             try:
                 self._device.frequency = self.frequency
             except Exception as e:
-                logger.error(f"[PiezoBuzzer] Error setting frequency to {frequency} Hz: {e}")
+                logger.error(f"[Buzzer] Error setting frequency to {frequency} Hz: {e}")
         else:
-            logger.debug(f"[PiezoBuzzer MOCK] Frequency set to {self.frequency} Hz.")
+            logger.debug(f"[Buzzer MOCK] Frequency set to {self.frequency} Hz.")
 
-    def tone(self, frequency: int, duration: float = 1.0, duty_cycle: float = 0.5):
+    def beep(self, on_time: float = 0.2, off_time: float = 0.1, n: int = 3, duty_cycle: float = 1.0):
         """
-        Emits a fixed-frequency tone burst for a specified duration, then shuts off.
-        
-        :param frequency: Frequency in Hz.
-        :param duration: Burst duration in seconds.
-        :param duty_cycle: PWM duty cycle (default 0.5).
+        Emits a series of distinct beeps.
+        Works for both active buzzers (duty_cycle=1.0) and passive buzzers (duty_cycle=0.5).
+
+        :param on_time: Duration of each beep in seconds.
+        :param off_time: Duration between beeps in seconds.
+        :param n: Number of beeps to emit.
+        :param duty_cycle: 1.0 for DC active buzzers, 0.5 for passive square wave.
+        """
+        try:
+            for i in range(max(1, int(n))):
+                self.start(duty_cycle=duty_cycle)
+                time.sleep(max(0.01, on_time))
+                self.stop()
+                if i < n - 1:
+                    time.sleep(max(0.01, off_time))
+        finally:
+            self.stop()
+
+    def tone(self, frequency: int = 2500, duration: float = 1.0, duty_cycle: float = 0.5):
+        """
+        Emits a fixed-frequency audible tone burst (ideal for passive buzzers).
+
+        :param frequency: Tone frequency in Hz (default: 2500 Hz).
+        :param duration: Duration in seconds.
+        :param duty_cycle: PWM duty cycle (default: 0.5 for square wave).
         """
         try:
             self.start(frequency=frequency, duty_cycle=duty_cycle)
@@ -139,17 +176,17 @@ class PiezoBuzzer:
 
     def sweep(
         self,
-        start_hz: int = 19000,
-        end_hz: int = 28000,
-        step: int = 500,
-        delay: float = 0.05,
+        start_hz: int = 1000,
+        end_hz: int = 3500,
+        step: int = 250,
+        delay: float = 0.03,
         duty_cycle: float = 0.5,
     ):
         """
-        Performs an acoustic or ultrasonic frequency sweep.
-        
-        :param start_hz: Starting frequency in Hz.
-        :param end_hz: Ending frequency in Hz.
+        Performs an audible frequency siren sweep across a specified range.
+
+        :param start_hz: Starting audible frequency in Hz (default: 1000).
+        :param end_hz: Ending audible frequency in Hz (default: 3500).
         :param step: Step increment in Hz.
         :param delay: Pause duration per step in seconds.
         :param duty_cycle: PWM duty cycle (default 0.5).
@@ -157,7 +194,6 @@ class PiezoBuzzer:
         if start_hz <= 0 or end_hz <= 0 or step <= 0:
             raise ValueError("Frequencies and step must be positive integers.")
 
-        # Ensure start is less than or equal to end for range, or determine direction
         direction = 1 if end_hz >= start_hz else -1
         actual_step = step if direction == 1 else -step
 
@@ -169,8 +205,31 @@ class PiezoBuzzer:
         finally:
             self.stop()
 
+    def alarm(self, duration: float = 2.0, pattern: str = "fast"):
+        """
+        Plays a pest-deterrent acoustic alarm pattern.
+
+        :param duration: Total duration of the alarm sequence in seconds.
+        :param pattern: 'fast' (rapid 0.1s pulses) or 'chirp' (alternating frequencies).
+        """
+        end_time = time.time() + max(0.1, duration)
+        try:
+            if pattern == "chirp":
+                while time.time() < end_time:
+                    self.tone(frequency=2800, duration=0.08, duty_cycle=0.5)
+                    self.tone(frequency=2100, duration=0.08, duty_cycle=0.5)
+            else:
+                # Fast alert beeps (works on both active and passive)
+                while time.time() < end_time:
+                    self.start(duty_cycle=1.0)
+                    time.sleep(0.1)
+                    self.stop()
+                    time.sleep(0.08)
+        finally:
+            self.stop()
+
     def get_status(self) -> Dict[str, Any]:
-        """Returns diagnostic state of the piezo controller."""
+        """Returns diagnostic state of the buzzer controller."""
         return {
             "pin": self.pin,
             "frequency_hz": self.frequency,
@@ -181,17 +240,22 @@ class PiezoBuzzer:
         }
 
     def close(self):
-        """Failsafe shutdown: stops PWM output and closes the GPIO device handle."""
+        """Failsafe shutdown: stops output and releases GPIO device handle."""
         self.stop()
         if not self.is_synthetic and self._device is not None:
             try:
                 self._device.close()
             except Exception as e:
-                logger.error(f"[PiezoBuzzer] Error closing device: {e}")
+                logger.error(f"[Buzzer] Error closing device: {e}")
             finally:
                 self._device = None
-        logger.info(f"[PiezoBuzzer] Driver on GPIO {self.pin} closed.")
+        logger.info(f"[Buzzer] Driver on GPIO {self.pin} closed.")
 
+
+# Aliases for clear naming while preserving backward compatibility
+BuzzerController = PiezoBuzzer
+Buzzer = PiezoBuzzer
 
 # Singleton instance for quick module-level access
 piezo = PiezoBuzzer()
+buzzer = piezo
