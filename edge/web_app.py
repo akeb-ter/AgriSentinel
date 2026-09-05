@@ -160,31 +160,20 @@ async def dashboard_page(request: Request):
 # --- APIs ---
 
 @router.post("/api/detection_logs/delete")
-async def delete_detection_log(log_id: int = Form(...)):
+async def delete_detection_log(request: Request, log_id: Optional[int] = Form(None)):
+    if log_id is None:
+        try:
+            body = await request.json()
+            log_id = body.get("log_id")
+        except Exception:
+            pass
+            
+    if not log_id:
+        return JSONResponse(status_code=400, content={"status": "error", "message": "log_id is required"})
+        
     conn = get_db_connection()
-    
-    # Try to delete the image file first
-    log_entry = conn.execute("SELECT IMAGE_PATH FROM detection_logs WHERE ID = ?", (log_id,)).fetchone()
-    if log_entry and log_entry['IMAGE_PATH']:
-        # IMAGE_PATH will be like "logs/timestamp_name.jpg" relative to static
-        # However, camera_test might just save absolute or relative. Let's assume it's relative to static
-        img_path = os.path.join("web", "static", log_entry['IMAGE_PATH'])
-        if os.path.exists(img_path):
-            try:
-                os.remove(img_path)
-            except Exception as e:
-                print(f"Error removing log image: {e}")
-                
-    conn.execute("DELETE FROM detection_logs WHERE ID = ?", (log_id,))
-    conn.commit()
-    conn.close()
-    return RedirectResponse(url="/dashboard", status_code=303)
-
-@router.post("/api/detection_logs/delete_all")
-async def delete_all_detection_logs():
-    conn = get_db_connection()
-    logs = conn.execute("SELECT IMAGE_PATH FROM detection_logs").fetchall()
-    for log_entry in logs:
+    try:
+        log_entry = conn.execute("SELECT IMAGE_PATH FROM detection_logs WHERE ID = ?", (log_id,)).fetchone()
         if log_entry and log_entry['IMAGE_PATH']:
             img_path = os.path.join("web", "static", log_entry['IMAGE_PATH'])
             if os.path.exists(img_path):
@@ -192,10 +181,44 @@ async def delete_all_detection_logs():
                     os.remove(img_path)
                 except Exception as e:
                     print(f"Error removing log image {img_path}: {e}")
-    conn.execute("DELETE FROM detection_logs")
-    conn.commit()
-    conn.close()
-    return RedirectResponse(url="/dashboard", status_code=303)
+                    
+        conn.execute("DELETE FROM detection_logs WHERE ID = ?", (log_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    # Check if request was made via fetch/AJAX
+    accept = request.headers.get("accept", "")
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in accept or "application/json" in content_type:
+        return JSONResponse(content={"status": "success", "deleted_id": log_id})
+
+    return RedirectResponse(url="/dashboard?tab=panelLogs", status_code=303)
+
+@router.post("/api/detection_logs/delete_all")
+async def delete_all_detection_logs(request: Request):
+    conn = get_db_connection()
+    try:
+        logs = conn.execute("SELECT IMAGE_PATH FROM detection_logs").fetchall()
+        for log_entry in logs:
+            if log_entry and log_entry['IMAGE_PATH']:
+                img_path = os.path.join("web", "static", log_entry['IMAGE_PATH'])
+                if os.path.exists(img_path):
+                    try:
+                        os.remove(img_path)
+                    except Exception as e:
+                        print(f"Error removing log image {img_path}: {e}")
+        conn.execute("DELETE FROM detection_logs")
+        conn.commit()
+    finally:
+        conn.close()
+
+    accept = request.headers.get("accept", "")
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in accept or "application/json" in content_type:
+        return JSONResponse(content={"status": "success", "message": "All detection logs deleted"})
+
+    return RedirectResponse(url="/dashboard?tab=panelLogs", status_code=303)
 
 class LogSettingsRequest(BaseModel):
     threshold: float

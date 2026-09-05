@@ -405,13 +405,11 @@
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
             <h3 style="font-size:16px; font-weight:700; color:#1a3a1e; display:flex; align-items:center; gap:8px;">
                 <i class="fas fa-list-check" style="color:#2b6e3c;"></i>
-                <span>Historical Logs ({{ logs|length }})</span>
+                <span id="logCountHeader">Historical Logs ({{ logs|length }})</span>
             </h3>
-            <form method="POST" action="/api/detection_logs/delete_all" onsubmit="return confirm('⚠️ Are you sure you want to delete ALL detection logs and images? This action cannot be undone.')" style="margin:0;">
-                <button type="submit" class="btn btn-danger" style="padding:8px 18px; font-size:13px;" {% if logs|length == 0 %}disabled style="opacity:0.5; cursor:not-allowed;"{% endif %}>
-                    <i class="fas fa-trash-can"></i> Delete All Logs
-                </button>
-            </form>
+            <button type="button" class="btn btn-danger" id="btnDeleteAllLogs" style="padding:8px 18px; font-size:13px;" {% if logs|length == 0 %}disabled style="opacity:0.5; cursor:not-allowed;"{% endif %} onclick="deleteAllLogs()">
+                <i class="fas fa-trash-can"></i> Delete All Logs
+            </button>
         </div>
         
         <!-- Detection Logs Table -->
@@ -428,12 +426,12 @@
                         <th style="width:80px;">Action</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="logsTableBody">
                     {% if logs|length == 0 %}
                         <tr><td colspan="7" class="empty-row">No detection logs found.</td></tr>
                     {% else %}
                         {% for l in logs %}
-                        <tr>
+                        <tr id="log-row-{{ l.ID }}">
                             <td>
                                 <a href="/static/{{ l.IMAGE_PATH }}" target="_blank">
                                     <img src="/static/{{ l.IMAGE_PATH }}" alt="Detection" style="width:80px; height:80px; object-fit:cover; border-radius:12px; border:2px solid #eaf3e4;">
@@ -461,10 +459,9 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <form method="POST" action="/api/detection_logs/delete" onsubmit="return confirm('Delete this log entry?')">
-                                    <input type="hidden" name="log_id" value="{{ l.ID }}">
-                                    <button type="submit" class="btn btn-danger" style="padding:6px 12px; font-size:12px;" title="Delete log entry"><i class="fas fa-trash"></i></button>
-                                </form>
+                                <button type="button" class="btn btn-danger" style="padding:6px 12px; font-size:12px;" title="Delete log entry" onclick="deleteSingleLog({{ l.ID }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -496,6 +493,11 @@
                     panels[key].classList.toggle('active', key === tab.dataset.panel);
                 }
             });
+
+            // Keep browser URL search param in sync with active tab
+            try {
+                history.replaceState(null, '', '?tab=' + tab.dataset.panel);
+            } catch(e) {}
             
             // Auto-stop motors if navigating away from Live Stream tab
             if (tab.dataset.panel !== 'panelPest') {
@@ -515,6 +517,14 @@
             }
         });
     });
+
+    // Restore active tab from URL param or hash on initial load
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialTab = urlParams.get('tab') || window.location.hash.replace('#', '') || 'panelPest';
+    if (initialTab && panels[initialTab] && initialTab !== 'panelPest') {
+        const targetTabBtn = document.querySelector(`[data-panel="${initialTab}"]`);
+        if (targetTabBtn) targetTabBtn.click();
+    }
 
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
@@ -1214,6 +1224,101 @@
             body: JSON.stringify({ threshold: val / 100.0 })
         });
         if (res.ok) alert("Threshold updated successfully!");
+    }
+
+    async function deleteSingleLog(logId) {
+        if (!confirm('Delete this log entry?')) return;
+        try {
+            const res = await fetch('/api/detection_logs/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ log_id: logId })
+            });
+            if (res.ok) {
+                const row = document.getElementById(`log-row-${logId}`);
+                if (row) {
+                    row.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+                    row.style.opacity = '0';
+                    row.style.transform = 'translateX(10px)';
+                    setTimeout(() => {
+                        row.remove();
+                        const tbody = document.getElementById('logsTableBody');
+                        const remainingRows = tbody ? tbody.querySelectorAll('tr[id^="log-row-"]') : [];
+                        const countHeader = document.getElementById('logCountHeader');
+                        if (countHeader) countHeader.textContent = `Historical Logs (${remainingRows.length})`;
+                        if (!remainingRows || remainingRows.length === 0) {
+                            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No detection logs found.</td></tr>';
+                            const delAllBtn = document.getElementById('btnDeleteAllLogs');
+                            if (delAllBtn) {
+                                delAllBtn.disabled = true;
+                                delAllBtn.style.opacity = '0.5';
+                                delAllBtn.style.cursor = 'not-allowed';
+                            }
+                        }
+                    }, 250);
+                }
+                // Remove from map features dynamically
+                if (typeof pestGeoJson !== 'undefined' && pestGeoJson.features) {
+                    pestGeoJson.features = pestGeoJson.features.filter(f => f.properties && f.properties.id !== logId);
+                    if (mapInstance && mapInstance.getSource('pest-detections')) {
+                        mapInstance.getSource('pest-detections').setData(pestGeoJson);
+                    }
+                    const countBadge = document.getElementById('mapLivePestCount');
+                    if (countBadge) {
+                        countBadge.innerHTML = `<i class="fas fa-bug" style="color:#c0392b; margin-right:4px;"></i> ${pestGeoJson.features.length} Live Detections Plotted`;
+                    }
+                }
+            } else {
+                alert('Failed to delete log entry.');
+            }
+        } catch(e) {
+            console.error(e);
+            alert('Error deleting log entry: ' + e);
+        }
+    }
+
+    async function deleteAllLogs() {
+        if (!confirm('⚠️ Are you sure you want to delete ALL detection logs and images? This action cannot be undone.')) return;
+        try {
+            const res = await fetch('/api/detection_logs/delete_all', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            if (res.ok) {
+                const tbody = document.getElementById('logsTableBody');
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="empty-row">No detection logs found.</td></tr>';
+                }
+                const countHeader = document.getElementById('logCountHeader');
+                if (countHeader) countHeader.textContent = 'Historical Logs (0)';
+                const delAllBtn = document.getElementById('btnDeleteAllLogs');
+                if (delAllBtn) {
+                    delAllBtn.disabled = true;
+                    delAllBtn.style.opacity = '0.5';
+                    delAllBtn.style.cursor = 'not-allowed';
+                }
+                if (typeof pestGeoJson !== 'undefined') {
+                    pestGeoJson.features = [];
+                    if (mapInstance && mapInstance.getSource('pest-detections')) {
+                        mapInstance.getSource('pest-detections').setData(pestGeoJson);
+                    }
+                    const countBadge = document.getElementById('mapLivePestCount');
+                    if (countBadge) {
+                        countBadge.innerHTML = `<i class="fas fa-bug" style="color:#c0392b; margin-right:4px;"></i> 0 Live Detections Plotted`;
+                    }
+                }
+            } else {
+                alert('Failed to delete all logs.');
+            }
+        } catch(e) {
+            console.error(e);
+            alert('Error deleting all logs: ' + e);
+        }
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
