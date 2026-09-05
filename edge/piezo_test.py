@@ -72,16 +72,16 @@ def run_buzzer_beeps(
         for i in range(1, count + 1):
             sys.stdout.write(f"\r  -> Beep {i}/{count} [BEEP]")
             sys.stdout.flush()
-            buzzer_instance.start(duty_cycle=duty_cycle)
+            buzzer_instance.on()
             time.sleep(on_time)
-            buzzer_instance.stop()
+            buzzer_instance.off()
             sys.stdout.write(f"\r  -> Beep {i}/{count} [....]")
             sys.stdout.flush()
             if i < count:
                 time.sleep(off_time)
         print(f"\n[*] Completed {count} test beeps successfully.")
     finally:
-        buzzer_instance.stop()
+        buzzer_instance.off()
 
 
 def run_buzzer_continuous_on(buzzer_instance: PiezoBuzzer, duration: float = 2.0):
@@ -173,11 +173,11 @@ def run_alarm_loop(buzzer_instance: PiezoBuzzer):
         while True:
             sys.stdout.write(f"\r[*] Alarm Cycle #{cycle}: Pulsing alert sequence... ")
             sys.stdout.flush()
-            # 3 fast bursts
+            # 3 fast bursts of solid DC ON/OFF (works on active buzzers)
             for _ in range(3):
-                buzzer_instance.start(frequency=2800, duty_cycle=0.5)
-                time.sleep(0.12)
-                buzzer_instance.stop()
+                buzzer_instance.on()
+                time.sleep(0.15)
+                buzzer_instance.off()
                 time.sleep(0.08)
             # Brief pause between bursts
             time.sleep(0.4)
@@ -185,7 +185,7 @@ def run_alarm_loop(buzzer_instance: PiezoBuzzer):
     except KeyboardInterrupt:
         print("\n[*] Deterrent alarm stopped by user.")
     finally:
-        buzzer_instance.stop()
+        buzzer_instance.off()
 
 
 # Backward compatibility aliases
