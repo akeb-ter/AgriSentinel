@@ -69,6 +69,14 @@ CAMERA_BACKEND_OVERRIDE = os.getenv("CAMERA_BACKEND", "").lower().strip()  # "op
 auto_buzz = False
 pest_detected = False
 manual_buzz = False
+latest_detection = {
+    "name": "None",
+    "confidence": 0.0,
+    "action": "Standing by for robot detection telemetry...",
+    "signal": "Normal",
+    "detected": False,
+    "timestamp": 0
+}
 
 def buzzer_monitor_loop():
     while True:
@@ -211,39 +219,120 @@ class CameraManager:
                 ts_str = time.strftime("%Y-%m-%d %H:%M:%S")
                 
                 # --- INFERENCE INJECTION ---
-                global pest_detected
+                global pest_detected, latest_detection
                 current_pest = False
+                frame_h, frame_w = frame.shape[:2]
                 
                 if IS_WINDOWS:
-                    # Mock Mode on Windows
-                    if int(time.time()) % 4 == 0:
+                    # Mock Mode on Windows (simulated detection for testing UI)
+                    if int(time.time()) % 5 in [0, 1]:
                         current_pest = True
-                        h, w = frame.shape[:2]
-                        cv2.rectangle(frame, (int(w*0.3), int(h*0.3)), (int(w*0.7), int(h*0.7)), (0, 0, 255), 3)
-                        cv2.putText(frame, "MOCK PEST (Windows)", (int(w*0.3), int(h*0.3)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                        label = "Armyworm"
+                        conf = 0.94
+                        
+                        cx, cy = frame_w // 2, frame_h // 2
+                        bw, bh = int(frame_w * 0.28), int(frame_h * 0.28)
+                        real_x, real_y = cx - bw // 2, cy - bh // 2
+                        
+                        # High-contrast amber/gold bounding box with filled header tag
+                        cv2.rectangle(frame, (real_x, real_y), (real_x + bw, real_y + bh), (0, 215, 255), 3)
+                        tag_text = f"{label}: {conf*100:.0f}%"
+                        (tw, th), _ = cv2.getTextSize(tag_text, cv2.FONT_HERSHEY_SIMPLEX, 0.65, 2)
+                        tag_top = max(0, real_y - th - 10)
+                        cv2.rectangle(frame, (real_x, tag_top), (real_x + tw + 12, real_y), (0, 215, 255), -1)
+                        cv2.putText(frame, tag_text, (real_x + 6, max(th + 2, real_y - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 0), 2, cv2.LINE_AA)
+                        
+                        latest_detection = {
+                            "name": label,
+                            "confidence": conf,
+                            "action": "Immediate treatment recommended (targeted biological control / Bt)",
+                            "signal": "High",
+                            "detected": True,
+                            "timestamp": time.time()
+                        }
                 else:
                     if runner:
                         try:
                             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            features, _ = runner.get_features_from_image(rgb_frame)
+                            features, cropped = runner.get_features_from_image(rgb_frame)
                             res = runner.classify(features)
                             
+                            crop_h, crop_w = cropped.shape[:2]
+                            aspect_model = crop_w / crop_h
+                            aspect_frame = frame_w / frame_h
+
+                            if aspect_frame > aspect_model:
+                                box_h = frame_h
+                                box_w = int(frame_h * aspect_model)
+                                offset_x = (frame_w - box_w) // 2
+                                offset_y = 0
+                            else:
+                                box_w = frame_w
+                                box_h = int(frame_w / aspect_model)
+                                offset_x = 0
+                                offset_y = (frame_h - box_h) // 2
+
+                            scale_x = box_w / crop_w
+                            scale_y = box_h / crop_h
+
                             if "bounding_boxes" in res.get("result", {}):
                                 for bb in res["result"]["bounding_boxes"]:
                                     conf = bb.get('value', 0.0)
                                     if conf > 0.5:
                                         current_pest = True
-                                        x, y, bw, bh = bb['x'], bb['y'], bb['width'], bb['height']
                                         label = bb.get('label', 'unknown')
-                                        cv2.rectangle(frame, (x, y), (x + bw, y + bh), (0, 0, 255), 2)
-                                        cv2.putText(frame, f"{label}: {conf:.2f}", (x, max(15, y - 10)), 
-                                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                                        
+                                        # Transform coordinates from model crop space to full frame
+                                        raw_x = offset_x + bb['x'] * scale_x
+                                        raw_y = offset_y + bb['y'] * scale_y
+                                        raw_w = bb['width'] * scale_x
+                                        raw_h = bb['height'] * scale_y
+                                        
+                                        # Expand FOMO point centroids to visible targets
+                                        min_size = int(min(frame_w, frame_h) * 0.12)
+                                        if raw_w < min_size or raw_h < min_size:
+                                            cx = int(raw_x + raw_w / 2)
+                                            cy = int(raw_y + raw_h / 2)
+                                            real_x = max(0, cx - min_size // 2)
+                                            real_y = max(0, cy - min_size // 2)
+                                            real_w = min(frame_w - real_x, min_size)
+                                            real_h = min(frame_h - real_y, min_size)
+                                        else:
+                                            real_x = max(0, min(frame_w - 1, int(raw_x)))
+                                            real_y = max(0, min(frame_h - 1, int(raw_y)))
+                                            real_w = max(10, min(frame_w - real_x, int(raw_w)))
+                                            real_h = max(10, min(frame_h - real_y, int(raw_h)))
+
+                                        # Draw Bounding Box & High-Contrast Label Tag
+                                        cv2.rectangle(frame, (real_x, real_y), (real_x + real_w, real_y + real_h), (0, 215, 255), 3)
+                                        tag_text = f"{label}: {conf*100:.0f}%"
+                                        (tw, th), _ = cv2.getTextSize(tag_text, cv2.FONT_HERSHEY_SIMPLEX, 0.65, 2)
+                                        tag_top = max(0, real_y - th - 10)
+                                        cv2.rectangle(frame, (real_x, tag_top), (real_x + tw + 12, real_y), (0, 215, 255), -1)
+                                        cv2.putText(frame, tag_text, (real_x + 6, max(th + 2, real_y - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 0, 0), 2, cv2.LINE_AA)
+
+                                        latest_detection = {
+                                            "name": label,
+                                            "confidence": float(conf),
+                                            "action": "Immediate treatment recommended",
+                                            "signal": "High",
+                                            "detected": True,
+                                            "timestamp": time.time()
+                                        }
                             elif "classification" in res.get("result", {}):
                                 for label, conf in res["result"]["classification"].items():
                                     if conf > 0.5:
                                         current_pest = True
-                                        cv2.putText(frame, f"{label}: {conf:.2f}", (10, 60), 
-                                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                                        tag_text = f"{label}: {conf*100:.0f}%"
+                                        cv2.putText(frame, tag_text, (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 215, 255), 2, cv2.LINE_AA)
+                                        latest_detection = {
+                                            "name": label,
+                                            "confidence": float(conf),
+                                            "action": "Inspection advised",
+                                            "signal": "Medium",
+                                            "detected": True,
+                                            "timestamp": time.time()
+                                        }
                         except Exception as e:
                             logger.error(f"Inference error: {e}")
                 
@@ -314,6 +403,22 @@ def manual_buzzer(req: Optional[ManualBuzzRequest] = None):
             manual_buzz = False
         threading.Thread(target=_pulse, daemon=True).start()
     return {"status": "success", "manual_buzz": manual_buzz}
+
+@app.get("/api/detection/status")
+def get_detection_status():
+    global latest_detection, pest_detected
+    is_recent = (time.time() - latest_detection.get("timestamp", 0)) < 3.0
+    return {
+        "pest_detected": pest_detected and is_recent,
+        "latest": latest_detection if is_recent else {
+            "name": "None",
+            "confidence": 0.0,
+            "action": "Standing by for robot detection telemetry...",
+            "signal": "Normal",
+            "detected": False,
+            "timestamp": 0
+        }
+    }
 
 def frame_generator() -> Generator[bytes, None, None]:
     """Generates MJPEG multipart stream chunks."""
