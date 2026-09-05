@@ -19,6 +19,32 @@ import threading
 from typing import Generator, Optional
 from contextlib import asynccontextmanager
 
+
+import platform
+from pathlib import Path
+
+# --- Edge Impulse & Buzzer Integration ---
+try:
+    from edge.drivers.piezo import buzzer
+except ImportError:
+    buzzer = None
+    logger.warning("Buzzer driver not available.")
+
+IS_WINDOWS = platform.system() == 'Windows'
+runner = None
+labels = []
+if not IS_WINDOWS:
+    try:
+        from edge_impulse_linux.image import ImageImpulseRunner
+        model_path = Path(__file__).parent / "models" / "agrisentinel-linux-aarch64-v5-impulse-#1.eim"
+        runner = ImageImpulseRunner(str(model_path))
+        model_info = runner.init()
+        labels = model_info['model_parameters']['labels']
+        logger.info(f"Edge Impulse Runner Initialized with labels: {labels}")
+    except Exception as e:
+        logger.error(f"Failed to initialize Edge Impulse runner: {e}")
+        runner = None
+
 import cv2
 import numpy as np
 from fastapi import FastAPI, Response
@@ -36,6 +62,27 @@ STREAM_HEIGHT = int(os.getenv("STREAM_HEIGHT", "1080"))
 JPEG_QUALITY = int(os.getenv("JPEG_QUALITY", "80"))
 CAMERA_BACKEND_OVERRIDE = os.getenv("CAMERA_BACKEND", "").lower().strip()  # "opencv", "synthetic"
 
+
+
+# Buzzer State
+auto_buzz = False
+pest_detected = False
+
+def buzzer_monitor_loop():
+    while True:
+        if auto_buzz and pest_detected:
+            if buzzer:
+                buzzer.start(duty_cycle=1.0)
+            time.sleep(0.05)
+            if buzzer:
+                buzzer.stop()
+            time.sleep(0.05)
+        else:
+            time.sleep(0.1)
+
+# Start Buzzer Thread
+buzzer_thread = threading.Thread(target=buzzer_monitor_loop, daemon=True)
+buzzer_thread.start()
 
 class CameraManager:
     """Unified camera manager handling OpenCV and Synthetic modes."""
@@ -154,12 +201,54 @@ class CameraManager:
         """Returns the current JPEG frame from the active backend."""
         self.frame_count += 1
 
-        # 1. From OpenCV VideoCapture
+# 1. From OpenCV VideoCapture
         if self.cap and self.cap.isOpened():
             ret, frame = self.cap.read()
             if ret and frame is not None:
                 ts_str = time.strftime("%Y-%m-%d %H:%M:%S")
+                
+                # --- INFERENCE INJECTION ---
+                global pest_detected
+                current_pest = False
+                
+                if IS_WINDOWS:
+                    # Mock Mode on Windows
+                    if int(time.time()) % 4 == 0:
+                        current_pest = True
+                        h, w = frame.shape[:2]
+                        cv2.rectangle(frame, (int(w*0.3), int(h*0.3)), (int(w*0.7), int(h*0.7)), (0, 0, 255), 3)
+                        cv2.putText(frame, "MOCK PEST (Windows)", (int(w*0.3), int(h*0.3)-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                else:
+                    if runner:
+                        try:
+                            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                            features, _ = runner.get_features_from_image(rgb_frame)
+                            res = runner.classify(features)
+                            
+                            if "bounding_boxes" in res.get("result", {}):
+                                for bb in res["result"]["bounding_boxes"]:
+                                    conf = bb.get('value', 0.0)
+                                    if conf > 0.5:
+                                        current_pest = True
+                                        x, y, bw, bh = bb['x'], bb['y'], bb['width'], bb['height']
+                                        label = bb.get('label', 'unknown')
+                                        cv2.rectangle(frame, (x, y), (x + bw, y + bh), (0, 0, 255), 2)
+                                        cv2.putText(frame, f"{label}: {conf:.2f}", (x, max(15, y - 10)), 
+                                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                            elif "classification" in res.get("result", {}):
+                                for label, conf in res["result"]["classification"].items():
+                                    if conf > 0.5:
+                                        current_pest = True
+                                        cv2.putText(frame, f"{label}: {conf:.2f}", (10, 60), 
+                                                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                        except Exception as e:
+                            logger.error(f"Inference error: {e}")
+                
+                pest_detected = current_pest
+                
+                # Draw Timestamp
                 cv2.putText(frame, f"AgriSentinel Live | {ts_str}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+                
                 ret_enc, buffer = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), JPEG_QUALITY])
                 if ret_enc:
                     return buffer.tobytes()
@@ -183,6 +272,23 @@ async def lifespan(app: FastAPI):
     yield
     camera_manager.stop()
 
+
+
+from pydantic import BaseModel
+class AutoBuzzRequest(BaseModel):
+    enabled: bool
+
+@app.post("/api/buzzer/auto")
+def set_auto_buzz(req: AutoBuzzRequest):
+    global auto_buzz
+    auto_buzz = req.enabled
+    return {"auto_buzz": auto_buzz}
+
+@app.post("/api/buzzer/manual")
+def manual_buzzer():
+    if buzzer:
+        threading.Thread(target=buzzer.beep, kwargs={'on_time': 0.1, 'off_time': 0.1, 'n': 5, 'duty_cycle': 1.0}).start()
+    return {"status": "triggered"}
 
 app = FastAPI(
     title="AgriSentinel Camera Test Service",
@@ -488,6 +594,20 @@ def index_page():
                 <a class="btn" href="/api/camera/snapshot" target="_blank">Capture Snapshot</a>
             </div>
         </div>
+    
+        <!-- Inference Controls Card -->
+        <div class="card">
+            <div class="card-header">
+                <span>Inference & Buzzer Controls</span>
+            </div>
+            <div class="controls">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer;">
+                    <input type="checkbox" id="auto-buzz-check" onchange="toggleAutoBuzz(this.checked)" style="width: 18px; height: 18px;">
+                    Auto-Buzz on Detection
+                </label>
+                <button class="btn btn-secondary" onclick="triggerManualBuzzer()">Trigger Manual Buzzer (or press 'B')</button>
+            </div>
+        </div>
     </div>
 
     <div class="footer">
@@ -515,6 +635,25 @@ def index_page():
                 console.error("Failed to fetch diagnostics", e);
             }
         }
+
+        
+        async function toggleAutoBuzz(enabled) {
+            await fetch('/api/buzzer/auto', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: enabled })
+            });
+        }
+        
+        async function triggerManualBuzzer() {
+            await fetch('/api/buzzer/manual', { method: 'POST' });
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 'b' && document.activeElement.tagName !== 'INPUT') {
+                triggerManualBuzzer();
+            }
+        });
 
         setInterval(updateDiagnostics, 1000);
         updateDiagnostics();
