@@ -71,15 +71,7 @@
         .result-box .recommendation { margin-top: 12px; padding-top: 12px; border-top: 1px solid #d4e8cc; font-size: 14px; color: #2a4f32; }
         .result-box .alert-icon { display: none; color: #c0392b; font-size: 28px; margin-right: 10px; }
         .result-box.alert .alert-icon { display: inline-block; }
-        .alert-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 999; animation: fadeOverlay 0.3s; }
-        .alert-overlay.active { display: flex; }
-        @keyframes fadeOverlay { 0% { opacity: 0; } 100% { opacity: 1; } }
-        .alert-modal { background: white; max-width: 500px; width: 90%; border-radius: 40px; padding: 36px 32px 32px; text-align: center; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4); animation: slideUp 0.4s ease; border-top: 8px solid #c0392b; }
-        @keyframes slideUp { 0% { transform: translateY(40px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
-        .alert-modal .alert-emoji { font-size: 72px; margin-bottom: 8px; }
-        .alert-modal h2 { font-size: 28px; font-weight: 700; color: #c0392b; margin-bottom: 6px; }
-        .alert-modal p { font-size: 16px; color: #2a4f32; margin-bottom: 20px; }
-        .alert-modal .btn { font-size: 16px; padding: 12px 36px; }
+
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px 24px; background: #fafff8; padding: 24px 28px; border-radius: 24px; border: 1px solid #e4efe0; margin-bottom: 24px; }
         .form-group { display: flex; flex-direction: column; gap: 4px; }
         .form-group label { font-size: 13px; font-weight: 600; color: #3d5a42; display: flex; align-items: center; gap: 6px; }
@@ -406,16 +398,6 @@
         </div>
     </section>
     
-    <!-- ═══ ALERT OVERLAY ═══ -->
-    <div class="alert-overlay" id="alertOverlay">
-        <div class="alert-modal">
-            <div class="alert-emoji">🚨</div>
-            <h2>PEST ALERT!</h2>
-            <p id="alertMessage"><strong id="alertPestName">Unknown pest</strong> detected!<br>Take immediate action.</p>
-            <p id="alertAction" style="font-size:15px; background:#f4fcf0; padding:10px; border-radius:12px; margin-bottom:16px;"></p>
-            <button class="btn btn-primary" onclick="dismissAlert()"><i class="fas fa-check"></i> Dismiss</button>
-        </div>
-    </div>
 
     <!-- ═══ CRUD MODAL with Image Upload ═══ -->
     <div class="modal-overlay" id="crudModal">
@@ -722,14 +704,11 @@
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 5. SIGNAL: OVERLAY + SOUND
+    // 5. SIGNAL: SOUND NOTIFICATION
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     function triggerSignal(pestName, action) {
         if (alertActive) return;
         alertActive = true;
-        document.getElementById('alertPestName').textContent = pestName;
-        document.getElementById('alertAction').textContent = action;
-        document.getElementById('alertOverlay').classList.add('active');
         try {
             const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
             const osc = audioCtx.createOscillator();
@@ -750,13 +729,15 @@
             }, 300);
         } catch (e) { console.warn('Audio not available'); }
         document.title = '🚨 PEST ALERT! - AgriSentinel';
-        setTimeout(() => { document.title = 'AgriSentinel · Pest AI'; }, 3000);
+        setTimeout(() => { 
+            document.title = 'AgriSentinel · Pest AI';
+            alertActive = false;
+        }, 3000);
     }
 
     function dismissAlert() {
-        document.getElementById('alertOverlay').classList.remove('active');
         alertActive = false;
-        resultBox.classList.remove('alert');
+        if (resultBox) resultBox.classList.remove('alert');
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -765,6 +746,7 @@
     const alertLog = document.getElementById('alertLog');
 
     function addAlertLog(message) {
+        if (!alertLog) return;
         const li = document.createElement('li');
         li.style.padding = '6px 0';
         li.style.borderBottom = '1px solid #eaf3e4';
