@@ -807,6 +807,55 @@
         }
     });
 
+    // Support clicking or tapping on-screen controls
+    const onScreenBindings = [
+        { id: 'key-w', device: 'motor', action: 'forward', isHold: true },
+        { id: 'key-a', device: 'motor', action: 'left', isHold: true },
+        { id: 'key-s', device: 'motor', action: 'backward', isHold: true },
+        { id: 'key-d', device: 'motor', action: 'right', isHold: true },
+        { id: 'key-arrowleft', device: 'servo', action: 'left', isHold: false },
+        { id: 'key-arrowright', device: 'servo', action: 'right', isHold: false },
+        { id: 'key-arrowup', device: 'servo', action: 'center', isHold: false }
+    ];
+
+    onScreenBindings.forEach(binding => {
+        const el = document.getElementById(binding.id);
+        if (!el) return;
+        el.style.cursor = 'pointer';
+        el.style.userSelect = 'none';
+
+        if (binding.isHold) {
+            const startHold = (e) => {
+                e.preventDefault();
+                el.classList.add('pressed');
+                if (controlWs && controlWs.readyState === WebSocket.OPEN) {
+                    controlWs.send(JSON.stringify({ device: binding.device, action: binding.action }));
+                }
+            };
+            const stopHold = (e) => {
+                el.classList.remove('pressed');
+                if (controlWs && controlWs.readyState === WebSocket.OPEN) {
+                    controlWs.send(JSON.stringify({ device: binding.device, action: 'stop' }));
+                }
+            };
+            el.addEventListener('mousedown', startHold);
+            el.addEventListener('mouseup', stopHold);
+            el.addEventListener('mouseleave', stopHold);
+            el.addEventListener('touchstart', startHold);
+            el.addEventListener('touchend', stopHold);
+            el.addEventListener('touchcancel', stopHold);
+        } else {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                el.classList.add('pressed');
+                setTimeout(() => el.classList.remove('pressed'), 150);
+                if (controlWs && controlWs.readyState === WebSocket.OPEN) {
+                    controlWs.send(JSON.stringify({ device: binding.device, action: binding.action }));
+                }
+            });
+        }
+    });
+
     function handleDetection(data) {
         const confidencePercent = (data.confidence * 100).toFixed(0);
 

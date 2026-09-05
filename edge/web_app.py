@@ -482,9 +482,9 @@ async def control_endpoint(websocket: WebSocket):
                         motors.stop()
             elif device == "servo":
                 if action == "left":
-                    servo.set_angle(servo.get_angle() - 5)
-                elif action == "right":
                     servo.set_angle(servo.get_angle() + 5)
+                elif action == "right":
+                    servo.set_angle(servo.get_angle() - 5)
                 elif action == "center":
                     servo.center()
             elif action == "heartbeat":
