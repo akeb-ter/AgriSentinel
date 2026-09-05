@@ -23,16 +23,18 @@ def init_db():
     )
     """)
 
-    # Create detection logs table
+    # Recreate detection logs table with IS_LIVE_LOCATION
+    cursor.execute("DROP TABLE IF EXISTS detection_logs")
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS detection_logs (
+    CREATE TABLE detection_logs (
         ID INTEGER PRIMARY KEY AUTOINCREMENT,
         PEST TEXT NOT NULL,
         CONFIDENCE REAL NOT NULL,
         LOCATION TEXT NOT NULL,
         DATE TEXT NOT NULL,
         TIME TEXT NOT NULL,
-        IMAGE_PATH TEXT NOT NULL
+        IMAGE_PATH TEXT NOT NULL,
+        IS_LIVE_LOCATION BOOLEAN NOT NULL DEFAULT 0
     )
     """)
 
@@ -101,9 +103,14 @@ def get_db_connection():
         LOCATION TEXT NOT NULL,
         DATE TEXT NOT NULL,
         TIME TEXT NOT NULL,
-        IMAGE_PATH TEXT NOT NULL
+        IMAGE_PATH TEXT NOT NULL,
+        IS_LIVE_LOCATION BOOLEAN NOT NULL DEFAULT 0
     )
     """)
+    try:
+        conn.execute("ALTER TABLE detection_logs ADD COLUMN IS_LIVE_LOCATION BOOLEAN NOT NULL DEFAULT 0")
+    except Exception:
+        pass
     conn.commit()
     
     return conn

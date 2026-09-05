@@ -387,8 +387,9 @@ class CameraManager:
                             # 2. Get GPS
                             raw_gps = gps_reader.read_gps_data()
                             is_synth = gps_reader.is_synthetic
-                            lat = raw_gps.get("latitude") if raw_gps.get("gps_fix") else (6.681023 if is_synth else 0.0)
-                            lon = raw_gps.get("longitude") if raw_gps.get("gps_fix") else (124.689331 if is_synth else 0.0)
+                            is_live = bool(raw_gps.get("gps_fix"))
+                            lat = raw_gps.get("latitude") if is_live else (6.681023 if is_synth else 0.0)
+                            lon = raw_gps.get("longitude") if is_live else (124.689331 if is_synth else 0.0)
                             loc_str = f"{lat:.6f}, {lon:.6f}"
                             
                             # 3. Insert into DB
@@ -398,9 +399,9 @@ class CameraManager:
                             
                             conn = get_db_connection()
                             conn.execute("""
-                                INSERT INTO detection_logs (PEST, CONFIDENCE, LOCATION, DATE, TIME, IMAGE_PATH)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            """, (pest_tracker["name"], latest_detection["confidence"], loc_str, date_str, time_str, f"logs/{filename}"))
+                                INSERT INTO detection_logs (PEST, CONFIDENCE, LOCATION, DATE, TIME, IMAGE_PATH, IS_LIVE_LOCATION)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            """, (pest_tracker["name"], latest_detection["confidence"], loc_str, date_str, time_str, f"logs/{filename}", is_live))
                             conn.commit()
                             conn.close()
                             logger.info(f"Logged detection: {pest_tracker['name']} at {loc_str}")
