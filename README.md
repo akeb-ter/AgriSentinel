@@ -110,6 +110,20 @@ You can configure the robot to connect to your target Wi-Fi network (or mobile h
 ./scripts/set_wifi.sh --ssid="OpenNetwork"
 ```
 
+### Controlling the Camera Pan Servo
+You can pan the camera left and right (from -60° to +60°) to scan for pests. The servo driver automatically detaches when idle to prevent buzzing and overheating.
+
+**Option A: Via Web UI (Recommended)**
+1. Navigate to the **Teleoperation** panel on the right side of the Web Dashboard.
+2. Under "Camera Scan", tap or click the **Left** (`<`) and **Right** (`>`) arrow buttons.
+3. The camera will smoothly step 5 degrees in the specified direction per click.
+
+**Option B: Via Terminal Script (Testing & Calibration)**
+To run a full automated hardware calibration sweep (Center → Far Left → Far Right → Smooth Sweep):
+```bash
+python -m edge.drivers.servo
+```
+
 ---
 
 ## 4. Hardware Subsystems & Testing
