@@ -124,6 +124,48 @@ To run a full automated hardware calibration sweep (Center → Far Left → Far 
 python -m edge.drivers.servo
 ```
 
+### Controlling the Motor Driver
+You can manually steer the 4WD chassis from the web interface, or run an automated directional verification sequence on the physical hardware.
+
+**Option A: Via Web UI (Recommended)**
+1. Navigate to the **Teleoperation** panel on the right side of the Web Dashboard.
+2. Under "Movement", use the D-pad arrow buttons (Forward, Reverse, Left, Right) or keyboard arrow keys (`W` `A` `S` `D`).
+3. The robot moves for as long as you hold down the button or key.
+
+**Option B: Via Terminal Script (Testing & Verification)**
+To run a full hardware test sequence (Forward → Reverse → Spin Left → Spin Right → Pivots):
+```bash
+python -m edge.drivers.motors
+```
+
+### Triggering the Piezo Buzzer
+You can manually trigger the acoustic deterrent used to repel detected pests, or run a sweep test script to verify different frequencies.
+
+**Option A: Via Web UI (Recommended)**
+1. Navigate to the **Teleoperation** panel on the right side of the Web Dashboard.
+2. Click and hold the **Test Buzzer** button.
+3. The piezobuzzer will emit the deterrence frequency while active.
+
+**Option B: Via Terminal Script (Testing & Calibration)**
+To run an automated frequency sweep and verify PWM tone generation on the hardware:
+```bash
+python edge/piezo_test.py
+```
+
+### Monitoring GPS Telemetry
+You can view live bot telemetry directly on the dashboard map, or stream raw NMEA diagnostic data from the terminal.
+
+**Option A: Via Web UI (Recommended)**
+1. Navigate to the **Dashboard** tab.
+2. The interactive map will display the live bot location and connection badge.
+3. Historical detection logs are explicitly tagged with `Live` or `Simulated` GPS fix states.
+
+**Option B: Via Terminal Script (Testing & Diagnostics)**
+To run an infinite continuous loop displaying satellite count, coordinates, and raw NMEA sentences (Press `Ctrl + C` to stop):
+```bash
+python edge/gps_test.py --raw
+```
+
 ---
 
 ## 4. Hardware Subsystems & Testing
