@@ -2,1368 +2,1215 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>AgriSentinel · Pest Alert AI</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="/static/css/maplibre-gl.css"/>
-    <script src="/static/js/maplibre-gl.js"></script>
-    <script src="/static/js/pmtiles.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>AgriSentinel · Smart Crop Probe</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
     <style>
+        :root {
+            --primary: #15803d;
+            --primary-light: #22c55e;
+            --primary-dark: #166534;
+            --primary-bg: #f0fdf4;
+            --surface: #ffffff;
+            --surface-subtle: #f8fafc;
+            --border: #e2e8f0;
+            --border-subtle: #edf2f7;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --warning: #f59e0b;
+            --warning-bg: #fffbeb;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --info: #0284c7;
+            --info-bg: #f0f9ff;
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.08);
+            --shadow-lg: 0 12px 28px -6px rgba(15, 23, 42, 0.12);
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #f6f9f2; color: #1f2a1c; line-height: 1.6; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
-        .app-container { max-width: 1400px; width: 100%; background: white; border-radius: 40px; box-shadow: 0 25px 60px -12px rgba(0, 40, 20, 0.25); overflow: hidden; padding: 28px 32px 36px; transition: all 0.2s; position: relative; }
-        .app-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 2px solid #eaf3e4; }
-        .logo-area { display: flex; align-items: center; gap: 14px; }
-        .logo-icon { background: #2b6e3c; color: white; width: 48px; height: 48px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 26px; box-shadow: 0 6px 14px rgba(43, 110, 60, 0.3); }
-        .logo-text h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; color: #1a3a1e; }
-        .logo-text span { font-size: 14px; font-weight: 500; color: #4b7a54; background: #eaf3e4; padding: 2px 14px; border-radius: 30px; margin-left: 8px; }
-        .header-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-        .badge { background: #dff0d8; color: #1f4a2a; padding: 6px 18px; border-radius: 30px; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .badge i { font-size: 14px; color: #2b6e3c; }
-        .pulse-dot { display: inline-block; width: 8px; height: 8px; background: #2b6e3c; border-radius: 50%; animation: pulse 1.2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1.2); } }
-        .user-info { display: flex; align-items: center; gap: 12px; background: #eaf3e4; padding: 8px 16px; border-radius: 30px; }
-        .user-info .avatar { width: 32px; height: 32px; background: #2b6e3c; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-        .user-info .user-details { display: flex; flex-direction: column; }
-        .user-info .user-name { font-size: 14px; font-weight: 600; color: #1f4a2a; line-height: 1.2; }
-        .user-info .user-role { font-size: 12px; color: #4b7a54; line-height: 1.2; }
-        .logout-btn { background: transparent; border: 1px solid #dce8d6; color: #3d5a42; padding: 8px 16px; border-radius: 30px; cursor: pointer; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; transition: 0.2s; text-decoration: none; }
-        .logout-btn:hover { background: #f0f7ec; border-color: #bcd6b0; }
-        .nav-tabs { display: flex; flex-wrap: wrap; gap: 4px; background: #f0f7ec; padding: 6px; border-radius: 18px; margin-bottom: 28px; }
-        .nav-tab { padding: 10px 24px; border-radius: 14px; border: none; background: transparent; font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500; color: #3d5a42; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 10px; }
-        .nav-tab i { font-size: 16px; }
-        .nav-tab:hover { background: rgba(43, 110, 60, 0.07); color: #1a3a1e; }
-        .nav-tab.active { background: white; color: #1f4a2a; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06); }
-        .panel { display: none; animation: fadeUp 0.3s ease; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f1f5f9;
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 16px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1360px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        /* ── Header ── */
+        header.app-header {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 16px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+        }
+
+        .brand-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+            color: white;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 10px rgba(21, 128, 61, 0.3);
+        }
+
+        .brand-titles h1 {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            color: var(--text-main);
+        }
+
+        .brand-titles p {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .selector-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface-subtle);
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            font-size: 13px;
+        }
+
+        .selector-box label {
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .selector-box select, .selector-box input {
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 13px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            background: var(--primary-bg);
+            color: var(--primary-dark);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: pulseRing 1.8s infinite;
+        }
+
+        @keyframes pulseRing {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-main);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            background: var(--surface-subtle);
+            border-color: #cbd5e1;
+        }
+
+        /* ── Navigation Tabs ── */
+        nav.nav-tabs {
+            display: flex;
+            gap: 8px;
+            background: var(--surface);
+            padding: 6px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+
+        .nav-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-tab:hover {
+            color: var(--text-main);
+            background: var(--surface-subtle);
+        }
+
+        .nav-tab.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(21, 128, 61, 0.25);
+        }
+
+        /* ── Panel Management ── */
+        .panel { display: none; }
         .panel.active { display: block; }
-        @keyframes fadeUp { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
-        .panel-title { font-size: 22px; font-weight: 600; margin-bottom: 6px; color: #1a3a1e; }
-        .panel-sub { color: #567a5e; margin-bottom: 24px; font-size: 15px; }
-        .input-zone { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 24px; }
-        .upload-zone, .camera-zone { flex: 1 1 240px; border: 2px dashed #cde0c4; border-radius: 24px; padding: 32px 20px; text-align: center; background: #fafff8; transition: 0.25s; cursor: pointer; position: relative; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .upload-zone:hover, .camera-zone:hover { border-color: #7fa882; background: #f4fcf0; }
-        .upload-zone i, .camera-zone i { font-size: 38px; color: #4b8a58; margin-bottom: 10px; }
-        .upload-zone h4, .camera-zone h4 { font-size: 17px; font-weight: 600; color: #1f3a22; }
-        .upload-zone p, .camera-zone p { color: #6a8a70; font-size: 13px; }
-        .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-        .camera-zone video { width: 100%; max-height: 200px; border-radius: 16px; background: #1a2a1e; margin-top: 8px; display: none; }
-        .camera-zone .camera-controls { display: none; gap: 12px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
-        .camera-zone.active video, .camera-zone.active .camera-controls { display: flex; }
-        .camera-zone.active .camera-placeholder { display: none; }
-        .btn { padding: 10px 24px; border: none; border-radius: 14px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-primary { background: #2b6e3c; color: white; box-shadow: 0 4px 12px rgba(43, 110, 60, 0.25); }
-        .btn-primary:hover { background: #1f562e; transform: translateY(-2px); }
-        .btn-secondary { background: #eaf3e4; color: #1f4a2a; }
-        .btn-secondary:hover { background: #d6e8ce; }
-        .btn-danger { background: #c0392b; color: white; }
-        .btn-danger:hover { background: #a93226; }
-        .btn-warning { background: #e67e22; color: white; }
-        .btn-warning:hover { background: #d35400; }
-        .preview-box { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
-        .preview-box img, .preview-box video { max-width: 260px; border-radius: 18px; border: 2px solid #e4efe0; background: white; }
-        .result-box { flex: 1; min-width: 220px; background: #f4fcf0; border-radius: 18px; padding: 20px 24px; border-left: 6px solid #2b6e3c; transition: 0.3s; }
-        .result-box.alert { border-left-color: #c0392b; background: #fdeaea; animation: flashAlert 0.8s infinite alternate; }
-        @keyframes flashAlert { 0% { background: #fdeaea; } 100% { background: #fcd5d5; } }
-        .result-box .label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #4b7a54; }
-        .result-box .value { font-size: 26px; font-weight: 700; color: #1a3a1e; margin: 4px 0 2px; }
-        .result-box .confidence { font-size: 15px; color: #3d6b46; }
-        .result-box .recommendation { margin-top: 12px; padding-top: 12px; border-top: 1px solid #d4e8cc; font-size: 14px; color: #2a4f32; }
-        .result-box .alert-icon { display: none; color: #c0392b; font-size: 28px; margin-right: 10px; }
-        .result-box.alert .alert-icon { display: inline-block; }
-        .alert-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 999; animation: fadeOverlay 0.3s; }
-        .alert-overlay.active { display: flex; }
-        @keyframes fadeOverlay { 0% { opacity: 0; } 100% { opacity: 1; } }
-        .alert-modal { background: white; max-width: 500px; width: 90%; border-radius: 40px; padding: 36px 32px 32px; text-align: center; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4); animation: slideUp 0.4s ease; border-top: 8px solid #c0392b; }
-        @keyframes slideUp { 0% { transform: translateY(40px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
-        .alert-modal .alert-emoji { font-size: 72px; margin-bottom: 8px; }
-        .alert-modal h2 { font-size: 28px; font-weight: 700; color: #c0392b; margin-bottom: 6px; }
-        .alert-modal p { font-size: 16px; color: #2a4f32; margin-bottom: 20px; }
-        .alert-modal .btn { font-size: 16px; padding: 12px 36px; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px 24px; background: #fafff8; padding: 24px 28px; border-radius: 24px; border: 1px solid #e4efe0; margin-bottom: 24px; }
-        .form-group { display: flex; flex-direction: column; gap: 4px; }
-        .form-group label { font-size: 13px; font-weight: 600; color: #3d5a42; display: flex; align-items: center; gap: 6px; }
-        .form-group label i { color: #4b8a58; }
-        .form-group input, .form-group select { padding: 10px 14px; border: 1.5px solid #dce8d6; border-radius: 14px; font-family: 'Inter', sans-serif; font-size: 15px; background: white; transition: 0.2s; width: 100%; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: #4b8a58; box-shadow: 0 0 0 4px rgba(43, 110, 60, 0.08); }
-        .rec-output { background: #fafff8; border-radius: 24px; padding: 24px 28px; border: 1px solid #e4efe0; margin-top: 16px; }
-        .rec-output h4 { font-size: 18px; font-weight: 600; color: #1a3a1e; margin-bottom: 8px; }
-        .rec-item { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #eaf3e4; }
-        .rec-item:last-child { border-bottom: none; }
-        .rec-item i { width: 32px; color: #2b6e3c; font-size: 18px; }
-        .rec-item .rec-label { font-weight: 500; color: #1f3a22; min-width: 100px; }
-        .rec-item .rec-value { color: #3d6b46; }
-        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin: 16px 0 24px; }
-        .stat-card { background: #fafff8; border: 1px solid #e4efe0; border-radius: 20px; padding: 18px 20px; text-align: center; }
-        .stat-card .stat-number { font-size: 30px; font-weight: 700; color: #1a3a1e; }
-        .stat-card .stat-label { font-size: 13px; color: #567a5e; font-weight: 500; }
-        .stat-card .stat-icon { font-size: 24px; color: #4b8a58; margin-bottom: 4px; }
-        .flex { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
-        .tag { display: inline-block; background: #e4efe0; padding: 2px 14px; border-radius: 30px; font-size: 12px; font-weight: 600; color: #2b6e3c; }
-        .table-wrap { overflow-x: auto; background: #fafff8; border-radius: 24px; border: 1px solid #e4efe0; padding: 16px; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { text-align: left; padding: 12px 10px; background: #eaf3e4; color: #1f3a22; font-weight: 600; }
-        td { padding: 12px 10px; border-bottom: 1px solid #e4efe0; vertical-align: middle; }
-        .pest-img { width: 50px; height: 50px; object-fit: cover; border-radius: 12px; background: #eaf3e4; }
-        .empty-row { text-align: center; color: #6a8a70; padding: 30px 0; }
-        .msg-box { padding: 16px 20px; border-radius: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 14px; font-size: 15px; animation: slideDown 0.4s ease; border-left: 6px solid #2b6e3c; background: #eaf3e4; color: #1f3a22; }
-        .msg-box i { font-size: 24px; }
-        .msg-box.warning { border-left-color: #c0392b; background: #fdeaea; color: #7a1a1a; }
-        .msg-box.warning i { color: #c0392b; }
-        .msg-box.success { border-left-color: #27ae60; background: #eafaf1; color: #1a5a3a; }
-        .msg-box.success i { color: #27ae60; }
-        .msg-box.info { border-left-color: #2980b9; background: #eaf2f8; color: #1a4a6a; }
-        .msg-box.info i { color: #2980b9; }
-        .msg-box .warning-text { font-weight: 700; color: #c0392b; }
-        .msg-box .duplicate-detail { display: block; margin-top: 6px; padding: 8px 14px; background: rgba(192, 57, 43, 0.08); border-radius: 10px; font-size: 14px; }
-        @keyframes slideDown { 0% { opacity: 0; transform: translateY(-20px); } 100% { opacity: 1; transform: translateY(0); } }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 999; }
-        .modal-overlay.active { display: flex; }
-        .modal-box { background: white; max-width: 600px; width: 95%; border-radius: 32px; padding: 32px 30px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3); animation: slideUp 0.3s ease; max-height: 90vh; overflow-y: auto; }
-        .modal-box h2 { font-size: 24px; font-weight: 600; margin-bottom: 16px; color: #1a3a1e; }
-        .modal-box .form-group { margin-bottom: 16px; }
-        .modal-box .form-group label { display: block; font-weight: 600; font-size: 14px; color: #2a4f32; margin-bottom: 4px; }
-        .modal-box .form-group input, .modal-box .form-group textarea { width: 100%; padding: 10px 14px; border: 1.5px solid #dce8d6; border-radius: 14px; font-family: 'Inter', sans-serif; font-size: 15px; }
-        .modal-box .form-group input:focus, .modal-box .form-group textarea:focus { outline: none; border-color: #4b8a58; box-shadow: 0 0 0 4px rgba(43, 110, 60, 0.08); }
-        .modal-box .file-input-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
-        .modal-box .file-input-wrapper input[type="file"] { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
-        .modal-box .file-input-wrapper .file-label { display: block; padding: 10px 14px; border: 1.5px dashed #dce8d6; border-radius: 14px; text-align: center; color: #6a8a70; cursor: pointer; transition: 0.2s; }
-        .modal-box .file-input-wrapper .file-label:hover { border-color: #4b8a58; background: #f4fcf0; }
-        .modal-box .file-input-wrapper .file-label i { margin-right: 8px; }
-        .flex-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap; }
-        .current-image-preview { margin: 8px 0; display: flex; align-items: center; gap: 12px; }
-        .current-image-preview img { width: 60px; height: 60px; object-fit: cover; border-radius: 10px; border: 1px solid #e4efe0; }
-        @media (max-width: 700px) {
-            .app-container { padding: 18px 16px 24px; border-radius: 28px; }
-            .logo-text h1 { font-size: 22px; }
-            .nav-tab { padding: 8px 14px; font-size: 13px; }
-            .nav-tab span { display: none; }
-            .form-grid { grid-template-columns: 1fr; padding: 18px; }
-            .input-zone { flex-direction: column; }
-            .preview-box { flex-direction: column; align-items: center; }
-            .result-box { width: 100%; }
-            .header-actions .badge span { display: none; }
-        }
-        @media (max-width: 480px) {
-            .app-header { flex-direction: column; align-items: flex-start; }
-            .stat-grid { grid-template-columns: 1fr 1fr; }
+
+        /* ── Grid Layouts ── */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
         }
 
-        /* Virtual Keyboard Controls */
-        .kbd-wrapper { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; margin-bottom: 24px; padding: 20px; background: #f4fcf0; border-radius: 20px; border: 1px solid #dce8d6; }
-        .kbd-group { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-        .kbd-group-title { font-size: 13px; font-weight: 600; color: #4b7a54; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .kbd-row { display: flex; gap: 8px; justify-content: center; }
-        .kbd-key { width: 44px; height: 44px; background: white; border: 2px solid #cde0c4; border-bottom-width: 4px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: #3d5a42; transition: all 0.1s; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .kbd-key i { font-size: 18px; }
-        .kbd-key.pressed { transform: translateY(2px); border-bottom-width: 2px; background: #2b6e3c; color: white; border-color: #1f4a2a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        @media (min-width: 992px) {
+            .dashboard-grid {
+                grid-template-columns: 1.15fr 0.85fr;
+            }
+        }
 
-        /* GPS & Location Card */
-        .gps-card { background: #fafff8; border-radius: 24px; border: 1px solid #dce8d6; padding: 20px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-        .gps-info-group { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-        .gps-icon-circle { width: 46px; height: 46px; border-radius: 16px; background: #eaf3e4; color: #2b6e3c; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 4px 10px rgba(43, 110, 60, 0.15); }
-        .gps-data-text h4 { font-size: 16px; font-weight: 700; color: #1a3a1e; display: flex; align-items: center; gap: 8px; }
-        .gps-data-text p { font-size: 13.5px; color: #567a5e; font-family: monospace; font-weight: 600; margin-top: 2px; }
-        .gps-stats-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .gps-stat-pill { background: #eaf3e4; color: #1f4a2a; padding: 6px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
 
-        /* Map Modal */
-        .map-modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 1000; animation: fadeOverlay 0.3s; }
-        .map-modal-overlay.active { display: flex; }
-        .map-modal-box { background: white; max-width: 960px; width: 95%; border-radius: 32px; overflow: hidden; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4); animation: slideUp 0.35s ease; display: flex; flex-direction: column; }
-        .map-modal-header { padding: 18px 24px; background: #f4fcf0; border-bottom: 1px solid #dce8d6; display: flex; justify-content: space-between; align-items: center; }
-        .map-modal-header h3 { font-size: 18px; font-weight: 700; color: #1a3a1e; display: flex; align-items: center; gap: 10px; }
-        .map-view-wrapper { position: relative; width: 100%; height: 500px; background: #e2e8f0; }
-        #mapContainer { width: 100%; height: 100%; }
-        .map-hud { position: absolute; top: 12px; left: 12px; z-index: 500; background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(6px); padding: 8px 16px; border-radius: 14px; font-size: 13px; font-weight: 600; color: #1f3a22; box-shadow: 0 4px 14px rgba(0,0,0,0.12); border: 1px solid #dce8d6; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-        .map-controls-bar { padding: 14px 24px; background: white; border-top: 1px solid #eaf3e4; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fafbfc;
+        }
 
-        /* Pulsing Robot Marker on Map */
-        .robot-pulse-icon { position: relative; width: 24px; height: 24px; }
-        .robot-pulse-center { width: 18px; height: 18px; background: #2b6e3c; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(43, 110, 60, 0.9); position: absolute; top: 3px; left: 3px; }
-        .robot-pulse-ring { width: 36px; height: 36px; border-radius: 50%; border: 3px solid #2b6e3c; position: absolute; top: -6px; left: -6px; animation: markerPulse 1.6s infinite ease-out; }
-        @keyframes markerPulse { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+        .card-title {
+            font-size: 15px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* ── Video Stream ── */
+        .video-box {
+            position: relative;
+            background: #090d16;
+            aspect-ratio: 4/3;
+            width: 100%;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .video-overlay-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .video-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 14px;
+            flex-wrap: wrap;
+        }
+
+        .btn-capture {
+            flex: 1;
+            min-width: 180px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: var(--radius-md);
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(21, 128, 61, 0.3);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn-capture:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(21, 128, 61, 0.4);
+        }
+
+        .btn-capture:active {
+            transform: translateY(1px);
+        }
+
+        /* ── Telemetry & Metrics Row ── */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .metric-card {
+            background: var(--surface-subtle);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .metric-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .metric-status {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            display: inline-block;
+            width: fit-content;
+        }
+
+        .status-optimal { background: #dcfce7; color: #166534; }
+        .status-dry { background: #fef3c7; color: #92400e; }
+        .status-wet { background: #e0f2fe; color: #075985; }
+        .status-severe { background: #fee2e2; color: #991b1b; }
+        .status-moderate { background: #ffedd5; color: #9a3412; }
+        .status-low { background: #fef9c3; color: #854d0e; }
+        .status-healthy { background: #dcfce7; color: #166534; }
+
+        /* ── Uncertainty Alert Banner ── */
+        .uncertainty-banner {
+            display: none;
+            background: var(--warning-bg);
+            border-left: 4px solid var(--warning);
+            padding: 14px 18px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 16px;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .uncertainty-banner.active {
+            display: flex;
+        }
+
+        .uncertainty-banner i {
+            color: var(--warning);
+            font-size: 20px;
+            margin-top: 2px;
+        }
+
+        .uncertainty-text h4 {
+            font-size: 13px;
+            font-weight: 700;
+            color: #92400e;
+        }
+
+        .uncertainty-text p {
+            font-size: 12px;
+            color: #b45309;
+        }
+
+        /* ── Recommendation Card Section ── */
+        .rec-section {
+            background: var(--surface-subtle);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .rec-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .rec-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .rec-highlight {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--primary-dark);
+        }
+
+        .rec-desc {
+            font-size: 13px;
+            color: var(--text-main);
+        }
+
+        .safety-box {
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            font-size: 12px;
+            color: #9f1239;
+        }
+
+        /* ── Table & Logs ── */
+        .table-responsive {
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        table.detections-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            text-align: left;
+        }
+
+        table.detections-table th {
+            padding: 12px 14px;
+            background: var(--surface-subtle);
+            color: var(--text-muted);
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        table.detections-table td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border-subtle);
+            vertical-align: middle;
+        }
+
+        .img-thumb {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .img-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        /* ── Modal & Image Viewer ── */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-card {
+            background: white;
+            border-radius: var(--radius-lg);
+            max-width: 600px;
+            width: 100%;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            animation: modalPop 0.25s ease-out;
+        }
+
+        @keyframes modalPop {
+            0% { transform: scale(0.92); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-img {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            background: #000;
+        }
+
+        /* ── Toast Alert ── */
+        #toastContainer {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10000;
+            max-width: 360px;
+            width: 90%;
+        }
+
+        .toast {
+            background: white;
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+            border-left: 5px solid var(--primary);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: slideInToast 0.3s ease-out;
+        }
+
+        .toast.toast-severe {
+            border-left-color: var(--danger);
+        }
+
+        @keyframes slideInToast {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast i {
+            font-size: 18px;
+            color: var(--primary);
+            margin-top: 2px;
+        }
+
+        .toast.toast-severe i {
+            color: var(--danger);
+        }
+
+        .toast-content h5 {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .toast-content p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
 
-<div class="app-container" id="app">
-
+<div class="container">
     <!-- ═══ HEADER ═══ -->
     <header class="app-header">
-        <div class="logo-area">
-            <div class="logo-icon"><i class="fas fa-bug"></i></div>
-            <div class="logo-text">
-                <h1>AgriSentinel <span>Pest AI</span></h1>
+        <div class="brand-group">
+            <div class="brand-icon"><i class="fas fa-seedling"></i></div>
+            <div class="brand-titles">
+                <h1>AgriSentinel</h1>
+                <p>Smart Crop Probe · AI Pest Detection &amp; Pesticide Advisor</p>
             </div>
         </div>
-        <div class="header-actions">
-            <div class="badge">
-                <i class="fas fa-microchip"></i>
-                <span>AI · Live</span>
-                <span class="pulse-dot" style="margin-left:4px;"></span>
+
+        <div class="header-controls">
+            <!-- Active Crop Selector -->
+            <div class="selector-box">
+                <label for="cropSelector"><i class="fas fa-leaf" style="color:var(--primary);"></i> Crop:</label>
+                <select id="cropSelector" onchange="onCropChange(this.value)">
+                    {% for c in crops %}
+                    <option value="{{ c.key }}" {% if c.key == telemetry.active_crop %}selected{% endif %}>
+                        {{ c.name }}
+                    </option>
+                    {% endfor %}
+                </select>
             </div>
-            <div class="badge" id="controlBadge" style="background:#f4fcf0; color:#567a5e;">
-                <i class="fas fa-gamepad"></i>
-                <span>Controls: <b id="controlStatus">Offline</b></span>
+
+            <!-- Field Plot / Zone Tag -->
+            <div class="selector-box">
+                <label for="plotInput"><i class="fas fa-map-marker-alt" style="color:#ef4444;"></i> Plot:</label>
+                <input id="plotInput" type="text" value="{{ telemetry.farm_area }}" onchange="onPlotChange(this.value)" placeholder="e.g. Plot 1" />
             </div>
-            <div class="user-info">
-                <div class="avatar"><i class="fas fa-user"></i></div>
-                <div class="user-details">
-                    <span class="user-name">{{ user.FIRSTNAME }} {{ user.LASTNAME }}</span>
-                    <span class="user-role">{{ user.USER_TYPE }}</span>
-                </div>
+
+            <!-- Probe Live Status -->
+            <div class="status-pill">
+                <div class="pulse-dot"></div>
+                <span id="connectionStatus">Online</span>
             </div>
-            <a href="/dev_settings" class="logout-btn" style="border-color:#b9dcb2; background:#f4fbf1; color:#23582b; font-weight:600;">
-                <i class="fas fa-tools"></i> Dev Settings
-            </a>
-            <a href="/logout" class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-            <button class="btn btn-secondary" style="padding:8px 18px; font-size:13px;" onclick="resetAll()">
-                <i class="fas fa-undo-alt"></i> Reset
-            </button>
+
+            <!-- Dev Settings & Logout -->
+            <a href="/dev_settings" class="btn-action" title="Diagnostics & Settings"><i class="fas fa-cog"></i> Settings</a>
+            <a href="/logout" class="btn-action" title="Logout"><i class="fas fa-sign-out-alt"></i></a>
         </div>
     </header>
 
-    <!-- ═══ NAV ═══ -->
-    <nav class="nav-tabs" id="navTabs">
-        <button class="nav-tab active" data-panel="panelPest">
-            <i class="fas fa-camera"></i> <span>Pest Detect & Stream</span>
+    <!-- ═══ NAVIGATION TABS ═══ -->
+    <nav class="nav-tabs">
+        <button class="nav-tab active" data-panel="panelLive" onclick="switchTab('panelLive')">
+            <i class="fas fa-video"></i> Live Probe Stream
         </button>
-        <button class="nav-tab" data-panel="panelCrop">
-            <i class="fas fa-seedling"></i> <span>Crop Advisor</span>
+        <button class="nav-tab" data-panel="panelAdvisor" onclick="switchTab('panelAdvisor')">
+            <i class="fas fa-prescription-bottle-alt"></i> Pesticide Advisor
         </button>
-        <button class="nav-tab" data-panel="panelDB">
-            <i class="fas fa-database"></i> <span>Pest Database</span>
+        <button class="nav-tab" data-panel="panelHistory" onclick="switchTab('panelHistory')">
+            <i class="fas fa-history"></i> Inspection History
         </button>
-        <button class="nav-tab" data-panel="panelDashboard">
-            <i class="fas fa-chart-pie"></i> <span>Dashboard</span>
+        <button class="nav-tab" data-panel="panelAnalytics" onclick="switchTab('panelAnalytics')">
+            <i class="fas fa-chart-pie"></i> Farm Analytics
         </button>
     </nav>
 
-    <!-- ═══ PANEL 1: PEST DETECTION ═══ -->
-    <section class="panel active" id="panelPest">
-        <h2 class="panel-title"><i class="fas fa-robot" style="color:#2b6e3c; margin-right:10px;"></i>Live Camera Feed &amp; AI Detection</h2>
-        <p class="panel-sub">Real-time video feed streamed directly from the AgriSentinel robot camera. AI pest detection events from Python will alert here automatically.</p>
-
-        <!-- Live Video Stream -->
-        <div style="background:#0f172a; border-radius:24px; overflow:hidden; margin-bottom:20px; box-shadow:0 10px 25px rgba(0,0,0,0.15);">
-            <div style="padding:10px 18px; background:rgba(30,41,59,0.9); display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
-                <span style="color:#f8fafc; font-weight:600; font-size:13px;"><i class="fas fa-video" style="color:#10b981; margin-right:8px;"></i>Robot Live Stream (/video_feed)</span>
-                <span style="background:rgba(16,185,129,0.2); color:#10b981; padding:2px 10px; border-radius:20px; font-size:11px; font-weight:600;">● STREAMING</span>
-            </div>
-            <div style="width:100%; aspect-ratio:4/3; max-height:460px; background:#000; display:flex; align-items:center; justify-content:center;">
-                <img id="streamVideo" src="/video_feed" alt="Robot Live Camera Stream" style="width:100%; height:100%; object-fit:contain;" />
-            </div>
-        </div>
-
-        <!-- Interactive Control Guide -->
-        <div class="kbd-wrapper">
-            <div class="kbd-group">
-                <div class="kbd-group-title">Motors (Drive)</div>
-                <div class="kbd-row">
-                    <div class="kbd-key" id="key-w">W</div>
+    <!-- ═══ PANEL 1: LIVE PROBE STREAM & MONITORING ═══ -->
+    <main class="panel active" id="panelLive">
+        <div class="dashboard-grid">
+            <!-- Left Column: Camera View -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title"><i class="fas fa-camera" style="color:var(--primary);"></i> Probe Camera Feed</span>
+                    <span id="streamStatusBadge" class="status-pill" style="font-size:11px;">● Streaming</span>
                 </div>
-                <div class="kbd-row">
-                    <div class="kbd-key" id="key-a">A</div>
-                    <div class="kbd-key" id="key-s">S</div>
-                    <div class="kbd-key" id="key-d">D</div>
-                </div>
-            </div>
-            <div class="kbd-group">
-                <div class="kbd-group-title">Camera Servo</div>
-                <div class="kbd-row">
-                    <div class="kbd-key" id="key-arrowup" style="font-size:12px;">R</div>
-                </div>
-                <div class="kbd-row">
-                    <div class="kbd-key" id="key-arrowleft"><i class="fas fa-caret-left"></i></div>
-                    <div class="kbd-key" id="key-arrowdown"><i class="fas fa-caret-down" style="color:#dce8d6;"></i></div>
-                    <div class="kbd-key" id="key-arrowright"><i class="fas fa-caret-right"></i></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- GPS & Location Details Card -->
-        <div class="gps-card">
-            <div class="gps-info-group">
-                <div class="gps-icon-circle"><i class="fas fa-location-dot"></i></div>
-                <div class="gps-data-text">
-                    <h4>Robot Location Telemetry <span id="gpsFixBadge" class="badge" style="display:inline-flex; padding:2px 10px; font-size:11px; background:#dff0d8; color:#1f4a2a;"><span class="pulse-dot" style="margin-right:4px;"></span> Fix Active</span></h4>
-                    <p id="gpsCoordsText"><i class="fas fa-crosshairs" style="color:#2b6e3c; margin-right:4px;"></i> 6.681023° N, 124.689331° E</p>
-                </div>
-            </div>
-            <div class="gps-stats-bar">
-                <div class="gps-stat-pill" title="Connected GPS Satellites">
-                    <i class="fas fa-satellite" style="color:#2b6e3c;"></i>
-                    <span id="gpsSatellites">8 Sats</span>
-                </div>
-                <div class="gps-stat-pill" title="Altitude above sea level">
-                    <i class="fas fa-mountain" style="color:#2b6e3c;"></i>
-                    <span id="gpsAltitude">24.5 m</span>
-                </div>
-                <button class="btn btn-primary" style="padding:8px 18px; font-size:13px;" onclick="openMapModal()">
-                    <i class="fas fa-map-location-dot"></i> View Live Map
-                </button>
-            </div>
-        </div>
-
-        <!-- Detection Status Box -->
-        <div id="previewArea" class="preview-box" style="display:flex; margin-bottom:20px;">
-            <div class="result-box" id="resultBox" style="width:100%;">
-                <div class="label">
-                    <i class="fas fa-stethoscope"></i> Latest AI Detection Status
-                    <span class="alert-icon"><i class="fas fa-exclamation-triangle"></i></span>
-                </div>
-                <div class="value" id="insectName">—</div>
-                <div class="confidence" id="insectConfidence">Confidence: —</div>
-                <div class="recommendation" id="insectAction">
-                    <i class="fas fa-lightbulb" style="color:#f5a623;"></i> Standing by for robot detection telemetry...
-                </div>
-            </div>
-        </div>
-
-        <div style="background:#f4fcf0; border-radius:20px; padding:16px 22px; border:1px solid #dce8d6;">
-            <p style="font-size:14px; color:#2a4f32; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                <i class="fas fa-info-circle" style="color:#2b6e3c; font-size:18px;"></i>
-                <span><strong>Configured Pests ({{ db_pests|length }}):</strong> {{ db_pests | map(attribute='PEST') | join(', ') }}</span>
-                <span class="tag"><i class="fas fa-exclamation-circle" style="color:#c0392b;"></i> Alert triggers for high‑risk pests</span>
-            </p>
-        </div>
-    </section>
-
-    <!-- ═══ PANEL 2: CROP ADVISOR ═══ -->
-    <section class="panel" id="panelCrop">
-        <h2 class="panel-title"><i class="fas fa-hand-holding-seedling" style="color:#2b6e3c; margin-right:10px;"></i>Crop &amp; Fertilizer Advisor</h2>
-        <p class="panel-sub">Enter your soil &amp; climate data to get personalised crop and fertilizer recommendations.</p>
-        <div class="form-grid">
-            <div class="form-group"><label><i class="fas fa-flask"></i> Nitrogen (N) ppm</label><input type="number" id="nInput" value="120" min="0" max="300" step="1" /></div>
-            <div class="form-group"><label><i class="fas fa-flask"></i> Phosphorus (P) ppm</label><input type="number" id="pInput" value="45" min="0" max="200" step="1" /></div>
-            <div class="form-group"><label><i class="fas fa-flask"></i> Potassium (K) ppm</label><input type="number" id="kInput" value="180" min="0" max="400" step="1" /></div>
-            <div class="form-group"><label><i class="fas fa-vial"></i> pH</label><input type="number" id="phInput" value="6.5" min="3.5" max="9.5" step="0.1" /></div>
-            <div class="form-group"><label><i class="fas fa-temperature-high"></i> Temp (°C)</label><input type="number" id="tempInput" value="26" min="-5" max="45" step="0.5" /></div>
-            <div class="form-group"><label><i class="fas fa-tint"></i> Rainfall (mm/year)</label><input type="number" id="rainInput" value="850" min="100" max="3000" step="10" /></div>
-        </div>
-        <div class="flex">
-            <button class="btn btn-primary" onclick="runCropAdvisor()"><i class="fas fa-seedling"></i> Get Recommendations</button>
-            <button class="btn btn-secondary" onclick="resetCropForm()"><i class="fas fa-undo"></i> Reset</button>
-        </div>
-        <div id="cropOutput" class="rec-output" style="display:none;">
-            <h4><i class="fas fa-check-circle" style="color:#2b6e3c;"></i> Recommended Crops</h4>
-            <div id="cropList"></div>
-            <h4 style="margin-top:16px;"><i class="fas fa-tint" style="color:#2b6e3c;"></i> Fertilizer Suggestion</h4>
-            <div id="fertilizerSuggestion"></div>
-        </div>
-    </section>
-
-    <!-- ═══ PANEL 3: PEST DATABASE CRUD ═══ -->
-    <section class="panel" id="panelDB">
-        <h2 class="panel-title"><i class="fas fa-database" style="color:#2b6e3c; margin-right:10px;"></i>Pest Database</h2>
-        <p class="panel-sub">Manage pest records with image upload. Images are stored in static assets. <span style="color:#c0392b; font-weight:600;">Alerts will trigger based on configured species.</span></p>
-
-        <button class="btn btn-primary" style="margin-bottom:16px;" onclick="openModal('add')">
-            <i class="fas fa-plus"></i> Add New Pest
-        </button>
-
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Pest</th>
-                        <th>Description</th>
-                        <th>Suggested Action</th>
-                        <th>Signal Range</th>
-                        <th>Image</th>
-                        <th style="width:140px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if db_pests|length == 0 %}
-                        <tr><td colspan="7" class="empty-row">No pests found. Add one!</td></tr>
-                    {% else %}
-                        {% for p in db_pests %}
-                        <tr>
-                            <td><strong>#{{ p.ID }}</strong></td>
-                            <td><strong>{{ p.PEST }}</strong></td>
-                            <td>{{ p.DESCRIPTION[:50] }}{% if p.DESCRIPTION|length > 50 %}…{% endif %}</td>
-                            <td>{{ p.SUGGESTED_ACTION[:40] }}{% if p.SUGGESTED_ACTION|length > 40 %}…{% endif %}</td>
-                            <td><span class="tag" style="background:#dff0d8;">{{ p.SIGNAL_RANGE }}</span></td>
-                            <td><img src="/static/images/{{ p.IMAGE.split('/')[-1] }}" alt="pest" class="pest-img" onerror="this.src='/static/images/logo.png'"></td>
-                            <td>
-                                <button type="button" class="btn btn-warning" style="padding:6px 12px; font-size:12px;" onclick='editPest({{ p.ID }}, {{ p.PEST | tojson }}, {{ p.DESCRIPTION | tojson }}, {{ p.SUGGESTED_ACTION | tojson }}, {{ p.SIGNAL_RANGE | tojson }}, {{ p.IMAGE | tojson }})'>
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <form method="POST" action="/api/pests/delete" style="display:inline-block;" onsubmit="return confirm('Delete this pest?')">
-                                    <input type="hidden" name="pest_id" value="{{ p.ID }}">
-                                    <button type="submit" name="delete_pest" class="btn btn-danger" style="padding:6px 12px; font-size:12px;"><i class="fas fa-trash"></i></button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
-        <p style="margin-top:12px; font-size:13px; color:#6a8a70;">
-            <i class="fas fa-info-circle"></i> Table: <code>pest</code> (ID, PEST, DESCRIPTION, SUGGESTED_ACTION, SIGNAL_RANGE, IMAGE) &nbsp;|&nbsp; 
-            <i class="fas fa-folder"></i> Images stored in: <code>web/static/images/</code>
-        </p>
-    </section>
-
-    <!-- ═══ PANEL 4: DASHBOARD ═══ -->
-    <section class="panel" id="panelDashboard">
-        <h2 class="panel-title"><i class="fas fa-chart-simple" style="color:#2b6e3c; margin-right:10px;"></i>Farm Dashboard</h2>
-        <p class="panel-sub">AgriSentinel's live insights — simulated farm health &amp; pest alerts.</p>
-        <div class="stat-grid">
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-leaf"></i></div><div class="stat-number" id="dashCrops">8</div><div class="stat-label">Crops Monitored</div></div>
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-heartbeat"></i></div><div class="stat-number" id="dashHealth">94%</div><div class="stat-label">Avg. Plant Health</div></div>
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div><div class="stat-number" id="dashRisks">2</div><div class="stat-label">Active Pest Risks</div></div>
-            <div class="stat-card"><div class="stat-icon"><i class="fas fa-cloud-sun"></i></div><div class="stat-number" id="dashWeather">26°C</div><div class="stat-label">Current Weather</div></div>
-        </div>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-top:8px;">
-            <div class="card" style="background:#fafff8;">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                    <div class="card-icon" style="background:#d4e8cc;"><i class="fas fa-thermometer-half"></i></div>
-                    <h3 style="font-size:16px;">Weather Forecast</h3>
-                </div>
-                <ul style="list-style:none; font-size:14px; color:#2a4f32;">
-                    <li style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eaf3e4;"><span>Today</span> <span><i class="fas fa-sun" style="color:#f5a623;"></i> 26°C · Sunny</span></li>
-                    <li style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid #eaf3e4;"><span>Tomorrow</span> <span><i class="fas fa-cloud-sun" style="color:#8ab87a;"></i> 24°C · Partly cloudy</span></li>
-                    <li style="display:flex; justify-content:space-between; padding:6px 0;"><span>Day 3</span> <span><i class="fas fa-cloud-rain" style="color:#4a8db7;"></i> 21°C · Light rain</span></li>
-                </ul>
-            </div>
-            <div class="card" style="background:#fafff8;">
-                <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                    <div class="card-icon" style="background:#d4e8cc;"><i class="fas fa-bell"></i></div>
-                    <h3 style="font-size:16px;">Recent Alerts</h3>
-                </div>
-                <ul style="list-style:none; font-size:14px; color:#2a4f32;" id="alertLog">
-                    <li style="padding:6px 0; border-bottom:1px solid #eaf3e4;"><i class="fas fa-check-circle" style="color:#27ae60;"></i> System ready</li>
-                </ul>
-            </div>
-        </div>
-        <div style="margin-top:24px; text-align:center; font-size:13px; color:#6a8a70; border-top:1px solid #eaf3e4; padding-top:18px;">
-            <i class="fas fa-sync-alt fa-spin" style="margin-right:6px;"></i> Dashboard updates every 15s · Simulated data
-        </div>
-    </section>
-
-    <!-- ═══ ALERT OVERLAY ═══ -->
-    <div class="alert-overlay" id="alertOverlay">
-        <div class="alert-modal">
-            <div class="alert-emoji">🚨</div>
-            <h2>PEST ALERT!</h2>
-            <p id="alertMessage"><strong id="alertPestName">Unknown pest</strong> detected!<br>Take immediate action.</p>
-            <p id="alertAction" style="font-size:15px; background:#f4fcf0; padding:10px; border-radius:12px; margin-bottom:16px;"></p>
-            <button class="btn btn-primary" onclick="dismissAlert()"><i class="fas fa-check"></i> Dismiss</button>
-        </div>
-    </div>
-
-    <!-- ═══ CRUD MODAL with Image Upload ═══ -->
-    <div class="modal-overlay" id="crudModal">
-        <div class="modal-box">
-            <h2 id="modalTitle">Add New Pest</h2>
-            <form method="POST" action="/api/pests" enctype="multipart/form-data" id="crudForm">
-                <input type="hidden" name="pest_id" id="editId" value="">
-                <input type="hidden" name="existing_image" id="existingImage" value="">
-                
-                <div class="form-group">
-                    <label><i class="fas fa-bug"></i> Pest Name *</label>
-                    <input type="text" name="pest_name" id="pestName" required placeholder="e.g. Fall Armyworm">
-                </div>
-                <div class="form-group">
-                    <label><i class="fas fa-align-left"></i> Description *</label>
-                    <textarea name="description" id="pestDesc" rows="2" required placeholder="Description of the pest..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label><i class="fas fa-tools"></i> Suggested Action *</label>
-                    <textarea name="suggested_action" id="pestAction" rows="2" required placeholder="Recommended action..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label><i class="fas fa-signal"></i> Signal Range *</label>
-                    <input type="text" name="signal_range" id="signalRange" required placeholder="e.g. High / Moderate / Low">
-                </div>
-                <div class="form-group">
-                    <label><i class="fas fa-image"></i> Pest Image</label>
-                    <div class="file-input-wrapper">
-                        <div class="file-label" id="fileLabel">
-                            <i class="fas fa-cloud-upload-alt"></i> Choose image file (JPG, PNG, WEBP, GIF)
+                <div class="card-body">
+                    <div class="video-box">
+                        <img id="liveFeedImg" src="/video_feed" alt="Probe Live Camera Stream" />
+                        <div class="video-overlay-badge" id="autoPauseIndicator" style="display:none;">
+                            <i class="fas fa-pause-circle" style="color:var(--warning);"></i> Auto-Confirming...
                         </div>
-                        <input type="file" name="image_file" id="imageFile" accept="image/*" onchange="updateFileLabel(this)">
                     </div>
-                    <div id="currentImagePreview" class="current-image-preview" style="display:none;">
-                        <span style="font-size:13px; color:#567a5e;">Current image:</span>
-                        <img id="previewCurrentImage" src="" alt="Current">
-                        <span style="font-size:12px; color:#6a8a70;" id="currentImageName"></span>
+                    <div class="video-controls">
+                        <button class="btn-capture" id="btnAnalyze" onclick="triggerAnalyze()">
+                            <i class="fas fa-crosshairs"></i> Capture &amp; Inspect Now
+                        </button>
+                        <button class="btn-action" onclick="refreshStream()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <button class="btn-action" onclick="toggleAudioChime()">
+                            <i id="chimeIcon" class="fas fa-volume-up" style="color:var(--primary);"></i> Chime: <b id="chimeStatusText">On</b>
+                        </button>
                     </div>
                 </div>
-                <div class="flex-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="modalSubmitBtn" name="add_pest"><i class="fas fa-save"></i> Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
+            </div>
 
-    <!-- ═══ MAP MODAL (Offline MapLibre GL JS & PMTiles) ═══ -->
-    <div class="map-modal-overlay" id="mapModal">
-        <div class="map-modal-box">
-            <div class="map-modal-header">
-                <h3><i class="fas fa-map-location-dot" style="color:#2b6e3c;"></i> AgriSentinel Live Field Map <span style="font-size:12px; background:#eaf3e4; color:#2b6e3c; padding:3px 10px; border-radius:12px; font-weight:600; margin-left:6px;"><i class="fas fa-layer-group"></i> Satellite Hybrid Vector</span></h3>
-                <button class="btn btn-secondary" style="padding:6px 14px; font-size:13px;" onclick="closeMapModal()">
-                    <i class="fas fa-times"></i> Close
-                </button>
-            </div>
-            <div class="map-view-wrapper">
-                <div id="mapContainer"></div>
-                <div class="map-hud">
-                    <span><i class="fas fa-robot" style="color:#2b6e3c;"></i> <strong>Pos:</strong> <span id="hudCoords">6.681023, 124.689331</span></span>
-                    <span><i class="fas fa-satellite" style="color:#3b82f6;"></i> <span id="hudSats">8 Sats</span></span>
-                    <span id="hudFixBadge" style="color:#10b981;">● Online Fix</span>
-                </div>
-            </div>
-            <div class="map-controls-bar">
-                <div style="font-size:12.5px; color:#567a5e; display:flex; align-items:center; gap:8px;">
-                    <i class="fas fa-cube" style="color:#2b6e3c;"></i>
-                    <span>Offline PMTiles vector roads + satellite tiles · Right-drag or Ctrl-drag to pitch/rotate 3D</span>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    <button class="btn btn-secondary" style="padding:7px 14px; font-size:12.5px;" onclick="reset3DView()">
-                        <i class="fas fa-compass"></i> Reset 3D
-                    </button>
-                    <button class="btn btn-secondary" style="padding:7px 14px; font-size:12.5px;" onclick="clearMapTrail()">
-                        <i class="fas fa-eraser"></i> Clear Trail
-                    </button>
-                    <button class="btn btn-primary" style="padding:7px 16px; font-size:12.5px;" onclick="recenterMap()">
-                        <i class="fas fa-crosshairs"></i> Center Robot
-                    </button>
+            <!-- Right Column: Real-Time Intelligence & Recommendations -->
+            <div style="display:flex; flex-direction:column; gap:18px;">
+                <!-- Live Telemetry Metrics Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title"><i class="fas fa-microchip" style="color:var(--info);"></i> Real-Time Probe Metrics</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-grid">
+                            <!-- Soil Moisture Metric -->
+                            <div class="metric-card">
+                                <span class="metric-label"><i class="fas fa-tint" style="color:var(--info);"></i> Soil Moisture</span>
+                                <span class="metric-value" id="dispSoilPercent">{{ telemetry.soil_moisture_percent }}%</span>
+                                <span class="metric-status status-optimal" id="dispSoilStatus">{{ telemetry.soil_status }}</span>
+                            </div>
+
+                            <!-- Pest Count Metric -->
+                            <div class="metric-card">
+                                <span class="metric-label"><i class="fas fa-bug" style="color:var(--danger);"></i> Detected Pests</span>
+                                <span class="metric-value" id="dispPestCount">{{ telemetry.latest_pest_count }}</span>
+                                <span class="metric-status status-low" id="dispInfestation">{{ telemetry.infestation_level }}</span>
+                            </div>
+
+                            <!-- Integrated Plant Health -->
+                            <div class="metric-card">
+                                <span class="metric-label"><i class="fas fa-heartbeat" style="color:var(--primary);"></i> Plant Health</span>
+                                <span class="metric-value" style="font-size:16px;" id="dispPlantHealth">{{ telemetry.plant_health_status }}</span>
+                                <span class="metric-status status-healthy" id="dispPestName">{{ telemetry.latest_pest }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Uncertainty Warning Banner -->
+                        <div class="uncertainty-banner" id="uncertaintyBanner">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <div class="uncertainty-text">
+                                <h4>Uncertain AI Detection (Caution Advised)</h4>
+                                <p id="uncertaintyMessage">Model confidence is borderline. Please visually inspect the plant foliage before spraying.</p>
+                            </div>
+                        </div>
+
+                        <!-- Recommended Pesticide & Safety Guidance -->
+                        <div class="rec-section" id="recSection">
+                            <div class="rec-row">
+                                <span class="rec-title">Target Pest &amp; Insecticide</span>
+                                <span class="rec-highlight" id="recPesticide">{{ latest_recommendation.recommended_pesticide }}</span>
+                            </div>
+                            <div class="rec-row">
+                                <span class="rec-title">Application Rate &amp; Pre-Harvest Interval (PHI)</span>
+                                <span class="rec-desc" id="recDosage">{{ latest_recommendation.dosage_instruction or 'Awaiting confirmed detection.' }}</span>
+                            </div>
+                            <div class="rec-row">
+                                <span class="rec-title">Bio-Control / Organic Alternative</span>
+                                <span class="rec-desc" style="color:var(--primary-dark); font-weight:600;" id="recOrganic">{{ latest_recommendation.organic_alternative or 'Neem oil or biological control' }}</span>
+                            </div>
+                            <div class="safety-box">
+                                <strong><i class="fas fa-shield-alt"></i> Safety Precautions &amp; PPE:</strong>
+                                <p id="recSafety" style="margin-top:4px;">{{ latest_recommendation.safety_precautions }}</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
+    <!-- ═══ PANEL 2: PESTICIDE ADVISOR KNOWLEDGE BASE ═══ -->
+    <section class="panel" id="panelAdvisor">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="fas fa-book-open" style="color:var(--primary);"></i> Multi-Crop Agricultural Knowledge Base</span>
+            </div>
+            <div class="card-body">
+                <div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:20px;">
+                    <div class="selector-box" style="flex:1; min-width:200px;">
+                        <label>Select Crop:</label>
+                        <select id="advisorCropSelect" onchange="loadAdvisorPests()">
+                            {% for c in crops %}
+                            <option value="{{ c.key }}">{{ c.name }} ({{ c.scientific_name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="selector-box" style="flex:1; min-width:200px;">
+                        <label>Target Pest:</label>
+                        <select id="advisorPestSelect" onchange="renderAdvisorDetails()">
+                            <!-- Populated dynamically via JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <div id="advisorDetailsCard" class="rec-section" style="background:#fff; border:1px solid var(--border);">
+                    <div style="text-align:center; padding:30px; color:var(--text-muted);">
+                        Select a crop and pest above to view detailed chemical, organic, and safety recommendations.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ PANEL 3: INSPECTION HISTORY & SNAPSHOT GALLERY ═══ -->
+    <section class="panel" id="panelHistory">
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title"><i class="fas fa-images" style="color:var(--primary);"></i> Historical Inspection Records</span>
+                <button class="btn-action" onclick="loadDetectionsTable()"><i class="fas fa-sync-alt"></i> Reload</button>
+            </div>
+            <div class="card-body" style="padding:0;">
+                <div class="table-responsive">
+                    <table class="detections-table">
+                        <thead>
+                            <tr>
+                                <th>Snapshot</th>
+                                <th>Date &amp; Time</th>
+                                <th>Crop &amp; Plot</th>
+                                <th>Pest</th>
+                                <th>Count</th>
+                                <th>Infestation</th>
+                                <th>Soil Moisture</th>
+                                <th>Plant Health</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detectionsTableBody">
+                            {% for d in detections %}
+                            <tr>
+                                <td>
+                                    {% if d.image_path %}
+                                    <img src="{{ d.image_path }}" class="img-thumb" onclick="openImageModal('{{ d.image_path }}', '{{ d.detected_pest }}')" alt="Detection thumbnail" />
+                                    {% else %}
+                                    <div style="width:48px; height:48px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#94a3b8;"><i class="fas fa-camera"></i></div>
+                                    {% endif %}
+                                </td>
+                                <td>{{ d.timestamp[:19].replace('T', ' ') }}</td>
+                                <td><b>{{ d.crop_type.capitalize() }}</b><br/><small style="color:var(--text-muted);">{{ d.farm_area }}</small></td>
+                                <td><b>{{ d.detected_pest }}</b></td>
+                                <td><span style="font-weight:700; font-size:15px;">{{ d.pest_count }}</span></td>
+                                <td>
+                                    <span class="metric-status status-{{ d.infestation_level.lower() }}">
+                                        {{ d.infestation_level }}
+                                    </span>
+                                </td>
+                                <td>{{ d.soil_moisture_percent }}% ({{ d.soil_status }})</td>
+                                <td>{{ d.plant_health_status }}</td>
+                                <td>
+                                    {% if d.status == 'CONFIRMED' %}
+                                    <span style="color:var(--primary); font-weight:700;">Confirmed</span>
+                                    {% elif d.status == 'UNCERTAIN' %}
+                                    <span style="color:var(--warning); font-weight:700;">Uncertain</span>
+                                    {% else %}
+                                    <span style="color:var(--text-muted);">Pest-Free</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn-action" style="color:var(--danger); border-color:#fee2e2;" onclick="deleteDetectionRecord({{ d.id }})">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="10" style="text-align:center; padding:30px; color:var(--text-muted);">
+                                    No inspection records found. Click "Capture &amp; Inspect Now" to create your first inspection.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══ PANEL 4: FARM ANALYTICS & STATS ═══ -->
+    <section class="panel" id="panelAnalytics">
+        <div class="metrics-grid">
+            <div class="card" style="padding:20px;">
+                <span class="metric-label"><i class="fas fa-clipboard-check"></i> Total Inspections</span>
+                <span class="metric-value" id="statTotal">{{ stats.total_inspections }}</span>
+            </div>
+            <div class="card" style="padding:20px;">
+                <span class="metric-label"><i class="fas fa-exclamation-circle" style="color:var(--danger);"></i> Severe Infestations</span>
+                <span class="metric-value" style="color:var(--danger);" id="statSevere">{{ stats.severe_alerts }}</span>
+            </div>
+            <div class="card" style="padding:20px;">
+                <span class="metric-label"><i class="fas fa-tint" style="color:var(--info);"></i> Avg Soil Moisture</span>
+                <span class="metric-value" id="statAvgMoisture">{{ stats.avg_soil_moisture }}%</span>
+            </div>
+        </div>
+    </section>
 </div>
 
+<!-- ═══ MODAL FOR HIGH-RES SNAPSHOT INSPECTION ═══ -->
+<div class="modal-overlay" id="imgModal" onclick="closeImageModal()">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <img id="modalImgTag" class="modal-img" src="" alt="Snapshot Full View" />
+        <div style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h4 id="modalPestName" style="font-size:16px; font-weight:700;">Annotated Detection</h4>
+                <p style="font-size:12px; color:var(--text-muted);">High-resolution crop canopy image with bounding boxes</p>
+            </div>
+            <button class="btn-action" onclick="closeImageModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ TOAST CONTAINER ═══ -->
+<div id="toastContainer"></div>
+
 <script>
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 1. TAB NAVIGATION & SAFETY
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const tabs = document.querySelectorAll('.nav-tab');
-    const panels = {
-        panelPest: document.getElementById('panelPest'),
-        panelCrop: document.getElementById('panelCrop'),
-        panelDB: document.getElementById('panelDB'),
-        panelDashboard: document.getElementById('panelDashboard'),
-    };
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            Object.keys(panels).forEach(key => {
-                if (panels[key]) {
-                    panels[key].classList.toggle('active', key === tab.dataset.panel);
-                }
-            });
-            
-            // Safety: Auto-stop motors if navigating away from Pest Detect tab
-            if (tab.dataset.panel !== 'panelPest') {
-                if (typeof controlWs !== 'undefined' && controlWs && controlWs.readyState === WebSocket.OPEN) {
-                    controlWs.send(JSON.stringify({ device: 'motor', action: 'stop' }));
-                }
-            }
-        });
-    });
-
-    // Safety: Auto-stop motors if browser tab is hidden (user switches browser tabs or minimizes)
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            if (typeof controlWs !== 'undefined' && controlWs && controlWs.readyState === WebSocket.OPEN) {
-                controlWs.send(JSON.stringify({ device: 'motor', action: 'stop' }));
-            }
-        }
-    });
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 2. PEST DATABASE FROM SERVER
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const pestDB = {{ db_pests | tojson | safe }};
-    const targetPests = {{ db_pests | map(attribute="PEST") | list | tojson | safe }};
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 3. WEBSOCKET REALTIME ALERTS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const insectName = document.getElementById('insectName');
-    const insectConfidence = document.getElementById('insectConfidence');
-    const insectAction = document.getElementById('insectAction');
-    const resultBox = document.getElementById('resultBox');
-    let alertActive = false;
-
-    // Connect to FastAPI WebSocket with auto-reconnect
+    // --- Application State ---
+    let audioChimeEnabled = true;
     let ws = null;
+    const cropsCatalog = {{ crops | tojson }};
+
+    // --- Tab Switching ---
+    function switchTab(panelId) {
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+
+        const targetPanel = document.getElementById(panelId);
+        if (targetPanel) targetPanel.classList.add('active');
+
+        const activeBtn = document.querySelector(`.nav-tab[data-panel="${panelId}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+
+        if (panelId === 'panelAdvisor') {
+            loadAdvisorPests();
+        }
+    }
+
+    // --- Active Crop & Plot Updates ---
+    async function onCropChange(cropKey) {
+        try {
+            const res = await fetch('/api/crop/select', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ crop: cropKey })
+            });
+            if (res.ok) {
+                showToast('Crop Updated', `Monitoring set to ${cropKey.toUpperCase()}`, false);
+            }
+        } catch (e) {
+            console.error('Failed to change crop:', e);
+        }
+    }
+
+    async function onPlotChange(plotName) {
+        try {
+            await fetch('/api/plot/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ farm_area: plotName })
+            });
+            showToast('Plot Saved', `Active area set to ${plotName}`, false);
+        } catch (e) {
+            console.error('Failed to update plot:', e);
+        }
+    }
+
+    // --- Manual Analyze Trigger ---
+    async function triggerAnalyze() {
+        const btn = document.getElementById('btnAnalyze');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+
+        try {
+            const res = await fetch('/api/analyze', { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                updateUIWithRecord(data.record);
+                showToast('Inspection Complete', `${data.record.detected_pest} (${data.record.pest_count} found)`, data.record.infestation_level === 'Severe');
+                playAlertChime();
+            }
+        } catch (e) {
+            console.error('Analysis trigger failed:', e);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-crosshairs"></i> Capture &amp; Inspect Now';
+        }
+    }
+
+    function refreshStream() {
+        const img = document.getElementById('liveFeedImg');
+        img.src = '/video_feed?t=' + new Date().getTime();
+    }
+
+    // --- Web Audio Chime Synthesizer ---
+    function playAlertChime() {
+        if (!audioChimeEnabled) return;
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            const ctx = new AudioCtx();
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+            osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+
+            gain.gain.setValueAtTime(0.18, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.35);
+        } catch (e) {
+            console.debug('Audio chime error:', e);
+        }
+    }
+
+    function toggleAudioChime() {
+        audioChimeEnabled = !audioChimeEnabled;
+        document.getElementById('chimeStatusText').textContent = audioChimeEnabled ? 'On' : 'Off';
+        document.getElementById('chimeIcon').className = audioChimeEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+    }
+
+    // --- Real-time Updates via WebSockets ---
     function connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws/alerts`;
+
         ws = new WebSocket(wsUrl);
 
-        ws.onopen = () => console.log('✅ Connected to AgriSentinel alert stream.');
-        ws.onmessage = function(event) {
+        ws.onopen = () => {
+            document.getElementById('connectionStatus').textContent = 'Online';
+        };
+
+        ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                if (data.type === 'PEST_DETECTED') {
-                    handleDetection(data);
-                } else if (data.type === 'GPS_TELEMETRY') {
-                    handleGpsTelemetry(data);
+                if (data.type === 'PEST_DETECTION_ALERT' && data.record) {
+                    updateUIWithRecord(data.record);
+                    const isSevere = data.record.infestation_level === 'Severe';
+                    showToast('Pest Alert', data.summary, isSevere);
+                    playAlertChime();
+                } else if (data.type === 'HANDSHAKE' && data.telemetry) {
+                    updateTelemetryUI(data.telemetry);
                 }
             } catch (e) {
-                console.error('Error parsing WebSocket event:', e);
+                console.error('WS parse error:', e);
             }
         };
+
         ws.onclose = () => {
-            console.warn('⚠️ WebSocket disconnected. Reconnecting in 3 seconds...');
+            document.getElementById('connectionStatus').textContent = 'Reconnecting...';
             setTimeout(connectWebSocket, 3000);
         };
-        ws.onerror = (err) => console.error('WebSocket error:', err);
     }
-    connectWebSocket();
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 4. WEBSOCKET REALTIME CONTROL
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    let controlWs = null;
-    let heartbeatInterval = null;
-    const controlStatus = document.getElementById('controlStatus');
-    const controlBadge = document.getElementById('controlBadge');
+    function updateTelemetryUI(tel) {
+        document.getElementById('dispSoilPercent').textContent = tel.soil_moisture_percent + '%';
+        document.getElementById('dispSoilStatus').textContent = tel.soil_status;
+        document.getElementById('dispSoilStatus').className = 'metric-status status-' + tel.soil_status.toLowerCase();
 
-    function connectControlWebSocket() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/control`;
-        controlWs = new WebSocket(wsUrl);
+        document.getElementById('dispPestCount').textContent = tel.latest_pest_count;
+        document.getElementById('dispInfestation').textContent = tel.infestation_level;
+        document.getElementById('dispInfestation').className = 'metric-status status-' + tel.infestation_level.toLowerCase();
 
-        controlWs.onopen = () => {
-            console.log('🎮 Connected to AgriSentinel control stream.');
-            if (controlStatus) {
-                controlStatus.textContent = 'Active';
-                controlBadge.style.background = '#dff0d8';
-                controlBadge.style.color = '#1f4a2a';
-            }
-            // Start heartbeat
-            heartbeatInterval = setInterval(() => {
-                if (controlWs.readyState === WebSocket.OPEN) {
-                    controlWs.send(JSON.stringify({ action: 'heartbeat' }));
-                }
-            }, 200); // 200ms heartbeat
-        };
-
-        controlWs.onclose = () => {
-            console.warn('⚠️ Control WebSocket disconnected.');
-            if (controlStatus) {
-                controlStatus.textContent = 'Offline';
-                controlBadge.style.background = '#fdeaea';
-                controlBadge.style.color = '#c0392b';
-            }
-            clearInterval(heartbeatInterval);
-            setTimeout(connectControlWebSocket, 3000);
-        };
-        
-        controlWs.onerror = (err) => console.error('Control WebSocket error:', err);
+        document.getElementById('dispPlantHealth').textContent = tel.plant_health_status;
+        document.getElementById('dispPestName').textContent = tel.latest_pest;
     }
-    connectControlWebSocket();
 
-    // Keyboard event listeners for controls
-    const activeKeys = new Set();
-    
-    document.addEventListener('keydown', (event) => {
-        // Ignore if typing in input fields
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-        
-        const key = event.key;
-        if (activeKeys.has(key)) return; // Prevent auto-repeat triggers
-        
-        let handled = false;
-        const lowerKey = key.toLowerCase();
-        if (controlWs && controlWs.readyState === WebSocket.OPEN) {
-            switch(lowerKey) {
-                case 'w': controlWs.send(JSON.stringify({ device: 'motor', action: 'forward' })); handled = true; break;
-                case 'a': controlWs.send(JSON.stringify({ device: 'motor', action: 'left' })); handled = true; break;
-                case 's': controlWs.send(JSON.stringify({ device: 'motor', action: 'backward' })); handled = true; break;
-                case 'd': controlWs.send(JSON.stringify({ device: 'motor', action: 'right' })); handled = true; break;
-                case 'arrowleft': controlWs.send(JSON.stringify({ device: 'servo', action: 'left' })); handled = true; break;
-                case 'arrowright': controlWs.send(JSON.stringify({ device: 'servo', action: 'right' })); handled = true; break;
-                case 'arrowup': 
-                case 'r': controlWs.send(JSON.stringify({ device: 'servo', action: 'center' })); handled = true; break;
-            }
-        }
-        
-        if (handled) {
-            activeKeys.add(key);
-            // Visual feedback
-            const keyEl = document.getElementById('key-' + lowerKey);
-            if (keyEl) keyEl.classList.add('pressed');
-            // If 'r' is pressed, also highlight arrowup visually (since R is on the up arrow spot)
-            if (lowerKey === 'r') {
-                const rEl = document.getElementById('key-arrowup');
-                if (rEl) rEl.classList.add('pressed');
-            }
-            
-            if(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) {
-                event.preventDefault(); // Prevent page scrolling
-            }
-        }
-    });
+    function updateUIWithRecord(rec) {
+        document.getElementById('dispSoilPercent').textContent = rec.soil_moisture_percent + '%';
+        document.getElementById('dispSoilStatus').textContent = rec.soil_status;
+        document.getElementById('dispSoilStatus').className = 'metric-status status-' + rec.soil_status.toLowerCase();
 
-    document.addEventListener('keyup', (event) => {
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
-        
-        const key = event.key;
-        if (activeKeys.has(key)) {
-            activeKeys.delete(key);
-            
-            // Remove visual feedback
-            const lowerKey = key.toLowerCase();
-            const keyEl = document.getElementById('key-' + lowerKey);
-            if (keyEl) keyEl.classList.remove('pressed');
-            if (lowerKey === 'r') {
-                const rEl = document.getElementById('key-arrowup');
-                if (rEl) rEl.classList.remove('pressed');
-            }
-            
-            // Send stop command for motor keys
-            if (['w', 'a', 's', 'd'].includes(lowerKey)) {
-                if (controlWs && controlWs.readyState === WebSocket.OPEN) {
-                    controlWs.send(JSON.stringify({ device: 'motor', action: 'stop' }));
-                }
-            }
-        }
-    });
+        document.getElementById('dispPestCount').textContent = rec.pest_count;
+        document.getElementById('dispInfestation').textContent = rec.infestation_level;
+        document.getElementById('dispInfestation').className = 'metric-status status-' + rec.infestation_level.toLowerCase();
 
-    function handleDetection(data) {
-        const confidencePercent = (data.confidence * 100).toFixed(0);
+        document.getElementById('dispPlantHealth').textContent = rec.plant_health_status;
+        document.getElementById('dispPestName').textContent = rec.detected_pest;
 
-        if (insectName) insectName.textContent = data.name;
-        if (insectConfidence) {
-            insectConfidence.textContent = `Confidence: ${confidencePercent}%`;
-            if (data.confidence > 0.85) insectConfidence.style.color = '#1f8b4c';
-            else if (data.confidence > 0.70) insectConfidence.style.color = '#e67e22';
-            else insectConfidence.style.color = '#c0392b';
-        }
-        if (insectAction) {
-            insectAction.innerHTML = `<i class="fas fa-lightbulb" style="color:#f5a623;"></i> ${data.action}`;
-        }
+        // Recommendations
+        document.getElementById('recPesticide').textContent = rec.recommended_pesticide || 'No pesticide needed.';
+        document.getElementById('recDosage').textContent = rec.dosage_instruction || 'Maintain regular crop scouting.';
+        document.getElementById('recOrganic').textContent = rec.organic_alternative || 'Neem oil or biological control';
+        document.getElementById('recSafety').textContent = rec.safety_precautions || 'Follow standard field PPE.';
 
-        const isHighRisk = data.signal && data.signal.toLowerCase().includes('high');
-        
-        if (isHighRisk && data.confidence > 0.75) {
-            if (resultBox) resultBox.classList.add('alert');
-            triggerSignal(data.name, data.action);
-            addAlertLog(`🚨 ${data.name} detected! (${confidencePercent}%)`);
+        // Uncertainty banner
+        const banner = document.getElementById('uncertaintyBanner');
+        if (rec.status === 'UNCERTAIN') {
+            banner.classList.add('active');
+            document.getElementById('uncertaintyMessage').textContent =
+                `Detection confidence is borderline (${Math.round(rec.confidence * 100)}%). Please verify pest presence visually before spraying.`;
         } else {
-            if (resultBox) resultBox.classList.remove('alert');
-            addAlertLog(`✅ ${data.name} identified (${confidencePercent}%) — Signal: ${data.signal || 'Unknown'}`);
+            banner.classList.remove('active');
         }
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 5. SIGNAL: OVERLAY + SOUND
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    function triggerSignal(pestName, action) {
-        if (alertActive) return;
-        alertActive = true;
-        document.getElementById('alertPestName').textContent = pestName;
-        document.getElementById('alertAction').textContent = action;
-        document.getElementById('alertOverlay').classList.add('active');
+    // --- Toast Notifications ---
+    function showToast(title, message, isSevere = false) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${isSevere ? 'toast-severe' : ''}`;
+        toast.innerHTML = `
+            <i class="fas ${isSevere ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
+            <div class="toast-content">
+                <h5>${title}</h5>
+                <p>${message}</p>
+            </div>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 5000);
+    }
+
+    // --- Periodic Status Polling ---
+    async function pollStatus() {
         try {
-            const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.frequency.value = 800; osc.type = 'square';
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-            osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.6);
-            setTimeout(() => {
-                const osc2 = audioCtx.createOscillator();
-                const gain2 = audioCtx.createGain();
-                osc2.connect(gain2); gain2.connect(audioCtx.destination);
-                osc2.frequency.value = 1000; osc2.type = 'square';
-                gain2.gain.setValueAtTime(0.25, audioCtx.currentTime);
-                gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-                osc2.start(audioCtx.currentTime); osc2.stop(audioCtx.currentTime + 0.5);
-            }, 300);
-        } catch (e) { console.warn('Audio not available'); }
-        document.title = '🚨 PEST ALERT! - AgriSentinel';
-        setTimeout(() => { document.title = 'AgriSentinel · Pest AI'; }, 3000);
-    }
-
-    function dismissAlert() {
-        document.getElementById('alertOverlay').classList.remove('active');
-        alertActive = false;
-        resultBox.classList.remove('alert');
-    }
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 6. DASHBOARD LOG & STATS
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const alertLog = document.getElementById('alertLog');
-
-    function addAlertLog(message) {
-        const li = document.createElement('li');
-        li.style.padding = '6px 0';
-        li.style.borderBottom = '1px solid #eaf3e4';
-        li.innerHTML = message;
-        alertLog.prepend(li);
-        while (alertLog.children.length > 5) alertLog.removeChild(alertLog.lastChild);
-    }
-
-    function updateDashboard() {
-        document.getElementById('dashHealth').textContent = (85 + Math.floor(Math.random() * 12)) + '%';
-        document.getElementById('dashRisks').textContent = Math.random() > 0.5 ? 2 : 3;
-        document.getElementById('dashWeather').textContent = (22 + Math.floor(Math.random() * 8)) + '°C';
-    }
-    setInterval(updateDashboard, 15000);
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 7. CROP ADVISOR
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    function getCropRecommendation(N, P, K, pH, temp, rain) {
-        const baseCrops = [
-            { name: 'Tomato', minN: 80, maxN: 200, minP: 30, maxP: 80, minK: 150, maxK: 300, pHmin: 6.0, pHmax: 7.0, tempMin: 18, tempMax: 30, rainMin: 400, rainMax: 1200 },
-            { name: 'Potato', minN: 100, maxN: 220, minP: 40, maxP: 90, minK: 160, maxK: 320, pHmin: 5.5, pHmax: 6.8, tempMin: 15, tempMax: 28, rainMin: 500, rainMax: 1400 },
-            { name: 'Corn', minN: 120, maxN: 250, minP: 35, maxP: 75, minK: 150, maxK: 280, pHmin: 5.8, pHmax: 7.2, tempMin: 20, tempMax: 35, rainMin: 450, rainMax: 1300 },
-            { name: 'Wheat', minN: 80, maxN: 180, minP: 20, maxP: 60, minK: 100, maxK: 220, pHmin: 6.0, pHmax: 7.5, tempMin: 12, tempMax: 28, rainMin: 350, rainMax: 1000 },
-            { name: 'Soybean', minN: 60, maxN: 150, minP: 25, maxP: 65, minK: 130, maxK: 250, pHmin: 6.0, pHmax: 7.0, tempMin: 18, tempMax: 32, rainMin: 500, rainMax: 1400 },
-            { name: 'Rice', minN: 90, maxN: 200, minP: 30, maxP: 70, minK: 120, maxK: 240, pHmin: 5.5, pHmax: 6.8, tempMin: 22, tempMax: 38, rainMin: 800, rainMax: 2500 },
-            { name: 'Cotton', minN: 100, maxN: 220, minP: 35, maxP: 80, minK: 140, maxK: 280, pHmin: 5.8, pHmax: 7.2, tempMin: 20, tempMax: 38, rainMin: 400, rainMax: 1200 },
-            { name: 'Sunflower', minN: 70, maxN: 160, minP: 30, maxP: 70, minK: 120, maxK: 250, pHmin: 6.0, pHmax: 7.5, tempMin: 16, tempMax: 34, rainMin: 350, rainMax: 1100 },
-            { name: 'Pepper', minN: 80, maxN: 180, minP: 25, maxP: 65, minK: 140, maxK: 280, pHmin: 6.0, pHmax: 7.0, tempMin: 18, tempMax: 32, rainMin: 400, rainMax: 1200 },
-            { name: 'Onion', minN: 70, maxN: 160, minP: 25, maxP: 60, minK: 120, maxK: 240, pHmin: 6.0, pHmax: 7.2, tempMin: 12, tempMax: 30, rainMin: 350, rainMax: 1000 },
-        ];
-        const crops = baseCrops.map(crop => {
-            let score = 0;
-            if (N >= crop.minN && N <= crop.maxN) score += 25;
-            else if (N >= crop.minN * 0.7 && N <= crop.maxN * 1.3) score += 12;
-            if (P >= crop.minP && P <= crop.maxP) score += 25;
-            else if (P >= crop.minP * 0.7 && P <= crop.maxP * 1.3) score += 12;
-            if (K >= crop.minK && K <= crop.maxK) score += 20;
-            else if (K >= crop.minK * 0.7 && K <= crop.maxK * 1.3) score += 10;
-            if (pH >= crop.pHmin && pH <= crop.pHmax) score += 15;
-            else if (pH >= crop.pHmin - 0.4 && pH <= crop.pHmax + 0.4) score += 7;
-            if (temp >= crop.tempMin && temp <= crop.tempMax) score += 10;
-            else if (temp >= crop.tempMin - 3 && temp <= crop.tempMax + 3) score += 5;
-            if (rain >= crop.rainMin && rain <= crop.rainMax) score += 5;
-            else if (rain >= crop.rainMin * 0.7 && rain <= crop.rainMax * 1.3) score += 2;
-            score += (Math.random() * 6 - 3);
-            return { ...crop, score: Math.min(100, Math.max(0, score)) };
-        });
-        crops.sort((a, b) => b.score - a.score);
-        return crops.slice(0, 4);
-    }
-
-    function getFertilizerRecommendation(N, P, K, pH) {
-        const recs = [];
-        if (N < 80) recs.push('Nitrogen (Urea / DAP) — apply 40–60 kg/ha');
-        else if (N < 120) recs.push('Nitrogen (Urea) — light application 20–30 kg/ha');
-        else recs.push('Nitrogen — sufficient, maintain with organic matter');
-        if (P < 30) recs.push('Phosphorus (Single Super Phosphate) — apply 50–80 kg/ha');
-        else if (P < 50) recs.push('Phosphorus — moderate, apply 20–30 kg/ha');
-        if (K < 130) recs.push('Potassium (Muriate of Potash) — apply 40–60 kg/ha');
-        else if (K < 180) recs.push('Potassium — moderate, apply 20–30 kg/ha');
-        if (pH < 5.5) recs.push('Lime — apply 1–2 tons/ha to raise pH');
-        else if (pH > 7.5) recs.push('Sulfur or gypsum — apply to lower pH');
-        if (recs.length === 0) recs.push('All nutrients are balanced. Maintain with compost & crop rotation.');
-        return recs;
-    }
-
-    function runCropAdvisor() {
-        const N = parseFloat(document.getElementById('nInput').value) || 0;
-        const P = parseFloat(document.getElementById('pInput').value) || 0;
-        const K = parseFloat(document.getElementById('kInput').value) || 0;
-        const pH = parseFloat(document.getElementById('phInput').value) || 7;
-        const temp = parseFloat(document.getElementById('tempInput').value) || 25;
-        const rain = parseFloat(document.getElementById('rainInput').value) || 800;
-        const topCrops = getCropRecommendation(N, P, K, pH, temp, rain);
-        const output = document.getElementById('cropOutput');
-        const cropList = document.getElementById('cropList');
-        const fertDiv = document.getElementById('fertilizerSuggestion');
-        cropList.innerHTML = '';
-        topCrops.forEach((crop, idx) => {
-            const div = document.createElement('div');
-            div.className = 'rec-item';
-            const icon = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '🌱';
-            div.innerHTML = `<i class="fas fa-seedling"></i><span class="rec-label">${icon} ${crop.name}</span><span class="rec-value">Match: ${Math.round(crop.score)}%</span>`;
-            cropList.appendChild(div);
-        });
-        const fertRecs = getFertilizerRecommendation(N, P, K, pH);
-        fertDiv.innerHTML = fertRecs.map(r =>
-            `<div style="padding:6px 0; display:flex; gap:10px; align-items:center; border-bottom:1px solid #eaf3e4;"><i class="fas fa-check-circle" style="color:#2b6e3c;"></i><span>${r}</span></div>`
-        ).join('');
-        output.style.display = 'block';
-        output.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    function resetCropForm() {
-        document.getElementById('nInput').value = 120;
-        document.getElementById('pInput').value = 45;
-        document.getElementById('kInput').value = 180;
-        document.getElementById('phInput').value = 6.5;
-        document.getElementById('tempInput').value = 26;
-        document.getElementById('rainInput').value = 850;
-        document.getElementById('cropOutput').style.display = 'none';
-    }
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 8. CRUD MODAL
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const modal = document.getElementById('crudModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const submitBtn = document.getElementById('modalSubmitBtn');
-    const editId = document.getElementById('editId');
-    const existingImage = document.getElementById('existingImage');
-    const pestName = document.getElementById('pestName');
-    const pestDesc = document.getElementById('pestDesc');
-    const pestAction = document.getElementById('pestAction');
-    const signalRange = document.getElementById('signalRange');
-    const imageFile = document.getElementById('imageFile');
-    const currentImagePreview = document.getElementById('currentImagePreview');
-    const previewCurrentImage = document.getElementById('previewCurrentImage');
-    const currentImageName = document.getElementById('currentImageName');
-    const fileLabel = document.getElementById('fileLabel');
-
-    function updateFileLabel(input) {
-        if (input.files && input.files[0]) {
-            fileLabel.innerHTML = `<i class="fas fa-check-circle" style="color:#2b6e3c;"></i> ${input.files[0].name}`;
-        } else {
-            fileLabel.innerHTML = `<i class="fas fa-cloud-upload-alt"></i> Choose image file (JPG, PNG, WEBP, GIF)`;
-        }
-    }
-
-    function openModal(mode, data = null) {
-        modal.classList.add('active');
-        imageFile.value = '';
-        fileLabel.innerHTML = `<i class="fas fa-cloud-upload-alt"></i> Choose image file (JPG, PNG, WEBP, GIF)`;
-        
-        if (mode === 'add') {
-            modalTitle.textContent = 'Add New Pest';
-            submitBtn.name = 'add_pest';
-            document.getElementById('crudForm').reset();
-            editId.value = '';
-            existingImage.value = '';
-            currentImagePreview.style.display = 'none';
-            pestName.value = '';
-            pestDesc.value = '';
-            pestAction.value = '';
-            signalRange.value = '';
-        } else if (mode === 'edit') {
-            modalTitle.textContent = 'Edit Pest';
-            submitBtn.name = 'edit_pest';
-            editId.value = data.id;
-            pestName.value = data.name;
-            pestDesc.value = data.desc;
-            pestAction.value = data.action;
-            signalRange.value = data.signal;
-            existingImage.value = data.image || 'default_pest.jpg';
-            
-            if (data.image && data.image !== 'default_pest.jpg') {
-                currentImagePreview.style.display = 'flex';
-                const imgSrc = data.image.startsWith('/static/') ? data.image : '/static/images/' + data.image.split('/').pop();
-                previewCurrentImage.src = imgSrc;
-                currentImageName.textContent = data.image.split('/').pop();
-            } else {
-                currentImagePreview.style.display = 'none';
+            const res = await fetch('/api/status');
+            if (res.ok) {
+                const data = await res.json();
+                updateTelemetryUI(data.telemetry);
             }
+        } catch (e) {
+            console.debug('Polling error:', e);
+        }
+    }
+    setInterval(pollStatus, 4000);
+
+    // --- Advisor Dropdown Population ---
+    function loadAdvisorPests() {
+        const cropKey = document.getElementById('advisorCropSelect').value;
+        const pestSelect = document.getElementById('advisorPestSelect');
+        pestSelect.innerHTML = '';
+
+        const crop = cropsCatalog.find(c => c.key === cropKey);
+        if (crop && crop.pests) {
+            crop.pests.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.key;
+                opt.textContent = `${p.common_name} (${p.scientific_name})`;
+                pestSelect.appendChild(opt);
+            });
+            renderAdvisorDetails();
         }
     }
 
-    function closeModal() { modal.classList.remove('active'); }
+    async function renderAdvisorDetails() {
+        const cropKey = document.getElementById('advisorCropSelect').value;
+        const pestKey = document.getElementById('advisorPestSelect').value;
+        if (!cropKey || !pestKey) return;
 
-    function editPest(id, name, desc, action, signal, image) {
-        openModal('edit', { id, name, desc, action, signal, image });
+        try {
+            const res = await fetch(`/api/recommendations/${cropKey}/${pestKey}?confidence=0.90`);
+            if (res.ok) {
+                const data = await res.json();
+                const rec = data.recommendation;
+                const container = document.getElementById('advisorDetailsCard');
+                container.innerHTML = `
+                    <div class="rec-row">
+                        <span class="rec-title">Target Pest</span>
+                        <span class="rec-highlight">${rec.detected_pest} <em>(${rec.scientific_name})</em></span>
+                    </div>
+                    <div class="rec-row">
+                        <span class="rec-title">Chemical Pesticide</span>
+                        <span class="rec-desc" style="font-weight:700; color:var(--primary-dark);">${rec.recommended_pesticide}</span>
+                    </div>
+                    <div class="rec-row">
+                        <span class="rec-title">Application Rate &amp; Timing</span>
+                        <span class="rec-desc">${rec.dosage_instruction}</span>
+                    </div>
+                    <div class="rec-row">
+                        <span class="rec-title">Organic / Bio-Control Alternative</span>
+                        <span class="rec-desc" style="color:var(--primary); font-weight:600;">${rec.organic_alternative}</span>
+                    </div>
+                    <div class="safety-box">
+                        <strong><i class="fas fa-shield-alt"></i> Safety Precautions &amp; PPE:</strong>
+                        <p style="margin-top:4px;">${rec.safety_precautions}</p>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error('Advisor fetch error:', e);
+        }
     }
 
-    modal.addEventListener('click', function(e) { if (e.target === this) closeModal(); });
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 9. RESET ALL
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    function resetAll() {
-        if (insectName) insectName.textContent = '—';
-        if (insectConfidence) {
-            insectConfidence.textContent = 'Confidence: —';
-            insectConfidence.style.color = '';
-        }
-        if (insectAction) {
-            insectAction.innerHTML = '<i class="fas fa-lightbulb" style="color:#f5a623;"></i> Standing by for robot detection telemetry...';
-        }
-        if (resultBox) resultBox.classList.remove('alert');
-        dismissAlert();
-        resetCropForm();
-        const dHealth = document.getElementById('dashHealth');
-        const dRisks = document.getElementById('dashRisks');
-        const dWeather = document.getElementById('dashWeather');
-        if (dHealth) dHealth.textContent = '94%';
-        if (dRisks) dRisks.textContent = '2';
-        if (dWeather) dWeather.textContent = '26°C';
-        const pestTab = document.querySelector('[data-panel="panelPest"]');
-        if (pestTab) pestTab.click();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    // --- Image Modal ---
+    function openImageModal(imgSrc, pestName) {
+        document.getElementById('modalImgTag').src = imgSrc;
+        document.getElementById('modalPestName').textContent = pestName || 'Annotated Detection';
+        document.getElementById('imgModal').classList.add('active');
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 10. INIT
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    document.querySelectorAll('#panelCrop .form-group input').forEach(inp => {
-        inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') runCropAdvisor(); });
+    function closeImageModal() {
+        document.getElementById('imgModal').classList.remove('active');
+    }
+
+    async function deleteDetectionRecord(id) {
+        if (!confirm('Are you sure you want to delete this inspection record?')) return;
+        try {
+            const res = await fetch(`/api/detections/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                showToast('Deleted', 'Inspection record removed.', false);
+                location.reload();
+            }
+        } catch (e) {
+            console.error('Delete error:', e);
+        }
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', () => {
+        connectWebSocket();
     });
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 11. GPS TELEMETRY & OFFLINE MAPLIBRE + PMTILES
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    let currentGps = {
-        lat: 6.681023,
-        lon: 124.689331,
-        alt: 24.5,
-        sats: 8,
-        fix: true,
-        isSynthetic: false
-    };
-
-    const mapModal = document.getElementById('mapModal');
-    let mapInstance = null;
-    let robotMarker = null;
-    let pathHistory = [[6.689331, 6.681023]]; // Array of [lon, lat] GeoJSON coordinates
-
-    // Register PMTiles protocol in MapLibre
-    if (typeof pmtiles !== 'undefined' && typeof maplibregl !== 'undefined') {
-        const protocol = new pmtiles.Protocol();
-        maplibregl.addProtocol("pmtiles", protocol.tile);
-    }
-
-    // Satellite Hybrid Style: Satellite raster basemap + PMTiles vector roads & boundaries
-    const satelliteHybridStyle = {
-        version: 8,
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
-        sources: {
-            "satellite-tiles": {
-                type: "raster",
-                tiles: ["/static/tiles/satellite/{z}/{x}/{y}.jpg"],
-                tileSize: 256,
-                maxzoom: 17,
-                minzoom: 10
-            },
-            "protomaps": {
-                type: "vector",
-                url: "pmtiles:///static/basemap.pmtiles"
-            }
-        },
-        layers: [
-            {
-                id: "satellite-layer",
-                type: "raster",
-                source: "satellite-tiles",
-                minzoom: 0,
-                maxzoom: 20
-            },
-            {
-                id: "water",
-                type: "fill",
-                source: "protomaps",
-                "source-layer": "water",
-                paint: {
-                    "fill-color": "#2563eb",
-                    "fill-opacity": 0.35
-                }
-            },
-            {
-                id: "roads-casing",
-                type: "line",
-                source: "protomaps",
-                "source-layer": "roads",
-                paint: {
-                    "line-color": "#000000",
-                    "line-width": [
-                        "interpolate", ["linear"], ["zoom"],
-                        10, 2,
-                        14, 4.5,
-                        17, 7
-                    ],
-                    "line-opacity": 0.65
-                }
-            },
-            {
-                id: "roads-surface",
-                type: "line",
-                source: "protomaps",
-                "source-layer": "roads",
-                paint: {
-                    "line-color": [
-                        "match",
-                        ["get", "pmap:kind"],
-                        "highway", "#f59e0b",
-                        "major_road", "#fbbf24",
-                        "medium_road", "#ffffff",
-                        "#f8fafc"
-                    ],
-                    "line-width": [
-                        "interpolate", ["linear"], ["zoom"],
-                        10, 1.2,
-                        14, 3,
-                        17, 5
-                    ],
-                    "line-opacity": 0.95
-                }
-            },
-            {
-                id: "boundaries",
-                type: "line",
-                source: "protomaps",
-                "source-layer": "boundaries",
-                paint: {
-                    "line-color": "#ef4444",
-                    "line-width": 1.5,
-                    "line-dasharray": [4, 4],
-                    "line-opacity": 0.7
-                }
-            }
-        ]
-    };
-
-    function handleGpsTelemetry(data) {
-        currentGps = {
-            lat: data.latitude || 6.681023,
-            lon: data.longitude || 124.689331,
-            alt: data.altitude || 0.0,
-            sats: data.satellites || 0,
-            fix: Boolean(data.gps_fix),
-            isSynthetic: Boolean(data.is_synthetic),
-            isLive: Boolean(data.is_live),
-            dataStatus: data.data_status || "Unknown"
-        };
-
-        // Format Lat/Lon string (e.g. 6.681023° N, 124.689331° E)
-        const latDir = currentGps.lat >= 0 ? 'N' : 'S';
-        const lonDir = currentGps.lon >= 0 ? 'E' : 'W';
-        const coordsStr = `${Math.abs(currentGps.lat).toFixed(6)}° ${latDir}, ${Math.abs(currentGps.lon).toFixed(6)}° ${lonDir}`;
-
-        const gpsCoordsText = document.getElementById('gpsCoordsText');
-        if (gpsCoordsText) {
-            gpsCoordsText.innerHTML = `<i class="fas fa-crosshairs" style="color:#2b6e3c; margin-right:4px;"></i> ${coordsStr}`;
-        }
-
-        const gpsFixBadge = document.getElementById('gpsFixBadge');
-        if (gpsFixBadge) {
-            if (currentGps.dataStatus === 'Live') {
-                gpsFixBadge.style.background = '#dff0d8';
-                gpsFixBadge.style.color = '#1f4a2a';
-                gpsFixBadge.innerHTML = '<span class="pulse-dot" style="margin-right:4px;"></span> Live Fix';
-            } else if (currentGps.dataStatus === 'Cached') {
-                gpsFixBadge.style.background = '#fef9e7';
-                gpsFixBadge.style.color = '#b7950b';
-                gpsFixBadge.innerHTML = '<i class="fas fa-history" style="margin-right:4px;"></i> Cached';
-            } else if (currentGps.isSynthetic) {
-                gpsFixBadge.style.background = '#fef9e7';
-                gpsFixBadge.style.color = '#b7950b';
-                gpsFixBadge.innerHTML = '<i class="fas fa-microchip" style="margin-right:4px;"></i> Synthetic';
-            } else {
-                gpsFixBadge.style.background = '#fdeaea';
-                gpsFixBadge.style.color = '#c0392b';
-                gpsFixBadge.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:4px;"></i> Searching...';
-            }
-        }
-
-        const gpsSatellites = document.getElementById('gpsSatellites');
-        if (gpsSatellites) {
-            gpsSatellites.textContent = `${currentGps.sats} Sats`;
-        }
-
-        const gpsAltitude = document.getElementById('gpsAltitude');
-        if (gpsAltitude) {
-            gpsAltitude.textContent = `${currentGps.alt.toFixed(1)} m`;
-        }
-
-        // Update Map HUD & Marker if map is active
-        updateMapMarker();
-    }
-
-    function initMapLibreMap() {
-        if (mapInstance) return;
-
-        const mapContainer = document.getElementById('mapContainer');
-        if (!mapContainer || typeof maplibregl === 'undefined') return;
-
-        mapInstance = new maplibregl.Map({
-            container: 'mapContainer',
-            style: satelliteHybridStyle,
-            center: [currentGps.lon, currentGps.lat], // GeoJSON uses [lon, lat]
-            zoom: 15,
-            pitch: 35,
-            bearing: 0,
-            attributionControl: false
-        });
-
-        mapInstance.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
-
-        // Custom Pulsing Robot Marker
-        const el = document.createElement('div');
-        el.className = 'robot-pulse-icon';
-        el.innerHTML = '<div class="robot-pulse-ring"></div><div class="robot-pulse-center"></div>';
-
-        robotMarker = new maplibregl.Marker({ element: el, anchor: 'center' })
-            .setLngLat([currentGps.lon, currentGps.lat])
-            .addTo(mapInstance);
-
-        const popup = new maplibregl.Popup({ offset: 18 })
-            .setHTML(`<b>AgriSentinel Rover</b><br>Lat: ${currentGps.lat.toFixed(6)}<br>Lon: ${currentGps.lon.toFixed(6)}<br>Alt: ${currentGps.alt} m`);
-        robotMarker.setPopup(popup);
-
-        mapInstance.on('load', () => {
-            mapInstance.addSource('robot-trail', {
-                type: 'geojson',
-                data: {
-                    type: 'Feature',
-                    properties: {},
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: pathHistory
-                    }
-                }
-            });
-
-            mapInstance.addLayer({
-                id: 'robot-trail-glow',
-                type: 'line',
-                source: 'robot-trail',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: {
-                    'line-color': '#000000',
-                    'line-width': 6,
-                    'line-opacity': 0.4
-                }
-            });
-
-            mapInstance.addLayer({
-                id: 'robot-trail-line',
-                type: 'line',
-                source: 'robot-trail',
-                layout: { 'line-join': 'round', 'line-cap': 'round' },
-                paint: {
-                    'line-color': '#10b981',
-                    'line-width': 3.5,
-                    'line-opacity': 0.95,
-                    'line-dasharray': [2, 2]
-                }
-            });
-        });
-    }
-
-    function updateMapMarker() {
-        const hudCoords = document.getElementById('hudCoords');
-        if (hudCoords) hudCoords.textContent = `${currentGps.lat.toFixed(6)}, ${currentGps.lon.toFixed(6)}`;
-
-        const hudSats = document.getElementById('hudSats');
-        if (hudSats) hudSats.textContent = `${currentGps.sats} Sats`;
-
-        const hudFixBadge = document.getElementById('hudFixBadge');
-        if (hudFixBadge) {
-            hudFixBadge.textContent = currentGps.fix ? '● 3D Fix Active' : (currentGps.isSynthetic ? '● Mock Mode' : '○ Searching...');
-            hudFixBadge.style.color = currentGps.fix ? '#10b981' : (currentGps.isSynthetic ? '#e67e22' : '#c0392b');
-        }
-
-        if (mapInstance && robotMarker) {
-            const newCoord = [currentGps.lon, currentGps.lat];
-            robotMarker.setLngLat(newCoord);
-            if (robotMarker.getPopup()) {
-                robotMarker.getPopup().setHTML(`<b>AgriSentinel Rover</b><br>Lat: ${currentGps.lat.toFixed(6)}<br>Lon: ${currentGps.lon.toFixed(6)}<br>Alt: ${currentGps.alt} m`);
-            }
-
-            // Append to trail if moved significantly (> 0.000005 deg)
-            if (pathHistory.length === 0 || 
-                Math.abs(pathHistory[pathHistory.length - 1][0] - currentGps.lon) > 0.000005 ||
-                Math.abs(pathHistory[pathHistory.length - 1][1] - currentGps.lat) > 0.000005) {
-                pathHistory.push(newCoord);
-                const trailSource = mapInstance.getSource('robot-trail');
-                if (trailSource) {
-                    trailSource.setData({
-                        type: 'Feature',
-                        properties: {},
-                        geometry: {
-                            type: 'LineString',
-                            coordinates: pathHistory
-                        }
-                    });
-                }
-            }
-        }
-    }
-
-    function openMapModal() {
-        if (mapModal) {
-            mapModal.classList.add('active');
-            setTimeout(() => {
-                initMapLibreMap();
-                if (mapInstance) {
-                    mapInstance.resize();
-                    mapInstance.easeTo({
-                        center: [currentGps.lon, currentGps.lat],
-                        zoom: 15,
-                        duration: 800
-                    });
-                }
-            }, 100);
-        }
-    }
-
-    function closeMapModal() {
-        if (mapModal) mapModal.classList.remove('active');
-    }
-
-    function recenterMap() {
-        if (mapInstance) {
-            mapInstance.flyTo({
-                center: [currentGps.lon, currentGps.lat],
-                zoom: 16,
-                pitch: 35,
-                speed: 1.2
-            });
-            if (robotMarker && robotMarker.getPopup()) {
-                robotMarker.togglePopup();
-            }
-        }
-    }
-
-    function reset3DView() {
-        if (mapInstance) {
-            mapInstance.easeTo({
-                pitch: 0,
-                bearing: 0,
-                duration: 600
-            });
-        }
-    }
-
-    function clearMapTrail() {
-        pathHistory = [[currentGps.lon, currentGps.lat]];
-        if (mapInstance) {
-            const trailSource = mapInstance.getSource('robot-trail');
-            if (trailSource) {
-                trailSource.setData({
-                    type: 'Feature',
-                    properties: {},
-                    geometry: {
-                        type: 'LineString',
-                        coordinates: pathHistory
-                    }
-                });
-            }
-        }
-    }
-
-    if (mapModal) {
-        mapModal.addEventListener('click', function(e) {
-            if (e.target === this) closeMapModal();
-        });
-    }
-
-    console.log('🐛 AgriSentinel Pest AI & GPS Telemetry ready.');
 </script>
 </body>
 </html>

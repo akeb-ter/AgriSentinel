@@ -443,34 +443,37 @@
             </div>
         </div>
 
-        <!-- CARD 4: GPS & TELEMETRY -->
+        <!-- CARD 4: SOIL MOISTURE SENSOR -->
         <div class="dev-card">
             <div>
                 <div class="card-header">
                     <div class="card-title">
-                        <i class="fas fa-satellite-dish"></i>
-                        <span>GPS &amp; Telemetry</span>
+                        <i class="fas fa-tint"></i>
+                        <span>Soil Moisture Sensor</span>
                     </div>
-                    <span id="gpsBadge" class="status-pill blue">
-                        <span class="pulse-dot"></span> <span id="gpsBadgeText">Checking...</span>
+                    <span id="soilBadge" class="status-pill green">
+                        <span class="pulse-dot"></span> <span id="soilBadgeText">Active</span>
                     </span>
                 </div>
 
                 <div class="info-list" style="margin-bottom: 12px;">
                     <div class="info-row">
-                        <span class="info-label">Baud Rate / Port:</span>
-                        <span id="gpsPort" class="info-val">--</span>
+                        <span class="info-label">Moisture Reading:</span>
+                        <span id="soilMoistVal" class="info-val">--%</span>
                     </div>
-                </div>
-
-                <div style="background: #0f172a; border-radius: 12px; padding: 12px; margin-bottom: 16px;">
-                    <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px; font-weight: 600; text-transform: uppercase;">Raw NMEA Stream (Last 5 lines)</div>
-                    <div id="gpsRawStream" style="font-family: 'Fira Code', monospace; font-size: 11.5px; color: #38bdf8; line-height: 1.5; height: 85px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">Loading stream...</div>
+                    <div class="info-row">
+                        <span class="info-label">Status Classification:</span>
+                        <span id="soilStatusVal" class="info-val">Optimal</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Interface / ADC:</span>
+                        <span id="soilHwVal" class="info-val">ADC / Mock</span>
+                    </div>
                 </div>
             </div>
 
-            <button id="gpsRestartBtn" class="btn btn-secondary" onclick="restartGPS()">
-                <i class="fas fa-sync-alt"></i> Restart Serial Connection
+            <button id="soilReadBtn" class="btn btn-secondary" onclick="fetchSoilReading()">
+                <i class="fas fa-sync-alt"></i> Refresh Sensor Reading
             </button>
         </div>
 
@@ -562,6 +565,13 @@
                 camBadgeText.textContent = 'Stopped';
             }
 
+            // Soil Sensor
+            if (data.soil) {
+                document.getElementById('soilMoistVal').textContent = `${data.soil.moisture_percent}%`;
+                document.getElementById('soilStatusVal').textContent = data.soil.status;
+                document.getElementById('soilHwVal').textContent = `${data.soil.hardware_type.toUpperCase()} (${data.soil.voltage}V)`;
+            }
+
             // System info
             document.getElementById('sysPlatform').textContent = data.platform;
             document.getElementById('sysTime').textContent = data.server_time;
@@ -571,93 +581,26 @@
         }
     }
 
-    // Connect Wi-Fi
-    async function connectWifi() {
-        const ssid = document.getElementById('wifiSsid').value.trim();
-        const pass = document.getElementById('wifiPass').value;
-        const btn = document.getElementById('wifiConnectBtn');
-        
-        if (!ssid) {
-            showToast('SSID cannot be empty', true);
-            return;
-        }
-        
+    // Fetch Soil Sensor Reading
+    async function fetchSoilReading() {
+        const btn = document.getElementById('soilReadBtn');
         btn.disabled = true;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Connecting...`;
-
-        showToast(`Attempting to connect to ${ssid}. Please wait...`);
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Reading sensor...`;
 
         try {
-            const res = await fetch('/api/dev/wifi/connect', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ssid: ssid, password: pass })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-                showToast(`Successfully connected to ${ssid}!`);
-            } else {
-                showToast(`Error: ${data.stderr || data.message || 'Connection failed'}`, true);
+            const res = await fetch('/api/soil-moisture');
+            if (res.ok) {
+                const data = await res.json();
+                const s = data.soil_moisture;
+                document.getElementById('soilMoistVal').textContent = `${s.moisture_percent}%`;
+                document.getElementById('soilStatusVal').textContent = s.status;
+                showToast(`Soil Moisture: ${s.moisture_percent}% (${s.status})`);
             }
         } catch (err) {
-            showToast(`Request failed: ${err.message}`, true);
+            showToast(`Sensor read error: ${err.message}`, true);
         } finally {
             btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-link"></i> Connect & Save`;
-            fetchDevStatus();
-            fetchLogs();
-        }
-    }
-
-    // Fetch GPS Raw Data
-    async function fetchGPSRaw() {
-        try {
-            const res = await fetch('/api/dev/gps/raw');
-            if (!res.ok) return;
-            const data = await res.json();
-            
-            const badge = document.getElementById('gpsBadge');
-            const badgeText = document.getElementById('gpsBadgeText');
-            
-            if (data.is_synthetic) {
-                badge.className = 'status-pill amber';
-                badgeText.textContent = 'HARDWARE OFFLINE (SYNTHETIC)';
-            } else {
-                badge.className = 'status-pill green';
-                badgeText.textContent = 'SERIAL ACTIVE';
-            }
-            
-            document.getElementById('gpsPort').textContent = `${data.baudrate} baud | ${data.port}`;
-            
-            const streamDiv = document.getElementById('gpsRawStream');
-            if (data.raw_stream && data.raw_stream.length > 0) {
-                // Show last 5 lines
-                const recent = data.raw_stream.slice(-5);
-                streamDiv.textContent = recent.join('\n');
-            } else {
-                streamDiv.textContent = '[No data received from serial yet...]';
-            }
-        } catch (err) {
-            console.error('Error fetching raw GPS:', err);
-        }
-    }
-
-    // Restart GPS
-    async function restartGPS() {
-        const btn = document.getElementById('gpsRestartBtn');
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Restarting Serial...`;
-
-        try {
-            const res = await fetch('/api/dev/gps/restart', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message, data.status !== 'success');
-        } catch (err) {
-            showToast(`Error: ${err.message}`, true);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-sync-alt"></i> Restart Serial Connection`;
-            fetchGPSRaw();
+            btn.innerHTML = `<i class="fas fa-sync-alt"></i> Refresh Sensor Reading`;
         }
     }
 
@@ -691,7 +634,7 @@
         const count = document.getElementById('logLinesSelect').value;
 
         try {
-            const res = await fetch(`/api/dev/logs?lines=${count}`);
+            const res = await fetch(`/api/dev/system/logs?lines=${count}`);
             if (res.ok) {
                 const data = await res.json();
                 document.getElementById('terminalText').textContent = data.logs || '[No logs available]';
@@ -717,7 +660,7 @@
         if (type === 'reboot') {
             icon.textContent = '🔄';
             title.textContent = 'Reboot Raspberry Pi?';
-            desc.textContent = 'This will reboot the robot immediately. The web interface will temporarily disconnect for ~45 seconds.';
+            desc.textContent = 'This will reboot the probe immediately. The web interface will temporarily disconnect for ~45 seconds.';
             confirmBtn.className = 'btn btn-amber';
             confirmBtn.textContent = 'Yes, Reboot';
         } else if (type === 'shutdown') {
@@ -743,7 +686,11 @@
         showToast(`Sending ${action} command...`);
 
         try {
-            const res = await fetch(`/api/dev/system/${action}`, { method: 'POST' });
+            const res = await fetch(`/api/dev/system/power`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: action })
+            });
             const data = await res.json();
             showToast(data.message || `${action} initiated.`);
         } catch (err) {

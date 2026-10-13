@@ -13,3 +13,5 @@ build/
 bin/
 blueprint.md
 markdowns/
+.pytest_cache/
+web/static/detections/*.jpg

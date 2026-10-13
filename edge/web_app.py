@@ -1,33 +1,53 @@
+"""
+AgriSentinel Web Application & REST/WebSocket API
+
+Serves the mobile-first monitoring dashboard, telemetry endpoints,
+and real-time alerts for the AgriSentinel Smart Crop Probe Stick.
+"""
+
 import os
 import sys
-import subprocess
-import datetime
-from fastapi import APIRouter, Request, Form, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Response
-import shutil
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
-import asyncio
 import time
+import json
+import asyncio
+import hashlib
+import logging
 from typing import List, Optional, Dict, Any
 
-from .database import get_db_connection
-from .drivers.motors import MotorController
-from .drivers.servo import ServoController
-from .drivers.gps import GPSReader
+from fastapi import (
+    APIRouter,
+    Request,
+    Form,
+    Depends,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    UploadFile,
+    File,
+    Response
+)
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
+
+from edge.database import (
+    get_db_connection,
+    insert_detection,
+    get_recent_detections,
+    get_detection_by_id,
+    delete_detection,
+    get_detection_stats
+)
+from edge.knowledge_base import knowledge_base
+from edge.probe_controller import probe
+
+logger = logging.getLogger("AgriSentinel-WebApp")
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
-motors = MotorController()
-servo = ServoController()
-gps_reader = GPSReader()
-gps_task: Optional[asyncio.Task] = None
 
-
-
-
-# Simple active websocket connections for alerts
+# --- WebSocket Connection Manager for Real-Time Alerts ---
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -35,21 +55,53 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        logger.info(f"[WebSocket] Client connected. Active clients: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+            logger.info(f"[WebSocket] Client disconnected. Active clients: {len(self.active_connections)}")
 
     async def broadcast(self, message: dict):
-        for connection in self.active_connections:
+        for connection in list(self.active_connections):
             try:
                 await connection.send_json(message)
-            except:
-                pass
+            except Exception:
+                self.disconnect(connection)
+
 
 manager = ConnectionManager()
 
-# --- Auth Dependency ---
+
+# Register probe alert callback with event loop
+def on_probe_alert(payload: Dict[str, Any]):
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.run_coroutine_threadsafe(manager.broadcast(payload), loop)
+        else:
+            asyncio.run(manager.broadcast(payload))
+    except Exception as e:
+        logger.debug(f"[WebSocket] Alert broadcast scheduled: {e}")
+
+
+probe.register_alert_callback(on_probe_alert)
+
+
+# --- Authentication Utilities ---
+def hash_password(password: str) -> str:
+    salt = os.urandom(16)
+    return salt.hex() + ":" + hashlib.sha256(salt + password.encode("utf-8")).hexdigest()
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    if ":" not in hashed:
+        return password == hashed
+    salt_hex, hash_val = hashed.split(":", 1)
+    salt = bytes.fromhex(salt_hex)
+    return hashlib.sha256(salt + password.encode("utf-8")).hexdigest() == hash_val
+
+
 def get_current_user(request: Request):
     user_id = request.cookies.get("user_id")
     if not user_id:
@@ -59,31 +111,25 @@ def get_current_user(request: Request):
     conn.close()
     return user
 
-# --- Web Routes ---
+
+# --- Web Page Routes ---
 
 @router.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return Response(status_code=204)
+
 
 @router.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
     user = get_current_user(request)
     if user:
         return RedirectResponse(url="/dashboard", status_code=302)
-    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": None, "registration_success": False})
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"request": request, "message": None, "registration_success": False}
+    )
 
-import hashlib
-
-def hash_password(password: str) -> str:
-    salt = os.urandom(16)
-    return salt.hex() + ":" + hashlib.sha256(salt + password.encode('utf-8')).hexdigest()
-
-def verify_password(password: str, hashed: str) -> bool:
-    if ":" not in hashed:
-        return password == hashed
-    salt_hex, hash_val = hashed.split(":", 1)
-    salt = bytes.fromhex(salt_hex)
-    return hashlib.sha256(salt + password.encode('utf-8')).hexdigest() == hash_val
 
 @router.post("/login", response_class=HTMLResponse)
 async def do_login(request: Request, account: str = Form(...), password: str = Form(...)):
@@ -91,31 +137,38 @@ async def do_login(request: Request, account: str = Form(...), password: str = F
     user = conn.execute("SELECT * FROM users_tbl WHERE ACCOUNT = ?", (account,)).fetchone()
     conn.close()
 
-    if user and verify_password(password, user['PASSWORD']):
+    if user and verify_password(password, user["PASSWORD"]):
         response = RedirectResponse(url="/dashboard", status_code=302)
-        response.set_cookie(key="user_id", value=str(user['ID']))
+        response.set_cookie(key="user_id", value=str(user["ID"]))
         return response
-    
-    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": "Invalid credentials", "registration_success": False})
+
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"request": request, "message": "Invalid credentials", "registration_success": False}
+    )
+
 
 @router.post("/register", response_class=HTMLResponse)
 async def do_register(
-    request: Request, 
-    lastname: str = Form(...), 
-    firstname: str = Form(...), 
-    middlename: str = Form(""), 
-    user_type: str = Form(...), 
-    affiliation: str = Form(...), 
-    account: str = Form(...), 
+    request: Request,
+    lastname: str = Form(...),
+    firstname: str = Form(...),
+    middlename: str = Form(""),
+    user_type: str = Form(...),
+    affiliation: str = Form(...),
+    account: str = Form(...),
     password: str = Form(...)
 ):
     conn = get_db_connection()
-    # Check if account already exists
     existing = conn.execute("SELECT ID FROM users_tbl WHERE ACCOUNT = ?", (account,)).fetchone()
-    
     if existing:
         conn.close()
-        return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": "Account username already exists. Please choose another.", "registration_success": False})
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"request": request, "message": "Account username already exists. Please choose another.", "registration_success": False}
+        )
 
     hashed_pw = hash_password(password)
     conn.execute("""
@@ -125,8 +178,12 @@ async def do_register(
     conn.commit()
     conn.close()
 
-    # Return success flag to frontend
-    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": None, "registration_success": True})
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"request": request, "message": None, "registration_success": True}
+    )
+
 
 @router.get("/logout")
 async def logout():
@@ -134,471 +191,400 @@ async def logout():
     response.delete_cookie("user_id")
     return response
 
+
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=302)
-    
-    conn = get_db_connection()
-    pests = conn.execute("SELECT * FROM pest").fetchall()
-    logs = conn.execute("SELECT * FROM logs ORDER BY ID DESC LIMIT 50").fetchall()
-    conn.close()
 
-    return templates.TemplateResponse(request=request, name="dashboard.html", context={
-        "request": request,
-        "user": user,
-        "db_pests": [dict(p) for p in pests],
-        "logs": [dict(l) for l in logs]
-    })
+    crops = knowledge_base.get_supported_crops()
+    telemetry = probe.get_telemetry()
+    detections = get_recent_detections(limit=30)
+    stats = get_detection_stats()
 
-# --- APIs ---
+    # Pre-fetch recommendation for current active pest
+    active_crop = telemetry["active_crop"]
+    latest_pest = telemetry["latest_pest"]
+    rec = knowledge_base.get_recommendation(
+        crop_key=active_crop,
+        pest_name=latest_pest,
+        confidence=0.88,
+        pest_count=telemetry["latest_pest_count"],
+        soil_status=telemetry["soil_status"]
+    )
 
-@router.post("/api/logs")
-async def save_log(pest: str = Form(...), result: str = Form(...)):
-    conn = get_db_connection()
-    now = datetime.datetime.now()
-    date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H:%M:%S")
-    
-    conn.execute("INSERT INTO logs (PEST, RESULT, DATE, TIME) VALUES (?, ?, ?, ?)", 
-                 (pest, result, date_str, time_str))
-    conn.commit()
-    conn.close()
-    return {"status": "success"}
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={
+            "request": request,
+            "user": user,
+            "telemetry": telemetry,
+            "crops": crops,
+            "detections": detections,
+            "stats": stats,
+            "latest_recommendation": rec
+        }
+    )
 
-@router.post("/api/pests")
-async def save_pest(
-    request: Request,
-    pest_name: str = Form(...),
-    description: str = Form(...),
-    suggested_action: str = Form(...),
-    signal_range: str = Form(...),
-    pest_id: str = Form(None),
-    existing_image: str = Form(None),
-    image_file: UploadFile = File(None)
-):
-    image_path = existing_image if existing_image else "default_pest.jpg"
-    
-    if image_file and image_file.filename:
-        os.makedirs("web/static/images", exist_ok=True)
-        filename = f"{int(datetime.datetime.now().timestamp())}_{image_file.filename}"
-        target_path = os.path.join("web/static/images", filename)
-        with open(target_path, "wb") as buffer:
-            shutil.copyfileobj(image_file.file, buffer)
-        image_path = f"images/{filename}"
 
-    conn = get_db_connection()
-    if pest_id and pest_id.strip():
-        conn.execute("""
-            UPDATE pest SET PEST = ?, DESCRIPTION = ?, SUGGESTED_ACTION = ?, SIGNAL_RANGE = ?, IMAGE = ?
-            WHERE ID = ?
-        """, (pest_name, description, suggested_action, signal_range, image_path, int(pest_id)))
-    else:
-        conn.execute("""
-            INSERT INTO pest (PEST, DESCRIPTION, SUGGESTED_ACTION, SIGNAL_RANGE, IMAGE)
-            VALUES (?, ?, ?, ?, ?)
-        """, (pest_name, description, suggested_action, signal_range, image_path))
-    conn.commit()
-    conn.close()
-    return RedirectResponse(url="/dashboard", status_code=303)
+# --- Live Video Streaming Route ---
 
-@router.post("/api/pests/delete")
-async def delete_pest(pest_id: int = Form(...)):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM pest WHERE ID = ?", (pest_id,))
-    conn.commit()
-    conn.close()
-    return RedirectResponse(url="/dashboard", status_code=303)
-
-# Periodic GPS broadcast loop
-async def ensure_gps_telemetry_loop():
-    global gps_task
-    if gps_task is None or gps_task.done():
-        gps_task = asyncio.create_task(gps_telemetry_loop())
-
-async def gps_telemetry_loop():
+def gen_probe_stream():
+    """Generates continuous multipart MJPEG stream from the probe controller."""
     while True:
-        try:
-            if manager.active_connections:
-                raw_data = gps_reader.read_gps_data()
-                is_synthetic = gps_reader.is_synthetic
-                has_fix = bool(raw_data.get("gps_fix"))
-                
-                is_live = False
-                data_status = "Unknown"
-                last_fix = getattr(gps_reader, "last_valid_fix_time", 0.0)
-                
-                if is_synthetic:
-                    data_status = "Synthetic"
-                elif has_fix and time.time() - last_fix < 5.0:
-                    is_live = True
-                    data_status = "Live"
-                elif last_fix > 0:
-                    data_status = "Cached"
-                else:
-                    data_status = "No Fix"
+        frame_bytes = probe.get_jpeg_frame()
+        if frame_bytes:
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n"
+                b"Content-Length: " + str(len(frame_bytes)).encode() + b"\r\n\r\n" +
+                frame_bytes +
+                b"\r\n"
+            )
+        time.sleep(0.04)
 
-                # Use real hardware coordinates if fix acquired, or demo coordinates in synthetic mode
-                lat = raw_data.get("latitude") if has_fix else (6.681023 if is_synthetic else 0.0)
-                lon = raw_data.get("longitude") if has_fix else (124.689331 if is_synthetic else 0.0)
-                alt = raw_data.get("altitude") or (24.5 if is_synthetic else 0.0)
-                sats = raw_data.get("satellites") if has_fix else (8 if is_synthetic else 0)
 
-                if data_status == "Cached":
-                    lat = gps_reader.latitude
-                    lon = gps_reader.longitude
-                    alt = gps_reader.altitude
-                    sats = gps_reader.satellites
+@router.get("/video_feed")
+def video_feed():
+    """MJPEG Video stream endpoint for real-time web/mobile inspection preview."""
+    return StreamingResponse(
+        gen_probe_stream(),
+        media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
 
-                await manager.broadcast({
-                    "type": "GPS_TELEMETRY",
-                    "latitude": round(lat, 6),
-                    "longitude": round(lon, 6),
-                    "altitude": round(alt, 1),
-                    "satellites": sats,
-                    "gps_fix": has_fix,
-                    "is_synthetic": is_synthetic,
-                    "is_live": is_live,
-                    "data_status": data_status,
-                    "last_fix_time": last_fix
-                })
-        except Exception as e:
-            print(f"Error in telemetry loop: {e}")
-        await asyncio.sleep(1.0)
 
-# --- WebSocket ---
+@router.get("/api/camera/snapshot")
+def get_snapshot():
+    """Returns a single JPEG image snapshot from the live camera stream."""
+    frame_bytes = probe.get_jpeg_frame()
+    if not frame_bytes:
+        return Response(status_code=500, content="Failed to capture snapshot")
+    return Response(content=frame_bytes, media_type="image/jpeg")
+
+
+# --- REST API Endpoints ---
+
+@router.get("/api/status")
+async def get_status():
+    """Returns current probe telemetry (crop, soil moisture, pest status, health)."""
+    return {
+        "status": "success",
+        "telemetry": probe.get_telemetry()
+    }
+
+
+@router.get("/api/soil-moisture")
+async def get_soil_moisture():
+    """Returns latest soil moisture reading and status classification."""
+    reading = probe.soil_sensor.read_moisture()
+    return {
+        "status": "success",
+        "soil_moisture": reading
+    }
+
+
+@router.get("/api/crops")
+async def get_crops():
+    """Returns list of supported crops and their cataloged pests."""
+    return {
+        "status": "success",
+        "crops": knowledge_base.get_supported_crops(),
+        "active_crop": probe.active_crop
+    }
+
+
+class SelectCropRequest(BaseModel):
+    crop: str
+
+
+@router.post("/api/crop/select")
+async def select_crop(req: SelectCropRequest):
+    """Sets the active host crop being inspected by the probe."""
+    probe.set_active_crop(req.crop)
+    return {
+        "status": "success",
+        "active_crop": probe.active_crop,
+        "crop_details": knowledge_base.get_crop(probe.active_crop)
+    }
+
+
+class UpdatePlotRequest(BaseModel):
+    farm_area: str
+
+
+@router.post("/api/plot/update")
+async def update_plot(req: UpdatePlotRequest):
+    """Sets the farm zone or field plot identifier."""
+    probe.set_farm_area(req.farm_area)
+    return {
+        "status": "success",
+        "farm_area": probe.farm_area
+    }
+
+
+class AnalyzeRequest(BaseModel):
+    crop_type: Optional[str] = None
+    farm_area: Optional[str] = None
+
+
+@router.post("/api/analyze")
+async def analyze_snapshot(req: Optional[AnalyzeRequest] = None):
+    """Triggers immediate camera capture, pest detection, and pesticide recommendation."""
+    crop = req.crop_type if req else None
+    plot = req.farm_area if req else None
+    record = probe.analyze_now(crop_type=crop, farm_area=plot)
+    return {
+        "status": "success",
+        "record": record
+    }
+
+
+@router.get("/api/detections")
+async def get_detections_api(
+    limit: int = 50,
+    crop_type: Optional[str] = None,
+    infestation_level: Optional[str] = None
+):
+    """Retrieves paginated historical detection logs with optional filtering."""
+    records = get_recent_detections(limit=limit, crop_type=crop_type, infestation_level=infestation_level)
+    return {
+        "status": "success",
+        "count": len(records),
+        "detections": records
+    }
+
+
+@router.get("/api/detections/{detection_id}")
+async def get_single_detection(detection_id: int):
+    """Retrieves single detection record details by ID."""
+    rec = get_detection_by_id(detection_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Detection record not found")
+    return {
+        "status": "success",
+        "detection": rec
+    }
+
+
+@router.delete("/api/detections/{detection_id}")
+async def delete_detection_api(detection_id: int):
+    """Deletes detection record and associated snapshot image."""
+    success = delete_detection(detection_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return {"status": "success", "message": f"Detection {detection_id} deleted."}
+
+
+@router.get("/api/recommendations/{crop}/{pest}")
+async def query_recommendation(
+    crop: str,
+    pest: str,
+    confidence: float = 0.85,
+    count: int = 1,
+    soil_status: str = "Optimal"
+):
+    """Queries agricultural knowledge base directly for a crop and pest combination."""
+    rec = knowledge_base.get_recommendation(
+        crop_key=crop,
+        pest_name=pest,
+        confidence=confidence,
+        pest_count=count,
+        soil_status=soil_status
+    )
+    return {
+        "status": "success",
+        "recommendation": rec
+    }
+
+
+@router.get("/api/stats")
+async def get_stats_api():
+    """Returns summary statistics across all inspections."""
+    return {
+        "status": "success",
+        "stats": get_detection_stats()
+    }
+
+
+# --- WebSocket Alert Streaming ---
+
 @router.websocket("/ws/alerts")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_alerts_endpoint(websocket: WebSocket):
+    """WebSocket stream providing real-time pest detection alerts and telemetry heartbeats."""
     await manager.connect(websocket)
-    await ensure_gps_telemetry_loop()
     try:
+        # Send initial connection handshake with latest telemetry
+        await websocket.send_json({
+            "type": "HANDSHAKE",
+            "telemetry": probe.get_telemetry(),
+            "timestamp": time.time()
+        })
+
         while True:
-            # We don't really expect the client to send us data, but we need to keep connection open
-            data = await websocket.receive_text()
+            # Keep connection alive and accept client pings/messages
+            msg = await websocket.receive_text()
+            try:
+                data = json.loads(msg)
+                if data.get("action") == "PING":
+                    await websocket.send_json({
+                        "type": "PONG",
+                        "telemetry": probe.get_telemetry()
+                    })
+            except Exception:
+                pass
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+    except Exception as e:
+        logger.debug(f"[WebSocket] Disconnected: {e}")
+        manager.disconnect(websocket)
 
-# Helper function to trigger alert from elsewhere in python code
-async def trigger_pest_alert(pest_name: str, confidence: float, action: str, signal: str):
-    await manager.broadcast({
-        "type": "PEST_DETECTED",
-        "name": pest_name,
-        "confidence": confidence,
-        "action": action,
-        "signal": signal
-    })
 
-@router.get("/api/simulate_alert")
-async def simulate_alert():
-    await trigger_pest_alert("Armyworm", 0.92, "Apply Bt pesticide", "High")
-    return {"status": "simulated"}
+# --- Developer Settings View & Diagnostic Endpoints ---
 
-@router.get("/api/gps")
-async def get_gps():
-    raw_data = gps_reader.read_gps_data()
-    is_synthetic = gps_reader.is_synthetic
-    has_fix = bool(raw_data.get("gps_fix"))
-    
-    # Calculate if the fix is recent (live) or cached
-    is_live = False
-    data_status = "Unknown"
-    last_fix = getattr(gps_reader, "last_valid_fix_time", 0.0)
-    
-    if is_synthetic:
-        data_status = "Synthetic"
-    elif has_fix and time.time() - last_fix < 5.0:
-        is_live = True
-        data_status = "Live"
-    elif last_fix > 0:
-        data_status = "Cached"
-    else:
-        data_status = "No Fix"
-
-    # Fallbacks for UI demonstration if hardware is mocking or no fix yet
-    lat = raw_data.get("latitude") if has_fix else (6.681023 if is_synthetic else 0.0)
-    lon = raw_data.get("longitude") if has_fix else (124.689331 if is_synthetic else 0.0)
-    alt = raw_data.get("altitude") or (24.5 if is_synthetic else 0.0)
-    sats = raw_data.get("satellites") if has_fix else (8 if is_synthetic else 0)
-
-    # Use old lat/lon if cached
-    if data_status == "Cached":
-        lat = gps_reader.latitude
-        lon = gps_reader.longitude
-        alt = gps_reader.altitude
-        sats = gps_reader.satellites
-
-    return {
-        "status": "success",
-        "latitude": round(lat, 6),
-        "longitude": round(lon, 6),
-        "altitude": round(alt, 1),
-        "satellites": sats,
-        "gps_fix": has_fix,
-        "is_synthetic": is_synthetic,
-        "is_live": is_live,
-        "data_status": data_status,
-        "last_fix_time": last_fix
-    }
-
-@router.get("/api/dev/gps/raw")
-async def dev_get_gps_raw():
-    """Returns the buffered raw NMEA stream for debugging."""
-    raw_sentences = getattr(gps_reader, "get_raw_nmea", lambda: [])()
-    return {
-        "status": "success",
-        "raw_stream": raw_sentences,
-        "is_synthetic": gps_reader.is_synthetic,
-        "baudrate": gps_reader.baudrate,
-        "port": gps_reader.port
-    }
-
-@router.post("/api/dev/gps/restart")
-async def dev_restart_gps():
-    """Restarts the serial connection for the GPS module."""
-    try:
-        success = getattr(gps_reader, "reconnect", lambda: False)()
-        return {
-            "status": "success" if success else "warning",
-            "message": "GPS Serial connection restarted." if success else "Fallback mode enabled after restart."
+@router.get("/dev_settings", response_class=HTMLResponse)
+async def dev_settings_page(request: Request):
+    """Serves Developer Settings page."""
+    user = get_current_user(request)
+    crops = knowledge_base.get_supported_crops()
+    return templates.TemplateResponse(
+        request=request,
+        name="dev_settings.html",
+        context={
+            "request": request,
+            "user": user,
+            "telemetry": probe.get_telemetry(),
+            "crops": crops
         }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    )
 
 
-@router.websocket("/ws/control")
-async def control_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    last_command_time = time.time()
-    
-    async def deadman_switch():
-        nonlocal last_command_time
-        while True:
-            if time.time() - last_command_time > 0.5:
-                if motors.get_state() != "STOPPED":
-                    motors.stop()
-                # To prevent servo jitter, detach if idle
-                servo.detach()
-            await asyncio.sleep(0.1)
-    
-    deadman_task = asyncio.create_task(deadman_switch())
-    
+@router.get("/api/dev/status")
+async def dev_get_status():
+    """Returns system status, network IP, camera diagnostics, and soil sensor status."""
+    ip_addr = "127.0.0.1"
+    net_mode = "Wi-Fi"
+
     try:
-        while True:
-            data = await websocket.receive_json()
-            last_command_time = time.time()
-            action = data.get("action")
-            device = data.get("device")
-            
-            if device == "motor":
-                if action == "forward":
-                    motors.forward()
-                elif action == "backward":
-                    motors.backward()
-                elif action == "left":
-                    motors.left()
-                elif action == "right":
-                    motors.right()
-                elif action == "stop":
-                    if motors.get_state() != "STOPPED":
-                        motors.stop()
-            elif device == "servo":
-                if action == "left":
-                    servo.set_angle(servo.get_angle() - 5)
-                elif action == "right":
-                    servo.set_angle(servo.get_angle() + 5)
-                elif action == "center":
-                    servo.center()
-            elif action == "heartbeat":
-                pass # last_command_time is already updated
-    except WebSocketDisconnect:
+        if sys.platform.startswith("linux"):
+            import subprocess
+            res = subprocess.run(["hostname", "-I"], capture_output=True, text=True)
+            if res.returncode == 0 and res.stdout.strip():
+                ip_addr = res.stdout.strip().split()[0]
+    except Exception:
         pass
-    except Exception as e:
-        print(f"Control WebSocket error: {e}")
-    finally:
-        deadman_task.cancel()
-        motors.stop()
-        servo.detach()
 
+    soil_data = probe.soil_sensor.read_moisture()
 
-# ═══════════════════════════════════════════════════════════════════════
-# Developer Settings Endpoints
-# ═══════════════════════════════════════════════════════════════════════
+    return {
+        "status": "success",
+        "ip_address": ip_addr,
+        "network_mode": net_mode,
+        "active_connection": "wlan0",
+        "camera": {
+            "backend": "OpenCV / Probe Vision",
+            "resolution": "640x480",
+            "target_fps": 30,
+            "is_active": True,
+            "is_synthetic": probe.cap is None
+        },
+        "soil": {
+            "moisture_percent": soil_data["moisture_percent"],
+            "status": soil_data["status"],
+            "voltage": soil_data["voltage"],
+            "raw_adc": soil_data["raw_adc"],
+            "hardware_type": probe.soil_sensor.adc_type
+        },
+        "server_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "platform": sys.platform
+    }
+
 
 class WifiConnectRequest(BaseModel):
     ssid: str
     password: Optional[str] = None
 
 
-@router.get("/dev_settings", response_class=HTMLResponse)
-async def dev_settings_page(request: Request):
-    """Serves the Developer Settings dashboard."""
-    user = get_current_user(request)
-    return templates.TemplateResponse(
-        request=request,
-        name="dev_settings.html",
-        context={"request": request, "user": user}
-    )
-
-
-@router.get("/api/dev/status")
-async def dev_get_status():
-    """Returns network mode, IP, camera diagnostics, and system info."""
-    ip_addr = "Unknown"
-    active_connection = "Unknown"
-
-    try:
-        if shutil.which("nmcli"):
-            res_conn = subprocess.run(
-                ["nmcli", "-t", "-f", "GENERAL.CONNECTION", "device", "show", "wlan0"],
-                capture_output=True, text=True, timeout=3
-            )
-            if res_conn.returncode == 0:
-                conn_line = res_conn.stdout.strip().split("\n")[0]
-                active_connection = conn_line.split(":")[-1]
-
-        if shutil.which("ip"):
-            res_ip = subprocess.run(
-                ["ip", "-4", "addr", "show", "wlan0"],
-                capture_output=True, text=True, timeout=3
-            )
-            if res_ip.returncode == 0:
-                for line in res_ip.stdout.splitlines():
-                    if "inet " in line:
-                        ip_addr = line.strip().split()[1].split("/")[0]
-                        break
-        elif sys.platform.startswith("win"):
-            import socket
-            hostname = socket.gethostname()
-            ip_addr = socket.gethostbyname(hostname)
-            active_connection = "Windows Dev Network"
-    except Exception as e:
-        active_connection = f"Error: {e}"
-
-    camera_info = {}
-    try:
-        from edge.camera_test import camera_manager
-        camera_info = camera_manager.get_status()
-    except Exception:
-        camera_info = {"is_running": False, "backend": "Unavailable (simulation/standalone)"}
-
-    return {
-        "status": "success",
-        "network": {
-            "connection": active_connection,
-            "ip_address": ip_addr,
-            "local_domain": "http://agrisentinel.local:8000",
-        },
-        "camera": camera_info,
-        "platform": sys.platform,
-        "server_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-
-
 @router.post("/api/dev/wifi/connect")
-async def dev_wifi_connect(req: WifiConnectRequest):
-    """Executes set_wifi.sh to configure the target Wi-Fi network."""
-    ssid = req.ssid.strip()
-    if not ssid:
-        raise HTTPException(status_code=400, detail="SSID cannot be empty.")
+async def dev_connect_wifi(req: WifiConnectRequest):
+    """Saves Wi-Fi configuration using NetworkManager nmcli if available."""
+    if not sys.platform.startswith("linux"):
+        return {"status": "success", "message": f"[Simulated] Saved profile for '{req.ssid}'."}
 
-    script_path = os.path.abspath("scripts/set_wifi.sh")
-    if not os.path.exists(script_path):
-        return JSONResponse(status_code=500, content={"status": "error", "message": "scripts/set_wifi.sh not found."})
+    import subprocess
+    cmd = ["nmcli", "device", "wifi", "connect", req.ssid]
+    if req.password:
+        cmd.extend(["password", req.password])
 
     try:
-        cmd = ["bash", script_path, f"--ssid={ssid}"]
-        if req.password:
-            cmd.append(f"--pass={req.password}")
-            
-        proc = subprocess.run(
-            cmd,
-            capture_output=True, text=True, timeout=30
-        )
-        return {
-            "status": "success" if proc.returncode == 0 else "error",
-            "stdout": proc.stdout,
-            "stderr": proc.stderr,
-            "returncode": proc.returncode
-        }
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        if proc.returncode == 0:
+            return {"status": "success", "message": f"Connected to Wi-Fi '{req.ssid}' successfully."}
+        return {"status": "error", "message": proc.stderr or proc.stdout}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        return {"status": "error", "message": str(e)}
 
 
 @router.post("/api/dev/camera/restart")
 async def dev_restart_camera():
-    """Stops and reinitializes the active camera backend without full restart."""
+    """Reinitializes probe camera capture interface."""
     try:
-        from edge.camera_test import camera_manager
-        camera_manager.stop()
-        await asyncio.sleep(0.6)
-        camera_manager.start()
-        return {
-            "status": "success",
-            "message": "Camera subsystem restarted successfully.",
-            "camera_status": camera_manager.get_status()
-        }
+        probe._init_camera()
+        return {"status": "success", "message": "Camera subsystem reinitialized."}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        return {"status": "error", "message": str(e)}
 
 
-@router.get("/api/dev/logs")
-async def dev_get_logs(lines: int = 60):
-    """Fetches recent system logs via journalctl."""
-    lines = min(max(lines, 10), 200)
-    output = ""
-    try:
-        if shutil.which("journalctl"):
-            proc = subprocess.run(
+class PowerActionRequest(BaseModel):
+    action: str
+
+
+@router.post("/api/dev/system/power")
+async def dev_system_power(req: PowerActionRequest):
+    """Executes safe reboot or shutdown on Linux SBC."""
+    action = req.action.lower().strip()
+    if not sys.platform.startswith("linux"):
+        return {"status": "success", "message": f"[Simulated] System {action} received."}
+
+    import subprocess
+    if action == "reboot":
+        subprocess.Popen(["sudo", "reboot"])
+        return {"status": "success", "message": "Reboot sequence initiated."}
+    elif action == "shutdown":
+        subprocess.Popen(["sudo", "shutdown", "-h", "now"])
+        return {"status": "success", "message": "Shutdown sequence initiated."}
+    return {"status": "error", "message": "Invalid power action specified."}
+
+
+@router.get("/api/dev/system/logs")
+async def dev_get_system_logs(lines: int = 80):
+    """Returns recent application logs."""
+    if sys.platform.startswith("linux"):
+        import subprocess
+        try:
+            res = subprocess.run(
                 ["journalctl", "-u", "agrisentinel", "-n", str(lines), "--no-pager"],
-                capture_output=True, text=True, timeout=5
+                capture_output=True,
+                text=True,
+                timeout=5
             )
-            output = proc.stdout if proc.stdout.strip() else proc.stderr
-            if not output.strip():
-                # Fallback to last system entries
-                proc2 = subprocess.run(
-                    ["journalctl", "-n", str(lines), "--no-pager"],
-                    capture_output=True, text=True, timeout=5
-                )
-                output = proc2.stdout
-        else:
-            output = (
-                f"[INFO] journalctl is not present on this host ({sys.platform}).\n"
-                f"[INFO] Real systemd logs will appear here when running on Raspberry Pi.\n"
-                f"[TIMESTAMP] {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                f"[STATUS] AgriSentinel Edge Application is alive."
-            )
-    except Exception as e:
-        output = f"Error reading logs: {e}"
+            if res.returncode == 0:
+                return {"status": "success", "logs": res.stdout}
+        except Exception:
+            pass
 
-    return {"status": "success", "logs": output}
-
-
-@router.post("/api/dev/system/reboot")
-async def dev_system_reboot():
-    """Gracefully reboots the Raspberry Pi."""
-    def _do_reboot():
-        time.sleep(1.0)
-        subprocess.run(["sudo", "reboot"])
-
-    asyncio.get_event_loop().run_in_executor(None, _do_reboot)
-    return {
-        "status": "success",
-        "message": "Reboot initiated. The system will restart in a few seconds."
-    }
-
-
-@router.post("/api/dev/system/shutdown")
-async def dev_system_shutdown():
-    """Safely shuts down the Raspberry Pi."""
-    def _do_shutdown():
-        time.sleep(1.0)
-        subprocess.run(["sudo", "shutdown", "-h", "now"])
-
-    asyncio.get_event_loop().run_in_executor(None, _do_shutdown)
-    return {
-        "status": "success",
-        "message": "Shutdown initiated. Safely wait for the activity LED to turn off before cutting power."
-    }
-
+    # Fallback simulated logs for dev
+    sim_logs = (
+        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] AgriSentinel Smart Crop Probe online\n"
+        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Active crop: {probe.active_crop}\n"
+        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Soil moisture: {probe.latest_soil['moisture_percent']}%\n"
+        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Camera capture stream active (640x480)\n"
+    )
+    return {"status": "success", "logs": sim_logs}
 
