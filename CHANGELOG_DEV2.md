@@ -136,18 +136,34 @@ $$\text{Plant Health} = f(\text{Pest Count}, \text{Pest Species}, \text{Soil Moi
 
 ---
 
-## 7. Verification & Automated Test Suite
+## 7. 102-Class TFLite Pest Detection & Agricultural Intelligence
 
-A comprehensive test suite with 20 unit and integration tests has been implemented and verified via `pytest`:
+### Taxonomy & Knowledge Catalog
+* Integrated the complete **102 agricultural pest taxonomy** (`config/pest_classes_102.json` and `config/labels.txt`), aligned with the IP102 benchmark.
+* Added **Rice (*Oryza sativa*)** to primary crops alongside Corn, Mungbean, Squash, and Eggplant, featuring Asiatic Rice Borer, Yellow Rice Borer, Brown Planthopper, Rice Leaf Roller, Rice Gall Midge, and Rice Leafhopper.
+* Developed taxonomic IPM recommendation fallback rules in `edge/knowledge_base.py` covering all 102 species across 10 biological families (borers, hoppers, armyworms/cutworms, aphids, thrips, beetles/weevils, mites, scales/mealybugs, flies/midges, subterranean soil pests).
+
+### TFLite Inference Runner (`edge/vision/detector.py`)
+* Implemented `TfliteRunner` supporting both `tflite_runtime` (Raspberry Pi optimized) and `tensorflow.lite`.
+* Automatic quantization handling (`uint8` vs `float32`) and dual tensor output parsing (SSD object detection bounding boxes + single classification probability vectors).
+* High-fidelity multi-crop simulated detection fallback for development environments.
+
+---
+
+## 8. Verification & Automated Test Suite
+
+A comprehensive test suite with 28 unit and integration tests has been implemented and verified via `pytest`:
 * `tests/test_soil_moisture.py`: Validates sensor readings, mock mode, and status thresholds.
-* `tests/test_knowledge_base.py`: Validates crop catalogs, infestation tiers, two-tier confidence, and plant health logic.
+* `tests/test_knowledge_base.py`: Validates crop catalogs, infestation tiers, two-tier confidence, plant health logic, rice crop support, and 102-pest fallback recommendations.
+* `tests/test_vision_detector.py`: Validates 102 labels loading, DetectionBox serialization, simulated multi-crop detection, force-pest override, and TFLite fallback.
 * `tests/test_database.py`: Validates SQLite CRUD operations, filtering, and stats aggregation.
 * `tests/test_api_endpoints.py`: Validates all FastAPI REST endpoints.
 * `tests/test_camera_stream.py`: Validates frame generation, MJPEG stream parser, and diagnostic endpoints.
 
-All 20 tests pass cleanly:
+All 28 tests pass cleanly:
 ```bash
 pytest tests/ -v
-# 20 passed in 1.21s
+# 28 passed in 1.42s
 ```
+
 

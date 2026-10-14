@@ -66,3 +66,42 @@ def test_integrated_plant_health_derivation():
     h4 = knowledge_base.evaluate_plant_health(8, "Severe", "Optimal")
     assert "Severe Infestation" in h4
 
+
+def test_rice_crop_support_and_pests():
+    """Verify that rice is fully supported with key IP102 pests."""
+    crops = knowledge_base.get_supported_crops()
+    crop_keys = [c["key"] for c in crops]
+    assert "rice" in crop_keys
+
+    rice_crop = knowledge_base.get_crop("rice")
+    assert rice_crop is not None
+    assert "asiatic_rice_borer" in rice_crop["pests"]
+    assert "yellow_rice_borer" in rice_crop["pests"]
+    assert "brown_plant_hopper" in rice_crop["pests"]
+
+    # Test recommendation for Asiatic Rice Borer
+    rec = knowledge_base.get_recommendation("rice", "asiatic_rice_borer", confidence=0.85, pest_count=3)
+    assert rec["status"] == "CONFIRMED"
+    assert "Chlorantraniliprole" in rec["recommended_pesticide"] or "Cartap" in rec["recommended_pesticide"]
+    assert rec["crop_type"] == "rice"
+
+
+def test_ip102_catalog_fallback_recommendations():
+    """Verify all 102 pests can be queried with sound IPM recommendations even without crop-specific entry."""
+    # Test a wheat pest (wheat sawfly) queried in corn or general
+    rec_sawfly = knowledge_base.get_recommendation("corn", "wheat_sawfly", confidence=0.80, pest_count=2)
+    assert rec_sawfly["status"] == "CONFIRMED"
+    assert rec_sawfly["recommended_pesticide"] is not None
+    assert rec_sawfly["detected_pest"] == "Wheat Sawfly"
+
+    # Test a citrus scale pest (cottony cushion scale)
+    rec_scale = knowledge_base.get_recommendation("eggplant", "icerya_purchasi_maskell", confidence=0.75, pest_count=1)
+    assert rec_scale["status"] == "CONFIRMED"
+    assert "Buprofezin" in rec_scale["recommended_pesticide"] or "Dinotefuran" in rec_scale["recommended_pesticide"]
+
+    # Test an alfalfa weevil
+    rec_weevil = knowledge_base.get_recommendation("mungbean", "alfalfa_weevil", confidence=0.72, pest_count=4)
+    assert rec_weevil["status"] == "CONFIRMED"
+    assert "Lambda-Cyhalothrin" in rec_weevil["recommended_pesticide"] or "Spinosad" in rec_weevil["recommended_pesticide"]
+
+

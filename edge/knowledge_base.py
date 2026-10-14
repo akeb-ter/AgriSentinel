@@ -23,6 +23,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_DIR = os.path.join(BASE_DIR, "config")
 YAML_PATH = os.path.join(CONFIG_DIR, "knowledge_base.yaml")
 JSON_PATH = os.path.join(CONFIG_DIR, "knowledge_base.json")
+CLASSES_102_PATH = os.path.join(CONFIG_DIR, "pest_classes_102.json")
 
 
 class KnowledgeBase:
@@ -32,7 +33,29 @@ class KnowledgeBase:
         self.yaml_path = yaml_path
         self.json_path = json_path
         self.data: Dict[str, Any] = {}
+        self.catalog_102: Dict[str, Dict[str, Any]] = {}
+        self._load_102_catalog()
         self.reload()
+
+    def _load_102_catalog(self):
+        """Loads the 102-pest IP102 catalog into indexing map."""
+        if not os.path.exists(CLASSES_102_PATH):
+            return
+        try:
+            with open(CLASSES_102_PATH, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+                for item in raw.get("classes", []):
+                    k = item.get("key", "").lower().strip()
+                    n = item.get("name", "").lower().strip()
+                    if k:
+                        self.catalog_102[k] = item
+                    if n:
+                        self.catalog_102[n] = item
+                    if "id" in item:
+                        self.catalog_102[str(item["id"])] = item
+            logger.info(f"[KnowledgeBase] Loaded {len(raw.get('classes', []))} pest classes from {CLASSES_102_PATH}")
+        except Exception as e:
+            logger.warning(f"[KnowledgeBase] Could not load 102 pest catalog: {e}")
 
     def reload(self):
         """Loads knowledge base from YAML, falling back to JSON if PyYAML is unavailable."""
@@ -90,22 +113,279 @@ class KnowledgeBase:
 
     def get_crop(self, crop_key: str) -> Optional[Dict[str, Any]]:
         """Returns crop details by key."""
+        if not crop_key:
+            return None
         return self.crops.get(crop_key.lower().strip())
 
-    def get_pest(self, crop_key: str, pest_key: str) -> Optional[Dict[str, Any]]:
-        """Returns pest details for a given crop."""
-        crop = self.get_crop(crop_key)
-        if not crop:
-            return None
-        pests = crop.get("pests", {})
-        # Exact match or normalized slug match
+    def _generate_taxonomic_recommendations(self, common_name: str, scientific_name: str = "") -> Dict[str, Any]:
+        """
+        Generates sound Integrated Pest Management (IPM) chemical and biocontrol recommendations
+        based on the pest's morphological and taxonomic group across the 102 IP102 catalog.
+        """
+        target = f"{common_name.lower()} {scientific_name.lower()}"
+
+        if any(w in target for w in ["borer", "maggot", "stemfly"]):
+            return {
+                "chemical": {
+                    "product_name": "Chlorantraniliprole 18.5% SC or Flubendiamide 39.35% SC",
+                    "active_ingredient": "Chlorantraniliprole / Flubendiamide",
+                    "dosage": "0.3 - 0.4 ml/L water",
+                    "phi_days": 14,
+                    "timing": "Target peak egg-hatch or initial larval instars before tunneling into stems"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Bacillus thuringiensis (Bt subsp. kurstaki) + Trichogramma parasitoids",
+                    "dosage": "2.0 g/L Bt spray; release 50,000 parasitoids/ha",
+                    "phi_days": 0,
+                    "timing": "Release upon adult moth detection"
+                },
+                "safety_precautions": "Maintain personal protective equipment (gloves, respirator). Do not apply near aquatic environments."
+            }
+
+        if any(w in target for w in ["hopper", "planthopper", "leafhopper", "cicadell", "lawana", "salurnis", "erythroneura"]):
+            return {
+                "chemical": {
+                    "product_name": "Triflemezopyrim 10% SC or Pymetrozine 50% WG",
+                    "active_ingredient": "Triflemezopyrim / Pymetrozine",
+                    "dosage": "0.5 ml/L water (Triflemezopyrim) or 0.6 g/L (Pymetrozine)",
+                    "phi_days": 14,
+                    "timing": "Direct nozzle spray at the base/lower leaves where hoppers feed"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Beauveria bassiana or Metarhizium anisopliae bio-insecticide",
+                    "dosage": "5 g/L spore suspension with mild surfactant",
+                    "phi_days": 0,
+                    "timing": "Spray in late afternoon to maintain humidity for fungal germination"
+                },
+                "safety_precautions": "Avoid overuse of synthetic pyrethroids to prevent planthopper resurgence. Wear standard PPE."
+            }
+
+        if any(w in target for w in ["caterpillar", "armyworm", "army_worm", "cutworm", "moth", "budworm", "roller", "prodenia", "pieris", "papilio", "leafminer", "limacodidae"]):
+            return {
+                "chemical": {
+                    "product_name": "Emamectin Benzoate 5% SG or Chlorantraniliprole 18.5% SC",
+                    "active_ingredient": "Emamectin Benzoate / Diamides",
+                    "dosage": "0.4 g/L water (Emamectin) or 0.4 ml/L (Chlorantraniliprole)",
+                    "phi_days": 7,
+                    "timing": "Spray during dusk or early morning when larvae emerge on foliage"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Bacillus thuringiensis (Bt) + Cold-pressed Neem Oil",
+                    "dosage": "2.5 g/L Bt + 3 ml/L Neem oil (10,000 ppm)",
+                    "phi_days": 0,
+                    "timing": "Apply at first sign of skeletonized leaves or leaf rolling"
+                },
+                "safety_precautions": "Wear certified respirator and protective clothing. Toxic to silkworms."
+            }
+
+        if any(w in target for w in ["aphid", "whitefly", "vaporariorum", "green_bug", "plant_bug", "miridae", "apolygus"]):
+            return {
+                "chemical": {
+                    "product_name": "Imidacloprid 17.8% SL or Acetamiprid 20% SP",
+                    "active_ingredient": "Imidacloprid / Acetamiprid",
+                    "dosage": "0.5 ml/L water",
+                    "phi_days": 14,
+                    "timing": "Target colonies under foliage before honeydew/sooty mold develops"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Neem Oil 10,000 ppm + Potassium Soap",
+                    "dosage": "3 - 5 ml/L water",
+                    "phi_days": 0,
+                    "timing": "Apply early morning; ensure thorough contact with leaf undersides"
+                },
+                "safety_precautions": "Highly toxic to bees. Do NOT spray open flowering blossoms during active foraging hours."
+            }
+
+        if any(w in target for w in ["thrips", "odontothrips", "scirtothrips", "phloeothrips"]):
+            return {
+                "chemical": {
+                    "product_name": "Spinetoram 11.7% SC or Fipronil 5% SC",
+                    "active_ingredient": "Spinetoram / Fipronil",
+                    "dosage": "0.5 ml/L water (Spinetoram) or 1.5 ml/L (Fipronil)",
+                    "phi_days": 7,
+                    "timing": "Early morning spray targeting terminal buds and leaf curls"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Spinosad organic suspension + Blue Sticky Monitoring Traps",
+                    "dosage": "0.4 ml/L water; install 15 blue sticky traps per hectare",
+                    "phi_days": 1,
+                    "timing": "Deploy traps at crop canopy height"
+                },
+                "safety_precautions": "Rotate chemical modes of action (IRAC groups) to prevent rapid thrips resistance."
+            }
+
+        if any(w in target for w in ["mite", "spider", "colomerus", "brevipoalpus", "polyphagotars", "panonchus", "phyllocoptes", "penthaleus"]):
+            return {
+                "chemical": {
+                    "product_name": "Spiromesifen 22.9% SC or Abamectin 1.8% EC",
+                    "active_ingredient": "Spiromesifen / Abamectin",
+                    "dosage": "0.8 ml/L water (Spiromesifen) or 0.6 ml/L (Abamectin)",
+                    "phi_days": 7,
+                    "timing": "High-pressure fine mist spray ensuring total coverage under leaves"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Wettable Sulfur 80% WP or Phytoseiid Predatory Mites",
+                    "dosage": "2.0 g/L water wettable sulfur",
+                    "phi_days": 0,
+                    "timing": "Spray during cool evening hours (avoid temperatures > 32°C)"
+                },
+                "safety_precautions": "Never mix sulfur with oil-based sprays within a 30-day window to prevent phytotoxicity."
+            }
+
+        if any(w in target for w in ["scale", "mealybug", "pseudococcus", "icerya", "unaspis", "ceroplastes", "chrysomphalus", "parlatoria", "nipaecoccus", "aleurocanthus", "viteus"]):
+            return {
+                "chemical": {
+                    "product_name": "Buprofezin 25% SC or Dinotefuran 20% SG",
+                    "active_ingredient": "Buprofezin / Dinotefuran",
+                    "dosage": "1.5 ml/L water (Buprofezin) or 0.5 g/L (Dinotefuran)",
+                    "phi_days": 14,
+                    "timing": "Spray during early crawler stage before thick waxy coating forms"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Horticultural Paraffinic Summer Oil + Insecticidal Soap",
+                    "dosage": "1.5% oil-soap emulsion drench",
+                    "phi_days": 0,
+                    "timing": "Direct high volume wash over infested stems and branches"
+                },
+                "safety_precautions": "Wear eye protection and full face shield when drenching tall canopies."
+            }
+
+        if any(w in target for w in ["fly", "midge", "dacus", "bactrocera", "tetradacus", "cerodonta", "dasineura"]):
+            return {
+                "chemical": {
+                    "product_name": "Malathion 50% EC bait spray or Spinosad fruit fly bait",
+                    "active_ingredient": "Malathion / Spinosad bait",
+                    "dosage": "2 ml/L water mixed with 10 g/L molasses or protein attractant",
+                    "phi_days": 7,
+                    "timing": "Coarse splash spots on lower canopy leaves early in the morning"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Methyl Eugenol / Cue-lure Pheromone Traps + Yellow Sticky Cards",
+                    "dosage": "Install 15 - 20 traps per hectare at canopy level",
+                    "phi_days": 0,
+                    "timing": "Deploy before fruit initiation to suppress adult fly populations"
+                },
+                "safety_precautions": "Avoid direct spraying onto developing edible fruits. Wear chemical-resistant gloves."
+            }
+
+        if any(w in target for w in ["weevil", "beetle", "flea_beetle", "potosiabre", "sericaorient", "lytta", "rhytidodera", "sternochetus", "oides", "deporaus"]):
+            return {
+                "chemical": {
+                    "product_name": "Lambda-Cyhalothrin 5% EC or Spinosad 45% SC",
+                    "active_ingredient": "Lambda-Cyhalothrin / Spinosad",
+                    "dosage": "1.0 ml/L water",
+                    "phi_days": 7,
+                    "timing": "Apply at first appearance of adult foliage chewing damage"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Diatomaceous Earth (DE) perimeter dusting + Azadirachtin spray",
+                    "dosage": "Dust base of plants; spray Azadirachtin at 3 ml/L",
+                    "phi_days": 0,
+                    "timing": "Apply in dry weather condition"
+                },
+                "safety_precautions": "Keep domestic animals away from treated vegetation for at least 48 hours."
+            }
+
+        if any(w in target for w in ["cricket", "grub", "wireworm", "locusto"]):
+            return {
+                "chemical": {
+                    "product_name": "Chlorpyrifos 20% EC or Fipronil 0.3% GR Granules",
+                    "active_ingredient": "Chlorpyrifos / Fipronil",
+                    "dosage": "2.5 ml/L root soil drench or 15-20 kg/ha incorporated granules",
+                    "phi_days": 21,
+                    "timing": "Soil application during land preparation or around root crowns"
+                },
+                "organic_biocontrol": {
+                    "product_name": "Entomopathogenic Nematodes (Steinernema carpocapsae) or Metarhizium anisopliae",
+                    "dosage": "Apply 1 billion nematodes/ha as root zone drench",
+                    "phi_days": 0,
+                    "timing": "Drench moist soil during cloudy days or late afternoon"
+                },
+                "safety_precautions": "Avoid application near natural surface water drains to prevent aquatic organism toxicity."
+            }
+
+        # General IPM fallback
+        return {
+            "chemical": {
+                "product_name": "Broad-spectrum contact insecticide (e.g., Lambda-Cyhalothrin 5% EC)",
+                "active_ingredient": "Pyrethroid / Contact insecticide",
+                "dosage": "1.0 ml per Liter of water",
+                "phi_days": 14,
+                "timing": "Spot spray infested foliage following field inspection"
+            },
+            "organic_biocontrol": {
+                "product_name": "Cold-pressed Neem Oil 10,000 ppm + Potassium Soap",
+                "dosage": "3 - 5 ml per Liter of water",
+                "phi_days": 0,
+                "timing": "Spray late afternoon on undersides of leaves"
+            },
+            "safety_precautions": "Wear rubber gloves, protective goggles, and face mask. Confirm species with local agricultural extension officer."
+        }
+
+    def _get_fallback_ip102_pest(self, pest_key: str) -> Optional[Dict[str, Any]]:
+        """Synthesizes complete pest metadata and IPM recommendations for any 102 IP102 pest."""
         norm = pest_key.lower().strip().replace(" ", "_").replace("-", "_")
-        if norm in pests:
-            return pests[norm]
-        for k, v in pests.items():
-            if norm in k or k in norm or norm in v.get("common_name", "").lower():
-                return v
-        return None
+
+        catalog_entry = self.catalog_102.get(norm)
+        if not catalog_entry:
+            # Search partial or ID
+            for k, item in self.catalog_102.items():
+                if norm == k or norm in item.get("name", "").lower():
+                    catalog_entry = item
+                    break
+
+        if catalog_entry:
+            common_name = catalog_entry.get("name", pest_key.replace("_", " ").title())
+            sci_name = catalog_entry.get("scientific_name", "")
+        else:
+            common_name = pest_key.replace("_", " ").title()
+            sci_name = ""
+
+        recs = self._generate_taxonomic_recommendations(common_name, sci_name)
+
+        return {
+            "common_name": common_name,
+            "scientific_name": sci_name,
+            "infestation_thresholds": {
+                "low": [1, 2],
+                "moderate": [3, 5],
+                "severe": 6
+            },
+            "recommendations": recs
+        }
+
+    def get_pest(self, crop_key: str, pest_key: str) -> Optional[Dict[str, Any]]:
+        """
+        Returns pest details for a given crop, searching:
+        1. Specific crop dictionary
+        2. Other crops in the multi-crop catalog
+        3. The 102 IP102 pest catalog with intelligent taxonomic IPM recommendations
+        """
+        norm = pest_key.lower().strip().replace(" ", "_").replace("-", "_")
+
+        # 1. Search specified crop
+        crop = self.get_crop(crop_key) if crop_key else None
+        if crop:
+            pests = crop.get("pests", {})
+            if norm in pests:
+                return pests[norm]
+            for k, v in pests.items():
+                if norm in k or k in norm or norm in v.get("common_name", "").lower():
+                    return v
+
+        # 2. Search other crops in knowledge base
+        for c_key, c_data in self.crops.items():
+            if crop_key and c_key == crop_key.lower().strip():
+                continue
+            pests = c_data.get("pests", {})
+            if norm in pests:
+                return pests[norm]
+            for k, v in pests.items():
+                if norm in k or k in norm or norm in v.get("common_name", "").lower():
+                    return v
+
+        # 3. Fallback to 102 IP102 catalog
+        return self._get_fallback_ip102_pest(norm)
 
     def calculate_infestation_level(self, crop_key: str, pest_key: str, count: int) -> str:
         """
