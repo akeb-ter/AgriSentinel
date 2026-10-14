@@ -198,3 +198,4 @@ tests/test_vision_detector.py::test_get_detector_factory PASSED          [100%]
 
 ======================== 28 passed in 1.42s ========================
 ```
+

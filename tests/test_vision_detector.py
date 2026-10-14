@@ -87,3 +87,4 @@ def test_get_detector_factory():
     frame = np.zeros((480, 640, 3), dtype=np.uint8)
     boxes = detector.detect(frame, crop_type="corn")
     assert len(boxes) >= 1
+
