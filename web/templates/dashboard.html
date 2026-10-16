@@ -655,6 +655,22 @@
         </div>
     </header>
 
+    <!-- ═══ MODEL OFFLINE / MISSING WARNING BANNER ═══ -->
+    <div id="modelOfflineBanner" style="{% if telemetry.model_loaded %}display:none;{% else %}display:flex;{% endif %} background:#fee2e2; border:1.5px solid #f87171; color:#991b1b; padding:12px 18px; border-radius:var(--radius-md); margin-bottom:16px; align-items:center; justify-content:space-between; gap:12px; box-shadow:0 2px 8px rgba(220,38,38,0.1);">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <i class="fas fa-exclamation-triangle" style="font-size:22px; color:#dc2626;"></i>
+            <div>
+                <strong style="font-size:14px; color:#991b1b;">Warning: TFLite Model Offline / Not Found</strong>
+                <p style="margin:2px 0 0 0; font-size:12px; color:#b91c1c;">
+                    The vision inference model is not loaded (<span id="modelOfflinePath" style="font-family:monospace; font-weight:600;">{{ telemetry.model_path or 'edge/models/best.tflite' }}</span>). Live pest detection inference is disabled (no simulated detections).
+                </p>
+            </div>
+        </div>
+        <a href="/dev_settings" class="btn-action" style="background:#dc2626; color:white; border:none; padding:8px 16px; font-size:12px; font-weight:700; border-radius:8px; text-decoration:none; white-space:nowrap;">
+            <i class="fas fa-wrench"></i> Dev Settings
+        </a>
+    </div>
+
     <!-- ═══ NAVIGATION TABS ═══ -->
     <nav class="nav-tabs">
         <button class="nav-tab active" data-panel="panelLive" onclick="switchTab('panelLive')">
@@ -911,7 +927,7 @@
 
 <script>
     // --- Application State ---
-    let audioChimeEnabled = true;
+    let audioChimeEnabled = localStorage.getItem('audioChimeEnabled') !== 'false';
     let ws = null;
     const cropsCatalog = {{ crops | tojson }};
 
@@ -1015,10 +1031,17 @@
         }
     }
 
+    function updateAudioChimeUI() {
+        const textEl = document.getElementById('chimeStatusText');
+        const iconEl = document.getElementById('chimeIcon');
+        if (textEl) textEl.textContent = audioChimeEnabled ? 'On' : 'Off';
+        if (iconEl) iconEl.className = audioChimeEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+    }
+
     function toggleAudioChime() {
         audioChimeEnabled = !audioChimeEnabled;
-        document.getElementById('chimeStatusText').textContent = audioChimeEnabled ? 'On' : 'Off';
-        document.getElementById('chimeIcon').className = audioChimeEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+        localStorage.setItem('audioChimeEnabled', audioChimeEnabled ? 'true' : 'false');
+        updateAudioChimeUI();
     }
 
     // --- Real-time Updates via WebSockets ---
@@ -1065,6 +1088,20 @@
 
         document.getElementById('dispPlantHealth').textContent = tel.plant_health_status;
         document.getElementById('dispPestName').textContent = tel.latest_pest;
+
+        // Model offline banner toggle
+        const banner = document.getElementById('modelOfflineBanner');
+        if (banner) {
+            if (tel.model_loaded === false) {
+                banner.style.display = 'flex';
+                if (tel.model_path) {
+                    const pathEl = document.getElementById('modelOfflinePath');
+                    if (pathEl) pathEl.textContent = tel.model_path;
+                }
+            } else {
+                banner.style.display = 'none';
+            }
+        }
     }
 
     function updateUIWithRecord(rec) {
@@ -1209,6 +1246,7 @@
 
     // Initialize on load
     window.addEventListener('DOMContentLoaded', () => {
+        updateAudioChimeUI();
         connectWebSocket();
     });
 </script>

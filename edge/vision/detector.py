@@ -2,10 +2,11 @@
 AgriSentinel - Modular AI Vision & Pest Detection Pipeline
 
 Provides a pluggable inference interface:
-1. TfliteRunner: Runs TensorFlow Lite (.tflite) models trained on the 102 pest taxonomy
+1. TfliteRunner (PestDetector): Runs TensorFlow Lite (.tflite) YOLOv8/YOLO11 models
+   trained on the 102 pest taxonomy (IP102 benchmark), supporting strict 12-class target
+   filtering (default) or full 102-class catalog (beta).
 2. EdgeImpulseRunner: Runs compiled .eim Linux binaries on Raspberry Pi (Edge Impulse runner)
-3. OnnxRunner: Loads .onnx model weights via onnxruntime
-4. SimulatedDetector: High-fidelity simulation for development and testing on Windows/macOS without hardware
+3. SimulatedDetector: High-fidelity simulation available for offline tests
 """
 
 import os
@@ -14,6 +15,8 @@ import math
 import json
 import random
 import logging
+import zipfile
+import io
 from typing import List, Dict, Any, Optional, Tuple
 import cv2
 import numpy as np
@@ -34,6 +37,22 @@ BOX_COLORS = [
     (238, 104, 123), # Soft Blue
     (147, 20, 255),  # Deep Pink
 ]
+
+# Target IP102 Class IDs for Rice, Corn, Eggplant, Squash, and Mungbean pests (Strict 12 Default)
+ALLOWED_STRICT_12 = {
+    0: "Rice leaf roller",
+    1: "Rice leaf caterpillar",
+    3: "Asiatic rice borer",
+    4: "Yellow rice borer",
+    7: "Brown plant hopper",
+    8: "White backed plant hopper",
+    12: "Grain spreader thrips",
+    18: "Black cutworm",
+    19: "Large cutworm",
+    45: "Corn leaf aphid",
+    56: "Fall armyworm",
+    78: "Whitefly"
+}
 
 
 def load_102_labels() -> List[str]:
@@ -68,6 +87,23 @@ def load_102_labels() -> List[str]:
 
 
 PEST_LABELS_102 = load_102_labels()
+
+
+def extract_tflite_metadata(model_path: str) -> Optional[Dict[str, Any]]:
+    """Extracts embedded zip metadata from TFLite flatbuffer if present."""
+    if not model_path or not os.path.exists(model_path):
+        return None
+    try:
+        with open(model_path, "rb") as f:
+            buf = f.read()
+        idx = buf.rfind(b"PK\x03\x04")
+        if idx != -1:
+            zf = zipfile.ZipFile(io.BytesIO(buf[idx:]))
+            if "metadata.json" in zf.namelist():
+                return json.loads(zf.read("metadata.json").decode("utf-8"))
+    except Exception as e:
+        logger.debug(f"Failed extracting tflite metadata: {e}")
+    return None
 
 
 class DetectionBox:
@@ -114,112 +150,297 @@ class BasePestDetector:
 
 class TfliteRunner(BasePestDetector):
     """
-    Runs TensorFlow Lite (.tflite) object detection and classification models
-    trained on the 102 pest taxonomy.
+    Dedicated TensorFlow Lite inference engine supporting YOLOv8 / YOLO11
+    and SSD MobileNet models trained on the IP102 pest taxonomy.
     """
 
-    def __init__(self, model_path: str, labels: Optional[List[str]] = None):
+    ALLOWED_CLASSES = ALLOWED_STRICT_12  # Compatibility with plan.md.txt
+
+    def __init__(
+        self,
+        model_path: Optional[str] = None,
+        conf_threshold: float = 0.60,
+        iou_threshold: float = 0.45,
+        class_filter_mode: str = "strict_12",
+        labels: Optional[List[str]] = None
+    ):
+        self.conf_threshold = conf_threshold
+        self.iou_threshold = iou_threshold
+        self.class_filter_mode = class_filter_mode  # "strict_12" or "full_102"
+        self.labels = labels or list(PEST_LABELS_102)
+
         self.model_path = model_path
-        self.labels = labels or PEST_LABELS_102
         self.interpreter = None
         self._input_details = None
         self._output_details = None
-        self.input_shape = (300, 300)
+        self.input_shape = (416, 416)
+        self.input_height = 416
+        self.input_width = 416
         self.is_quantized = False
+        self.is_model_loaded = False
+        self.model_error: Optional[str] = None
+        self.runtime_name: str = "None"
+
+        # Resolve model path if not given
+        if not self.model_path:
+            self.model_path = self._discover_model_path()
+
         self._init_interpreter()
 
+    def _discover_model_path(self) -> str:
+        """Finds default model location in edge/models directory."""
+        env_path = os.getenv("TFLITE_MODEL_PATH")
+        if env_path and os.path.exists(env_path):
+            return env_path
+        best_path = os.path.join(MODELS_DIR, "best.tflite")
+        if os.path.exists(best_path):
+            return best_path
+        pest_path = os.path.join(MODELS_DIR, "pest_detector.tflite")
+        if os.path.exists(pest_path):
+            return pest_path
+        if os.path.exists(MODELS_DIR):
+            for f in os.listdir(MODELS_DIR):
+                if f.endswith(".tflite"):
+                    return os.path.join(MODELS_DIR, f)
+        return best_path
+
     def _init_interpreter(self):
-        """Attempts to load tflite_runtime or tensorflow.lite."""
-        if not os.path.exists(self.model_path):
-            logger.warning(f"[TfliteRunner] Model path does not exist: {self.model_path}")
+        """Attempts to load tflite_runtime, ai_edge_litert, or tensorflow.lite."""
+        if not self.model_path or not os.path.exists(self.model_path):
+            self.is_model_loaded = False
+            self.model_error = f"Model file not found at '{self.model_path}'"
+            logger.warning(f"[TfliteRunner] {self.model_error}")
             return
 
-        # 1. Try tflite_runtime (preferred on Raspberry Pi / embedded Linux)
+        # Try to load class names from model metadata if present
+        meta = extract_tflite_metadata(self.model_path)
+        if meta and "names" in meta:
+            try:
+                names_dict = meta["names"]
+                sorted_keys = sorted([int(k) for k in names_dict.keys()])
+                self.labels = [names_dict[str(k)] for k in sorted_keys]
+                logger.info(f"[TfliteRunner] Loaded {len(self.labels)} class labels from model metadata.")
+            except Exception as e:
+                logger.debug(f"[TfliteRunner] Could not parse labels from metadata: {e}")
+
+        # 1. Try tflite_runtime (preferred on Raspberry Pi / Linux)
         try:
             import tflite_runtime.interpreter as tflite
             self.interpreter = tflite.Interpreter(model_path=self.model_path)
+            self.runtime_name = "tflite_runtime"
             self._setup_details()
+            self.is_model_loaded = True
+            self.model_error = None
             logger.info(f"[TfliteRunner] Initialized via tflite_runtime from {self.model_path}")
             return
         except ImportError:
             pass
 
-        # 2. Try full tensorflow.lite
+        # 2. Try ai_edge_litert (official Google LiteRT for Python 3.11-3.13 on Windows/Linux)
+        try:
+            from ai_edge_litert.interpreter import Interpreter
+            self.interpreter = Interpreter(model_path=self.model_path)
+            self.runtime_name = "ai_edge_litert"
+            self._setup_details()
+            self.is_model_loaded = True
+            self.model_error = None
+            logger.info(f"[TfliteRunner] Initialized via ai_edge_litert from {self.model_path}")
+            return
+        except ImportError:
+            pass
+
+        # 3. Try full tensorflow.lite
         try:
             import tensorflow as tf
             self.interpreter = tf.lite.Interpreter(model_path=self.model_path)
+            self.runtime_name = "tensorflow.lite"
             self._setup_details()
+            self.is_model_loaded = True
+            self.model_error = None
             logger.info(f"[TfliteRunner] Initialized via tensorflow.lite from {self.model_path}")
             return
         except ImportError:
             pass
 
-        logger.info("[TfliteRunner] Neither tflite_runtime nor tensorflow found. TfliteRunner will use simulated inference.")
+        self.is_model_loaded = False
+        self.model_error = "No supported TFLite runtime found (install tflite-runtime or ai-edge-litert)"
+        logger.warning(f"[TfliteRunner] {self.model_error}")
 
     def _setup_details(self):
+        """Extracts input and output tensor dimensions from interpreter."""
         if not self.interpreter:
             return
         self.interpreter.allocate_tensors()
         self._input_details = self.interpreter.get_input_details()
         self._output_details = self.interpreter.get_output_details()
-        # Input tensor dimensions: [batch, height, width, channels]
         in_shape = self._input_details[0]["shape"]
-        self.input_shape = (int(in_shape[1]), int(in_shape[2]))
+        # Determine tensor layout (NCHW vs NHWC)
+        if len(in_shape) == 4 and in_shape[1] == 3:
+            self.is_nchw = True
+            self.input_height = int(in_shape[2])
+            self.input_width = int(in_shape[3])
+        elif len(in_shape) == 4:
+            self.is_nchw = False
+            self.input_height = int(in_shape[1])
+            self.input_width = int(in_shape[2])
+        else:
+            self.is_nchw = False
+            self.input_height = 416
+            self.input_width = 416
+        self.input_shape = (self.input_height, self.input_width)
         self.is_quantized = (self._input_details[0]["dtype"] == np.uint8)
+        logger.info(
+            f"[TfliteRunner] Input shape: {self.input_shape}, NCHW: {self.is_nchw}, Quantized: {self.is_quantized}"
+        )
+
+    def set_parameters(
+        self,
+        conf_threshold: Optional[float] = None,
+        iou_threshold: Optional[float] = None,
+        class_filter_mode: Optional[str] = None
+    ):
+        """Updates runtime inference thresholds and class filter mode."""
+        if conf_threshold is not None:
+            self.conf_threshold = max(0.05, min(0.99, float(conf_threshold)))
+        if iou_threshold is not None:
+            self.iou_threshold = max(0.05, min(0.99, float(iou_threshold)))
+        if class_filter_mode in ["strict_12", "full_102"]:
+            self.class_filter_mode = class_filter_mode
+        logger.info(
+            f"[TfliteRunner] Updated params: conf={self.conf_threshold}, "
+            f"iou={self.iou_threshold}, mode={self.class_filter_mode}"
+        )
+
+    def preprocess(self, frame_bgr: np.ndarray) -> np.ndarray:
+        """Resizes, normalizes, and expands dimensions for model inference (supporting NCHW and NHWC)."""
+        resized = cv2.resize(frame_bgr, (self.input_width, self.input_height))
+        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        if not self.is_quantized:
+            normalized = rgb.astype(np.float32) / 255.0
+        else:
+            normalized = rgb
+
+        if self.is_nchw:
+            chw = np.transpose(normalized, (2, 0, 1))
+            return np.expand_dims(chw, axis=0)
+        else:
+            return np.expand_dims(normalized, axis=0)
 
     def detect(self, frame_bgr: np.ndarray, crop_type: str = "corn") -> List[DetectionBox]:
-        """Executes TFLite inference on the incoming BGR frame."""
-        if not self.interpreter:
-            return SimulatedDetector().detect(frame_bgr, crop_type)
+        """Runs inference, filters target crop pests, and applies NMS."""
+        if not self.is_model_loaded or not self.interpreter:
+            return []
 
         try:
-            h_orig, w_orig = frame_bgr.shape[:2]
-            target_h, target_w = self.input_shape
-
-            # Preprocess frame (resize and RGB conversion)
-            rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-            resized = cv2.resize(rgb, (target_w, target_h))
-            input_data = np.expand_dims(resized, axis=0)
-
-            if not self.is_quantized:
-                input_data = (input_data.astype(np.float32) / 255.0)
+            orig_h, orig_w = frame_bgr.shape[:2]
+            input_data = self.preprocess(frame_bgr)
 
             self.interpreter.set_tensor(self._input_details[0]["index"], input_data)
             self.interpreter.invoke()
 
-            boxes: List[DetectionBox] = []
+            raw_output = self.interpreter.get_tensor(self._output_details[0]["index"])
 
-            # 1. Check if model outputs standard TFLite Detection format (boxes, classes, scores, count)
+            # 1. Check for YOLO output shape: [1, 4 + classes, anchors] or [1, anchors, 4 + classes]
+            if len(raw_output.shape) == 3:
+                squeezed = np.squeeze(raw_output)
+                # If shape is [channels, anchors] where channels < anchors, transpose to [anchors, channels]
+                if squeezed.shape[0] < squeezed.shape[1]:
+                    predictions = squeezed.T
+                else:
+                    predictions = squeezed
+
+                if predictions.shape[1] > 4:
+                    boxes = []
+                    scores = []
+                    class_ids = []
+                    labels_out = []
+
+                    for pred in predictions:
+                        class_scores = pred[4:]
+                        max_idx = int(np.argmax(class_scores))
+                        confidence = float(class_scores[max_idx])
+
+                        if confidence < self.conf_threshold:
+                            continue
+
+                        # Class filtering mode
+                        if self.class_filter_mode == "strict_12":
+                            if max_idx not in ALLOWED_STRICT_12:
+                                continue
+                            label_name = ALLOWED_STRICT_12[max_idx]
+                        else:
+                            # Full 102 mode (beta)
+                            if 0 <= max_idx < len(self.labels):
+                                label_name = self.labels[max_idx]
+                            elif max_idx in ALLOWED_STRICT_12:
+                                label_name = ALLOWED_STRICT_12[max_idx]
+                            else:
+                                label_name = f"Pest {max_idx}"
+
+                        cx, cy, w, h = pred[0:4]
+                        x1 = int((cx - w / 2) * orig_w)
+                        y1 = int((cy - h / 2) * orig_h)
+                        box_w = int(w * orig_w)
+                        box_h = int(h * orig_h)
+
+                        # Clamp coordinates within frame boundaries
+                        x1 = max(0, min(orig_w - 5, x1))
+                        y1 = max(0, min(orig_h - 5, y1))
+                        box_w = max(5, min(orig_w - x1, box_w))
+                        box_h = max(5, min(orig_h - y1, box_h))
+
+                        boxes.append([x1, y1, box_w, box_h])
+                        scores.append(confidence)
+                        class_ids.append(max_idx)
+                        labels_out.append(label_name)
+
+                    if len(boxes) == 0:
+                        return []
+
+                    # Non-Maximum Suppression to remove redundant boxes
+                    indices = cv2.dnn.NMSBoxes(boxes, scores, self.conf_threshold, self.iou_threshold)
+
+                    detected_pests: List[DetectionBox] = []
+                    if len(indices) > 0:
+                        for idx in np.array(indices).flatten():
+                            detected_pests.append(DetectionBox(
+                                label=labels_out[idx].title(),
+                                confidence=round(scores[idx], 4),
+                                x=boxes[idx][0],
+                                y=boxes[idx][1],
+                                width=boxes[idx][2],
+                                height=boxes[idx][3],
+                                pest_key=labels_out[idx].lower().replace(" ", "_")
+                            ))
+                    return detected_pests
+
+            # 2. Check for SSD MobileNet format (boxes, classes, scores)
             if len(self._output_details) >= 3:
-                # Common SSD MobileNet outputs:
-                # output_details[0] -> boxes [1, num_det, 4] (ymin, xmin, ymax, xmax normalized)
-                # output_details[1] -> classes [1, num_det]
-                # output_details[2] -> scores [1, num_det]
                 raw_boxes = self.interpreter.get_tensor(self._output_details[0]["index"])[0]
                 raw_classes = self.interpreter.get_tensor(self._output_details[1]["index"])[0]
                 raw_scores = self.interpreter.get_tensor(self._output_details[2]["index"])[0]
 
+                boxes_ssd = []
                 for i in range(len(raw_scores)):
                     score = float(raw_scores[i])
-                    if score < 0.40:
+                    if score < self.conf_threshold:
                         continue
-
                     class_idx = int(raw_classes[i])
-                    # Handle 0-indexed or 1-indexed classes
-                    if 0 <= class_idx < len(self.labels):
-                        label = self.labels[class_idx]
-                    elif 1 <= class_idx <= len(self.labels):
-                        label = self.labels[class_idx - 1]
+
+                    if self.class_filter_mode == "strict_12":
+                        if class_idx not in ALLOWED_STRICT_12:
+                            continue
+                        label = ALLOWED_STRICT_12[class_idx]
                     else:
-                        label = f"Pest Class {class_idx}"
+                        label = self.labels[class_idx] if 0 <= class_idx < len(self.labels) else f"Pest {class_idx}"
 
                     ymin, xmin, ymax, xmax = raw_boxes[i]
-                    bx = int(xmin * w_orig)
-                    by = int(ymin * h_orig)
-                    bw = int((xmax - xmin) * w_orig)
-                    bh = int((ymax - ymin) * h_orig)
+                    bx = int(xmin * orig_w)
+                    by = int(ymin * orig_h)
+                    bw = int((xmax - xmin) * orig_w)
+                    bh = int((ymax - ymin) * orig_h)
 
-                    boxes.append(DetectionBox(
+                    boxes_ssd.append(DetectionBox(
                         label=label.title(),
                         confidence=score,
                         x=bx,
@@ -228,38 +449,7 @@ class TfliteRunner(BasePestDetector):
                         height=bh,
                         pest_key=label.lower().replace(" ", "_")
                     ))
-                return boxes
-
-            # 2. Check if model outputs single classification vector [1, 102]
-            output_tensor = self.interpreter.get_tensor(self._output_details[0]["index"])[0]
-            if len(output_tensor.shape) == 1:
-                class_idx = int(np.argmax(output_tensor))
-                score = float(output_tensor[class_idx])
-
-                if not self.is_quantized and np.max(output_tensor) > 1.0:
-                    # Apply softmax if logits
-                    exp_v = np.exp(output_tensor - np.max(output_tensor))
-                    probs = exp_v / np.sum(exp_v)
-                    score = float(probs[class_idx])
-
-                if score >= 0.40:
-                    label = self.labels[class_idx] if class_idx < len(self.labels) else f"Pest {class_idx}"
-                    # Provide centered bounding box for classified pest
-                    bw = int(w_orig * 0.4)
-                    bh = int(h_orig * 0.4)
-                    bx = int((w_orig - bw) / 2)
-                    by = int((h_orig - bh) / 2)
-
-                    boxes.append(DetectionBox(
-                        label=label.title(),
-                        confidence=score,
-                        x=bx,
-                        y=by,
-                        width=bw,
-                        height=bh,
-                        pest_key=label.lower().replace(" ", "_")
-                    ))
-                return boxes
+                return boxes_ssd
 
         except Exception as e:
             logger.error(f"[TfliteRunner] Inference error: {e}")
@@ -267,55 +457,58 @@ class TfliteRunner(BasePestDetector):
         return []
 
 
+# Direct alias for plan.md.txt naming compatibility
+PestDetector = TfliteRunner
+
+
 class SimulatedDetector(BasePestDetector):
     """
     High-fidelity simulated AI detector supporting the 102-pest taxonomy.
-    Maps realistic pests based on selected host crop (Rice, Corn, Mungbean, Squash, Eggplant).
+    Maps realistic pests based on selected host crop.
+    Used for unit testing and offline development.
     """
 
     def __init__(self):
         self._enabled = True
         self._force_pest: Optional[str] = None
         self._force_count: int = 1
-        self._last_detection_time = 0.0
 
-        # Mapping of crops to pests from the 102 dataset
         self.crop_pest_map = {
             "rice": [
-                "asiatic_rice_borer",      # Class 4: Asiatic Rice Borer
-                "yellow_rice_borer",       # Class 5: Yellow Rice Borer
-                "brown_plant_hopper",      # Class 8: Brown Planthopper
-                "rice_leaf_roller",        # Class 1: Rice Leaf Roller
-                "rice_gall_midge",         # Class 6: Rice Gall Midge
-                "rice_leafhopper"          # Class 12: Rice Leafhopper
+                "asiatic_rice_borer",
+                "yellow_rice_borer",
+                "brown_plant_hopper",
+                "rice_leaf_roller",
+                "rice_gall_midge",
+                "rice_leafhopper"
             ],
             "corn": [
-                "corn_borer",              # Class 23: Corn Borer
-                "army_worm",               # Class 24: Armyworm
-                "aphids",                  # Class 25: Aphids
-                "black_cutworm",           # Class 19: Black Cutworm
-                "wireworm"                 # Class 17: Wireworm
+                "corn_borer",
+                "army_worm",
+                "aphids",
+                "black_cutworm",
+                "wireworm"
             ],
             "mungbean": [
-                "legume_blister_beetle",   # Class 51: Legume Blister Beetle
-                "aphids",                  # Class 25: Aphids
-                "thrips",                  # Class 55: Thrips
-                "white_margined_moth"      # Class 18: White Margined Moth
+                "legume_blister_beetle",
+                "aphids",
+                "thrips",
+                "white_margined_moth"
             ],
             "squash": [
-                "dacus_dorsalis",          # Class 85: Dacus dorsalis (Fruit fly)
-                "trialeurodes_vaporariorum", # Class 72: Greenhouse Whitefly
-                "red_spider",              # Class 22: Red Spider Mite
-                "thrips"                   # Class 55: Thrips
+                "dacus_dorsalis",
+                "trialeurodes_vaporariorum",
+                "red_spider",
+                "thrips"
             ],
             "eggplant": [
-                "flea_beetle",             # Class 38: Flea Beetle
-                "red_spider",              # Class 22: Red Spider
-                "polyphagotars_onemus_latus", # Class 64: Broad Mite
-                "scirtothrips_dorsalis_hood" # Class 93: Chilli Thrips
+                "flea_beetle",
+                "red_spider",
+                "polyphagotars_onemus_latus",
+                "scirtothrips_dorsalis_hood"
             ]
         }
-        logger.info("[VisionDetector] Initialized SimulatedDetector with 102-class IP102 catalog.")
+        logger.info("[VisionDetector] Initialized SimulatedDetector.")
 
     def set_simulation_state(self, enabled: bool = True, pest: Optional[str] = None, count: int = 1):
         self._enabled = enabled
@@ -330,7 +523,6 @@ class SimulatedDetector(BasePestDetector):
         crop_clean = crop_type.lower().strip()
         available_pests = self.crop_pest_map.get(crop_clean, ["corn_borer", "asiatic_rice_borer"])
 
-        # Determine target pest
         if self._force_pest:
             target_key = self._force_pest
         else:
@@ -341,7 +533,6 @@ class SimulatedDetector(BasePestDetector):
         label = target_key.replace("_", " ").title()
 
         results: List[DetectionBox] = []
-
         seed = int(time.time() / 4.0)
         rng = random.Random(seed)
 
@@ -383,19 +574,19 @@ class EdgeImpulseRunner(BasePestDetector):
             model_info = self._runner.init()
             logger.info(f"[VisionDetector] Edge Impulse model loaded: {model_info['project']['name']}")
         except Exception as e:
-            logger.warning(f"[VisionDetector] Could not load Edge Impulse runner ({e}). Falling back to simulator.")
+            logger.warning(f"[VisionDetector] Could not load Edge Impulse runner: {e}")
             self._runner = None
 
     def detect(self, frame_bgr: np.ndarray, crop_type: str = "corn") -> List[DetectionBox]:
         if self._runner is None:
-            return SimulatedDetector().detect(frame_bgr, crop_type)
+            return []
 
         try:
             features, cropped = self._runner.get_features_from_image(frame_bgr)
             res = self._runner.classify(features)
 
             boxes = []
-            if "bounding_boxes" in res["result"]:
+            if "bounding_boxes" in res.get("result", {}):
                 for bb in res["result"]["bounding_boxes"]:
                     boxes.append(DetectionBox(
                         label=bb["label"],
@@ -411,34 +602,35 @@ class EdgeImpulseRunner(BasePestDetector):
             return []
 
 
-def get_detector(model_path: Optional[str] = None) -> BasePestDetector:
-    """Factory creating optimal detector for host environment."""
-    # 1. Check explicit model path or TFLITE_MODEL_PATH env var
+def get_detector(model_path: Optional[str] = None) -> TfliteRunner:
+    """
+    Factory creating optimal TFLite YOLO detector.
+    Does NOT fall back to simulation if model is missing or fails.
+    """
+    # 1. Explicit model path or environment variable
     tflite_env = os.getenv("TFLITE_MODEL_PATH")
     if tflite_env and os.path.exists(tflite_env):
-        return TfliteRunner(tflite_env)
+        return TfliteRunner(model_path=tflite_env)
 
-    if model_path and os.path.exists(model_path):
-        if model_path.endswith(".tflite"):
-            return TfliteRunner(model_path)
-        elif model_path.endswith(".eim"):
-            return EdgeImpulseRunner(model_path)
+    if model_path:
+        return TfliteRunner(model_path=model_path)
 
-    # 2. Check for any .tflite files in edge/models directory
+    # 2. Check for best.tflite or pest_detector.tflite
+    best_path = os.path.join(MODELS_DIR, "best.tflite")
+    if os.path.exists(best_path):
+        return TfliteRunner(model_path=best_path)
+
+    pest_path = os.path.join(MODELS_DIR, "pest_detector.tflite")
+    if os.path.exists(pest_path):
+        return TfliteRunner(model_path=pest_path)
+
     if os.path.exists(MODELS_DIR):
         for f in os.listdir(MODELS_DIR):
             if f.endswith(".tflite"):
-                tflite_found = os.path.join(MODELS_DIR, f)
-                logger.info(f"[VisionDetector] Found TFLite model: {tflite_found}")
-                return TfliteRunner(tflite_found)
+                return TfliteRunner(model_path=os.path.join(MODELS_DIR, f))
 
-    # 3. Check for .eim models on Linux
-    default_eim = os.path.join(MODELS_DIR, "agrisentinel-linux-aarch64-v5-impulse-#1.eim")
-    if os.path.exists(default_eim) and os.name != "nt":
-        return EdgeImpulseRunner(default_eim)
-
-    # 4. High-fidelity Simulated Detector supporting 102 IP102 classes
-    return SimulatedDetector()
+    # Return TfliteRunner with default path (marks is_model_loaded=False)
+    return TfliteRunner(model_path=best_path)
 
 
 def annotate_frame(
@@ -446,7 +638,8 @@ def annotate_frame(
     detections: List[DetectionBox],
     crop_name: str = "Corn",
     soil_status: str = "Optimal",
-    health_status: str = "Healthy"
+    health_status: str = "Healthy",
+    model_status: str = "Online"
 ) -> np.ndarray:
     """
     Renders high-contrast bounding boxes, pest badges, and telemetry overlays on frame.
@@ -489,7 +682,7 @@ def annotate_frame(
     cv2.rectangle(overlay, (0, 0), (w, bar_height), (20, 20, 20), -1)
     cv2.addWeighted(overlay, 0.75, annotated, 0.25, 0, annotated)
 
-    status_str = f"Crop: {crop_name} | Pests: {len(detections)} | Soil: {soil_status} | Health: {health_status}"
+    status_str = f"Crop: {crop_name} | Pests: {len(detections)} | Soil: {soil_status} | Model: {model_status}"
     cv2.putText(
         annotated,
         status_str,

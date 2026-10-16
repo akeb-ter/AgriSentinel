@@ -477,6 +477,100 @@
             </button>
         </div>
 
+        <!-- CARD 5: AI VISION & TFLITE INFERENCE ENGINE -->
+        <div class="dev-card" style="grid-column: 1 / -1;">
+            <div>
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-brain"></i>
+                        <span>AI Vision &amp; TFLite Inference Engine</span>
+                    </div>
+                    <span id="visionModelBadge" class="status-pill {% if telemetry.model_loaded %}green{% else %}amber{% endif %}">
+                        <span class="pulse-dot"></span> <span id="visionModelBadgeText">{% if telemetry.model_loaded %}Model Online{% else %}Model Missing{% endif %}</span>
+                    </span>
+                </div>
+
+                <div class="info-list" style="margin-bottom: 16px;">
+                    <div class="info-row">
+                        <span class="info-label">Active Weights File:</span>
+                        <span id="visionModelPath" class="info-val" style="font-family:'Fira Code', monospace; font-size:12px;">{{ telemetry.model_path or 'edge/models/best.tflite' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">TFLite Runtime:</span>
+                        <span id="visionRuntime" class="info-val">{{ telemetry.model_runtime }}</span>
+                    </div>
+                    <div class="info-row" id="visionErrorRow" style="{% if not telemetry.model_error %}display:none;{% endif %}">
+                        <span class="info-label" style="color:#ef4444;">Status Message:</span>
+                        <span id="visionErrorText" class="info-val" style="color:#ef4444; font-size:12px;">{{ telemetry.model_error or 'None' }}</span>
+                    </div>
+                </div>
+
+                <!-- Vision Configuration Form -->
+                <div style="background: #f4fcf0; border-radius: 16px; padding: 18px; border: 1.5px solid #dce8d6; margin-bottom: 14px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #18381c; margin-bottom: 14px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-sliders-h" style="color:#2b6e3c;"></i> Inference Parameters &amp; Pest Taxonomy Mode
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 16px;">
+                        <!-- Taxonomy Filter Mode -->
+                        <div>
+                            <label style="display:block; font-size:12.5px; font-weight:600; color:#2e5033; margin-bottom:6px;">
+                                Pest Taxonomy Filtering Mode:
+                            </label>
+                            <select id="visionFilterMode" onchange="onFilterModeChange()" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; font-weight:600; background:white; color:#1e293b;">
+                                <option value="strict_12" {% if telemetry.class_filter_mode == 'strict_12' %}selected{% endif %}>Strict 12 Target Pests (Default)</option>
+                                <option value="full_102" {% if telemetry.class_filter_mode == 'full_102' %}selected{% endif %}>Full 102 IP102 Catalog (Beta Feature)</option>
+                            </select>
+                            <span style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
+                                Strict 12 isolates Rice, Corn, Eggplant, Squash, and Mungbean pests. Beta allows all 102 taxonomy classes.
+                            </span>
+                        </div>
+
+                        <!-- Confidence Threshold -->
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-size:12.5px; font-weight:600; color:#2e5033;">Confidence Threshold:</label>
+                                <span id="confValDisplay" style="font-family:'Fira Code', monospace; font-size:13px; font-weight:700; color:#18381c;">{{ "%.2f"|format(telemetry.conf_threshold or 0.60) }}</span>
+                            </div>
+                            <input type="range" id="visionConfSlider" min="0.30" max="0.95" step="0.05" value="{{ telemetry.conf_threshold or 0.60 }}" oninput="document.getElementById('confValDisplay').textContent = parseFloat(this.value).toFixed(2)" style="width:100%; accent-color:#2b6e3c;">
+                            <span style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
+                                Default: 0.60 (filters false positives in dense agricultural foliage).
+                            </span>
+                        </div>
+
+                        <!-- IoU NMS Threshold -->
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-size:12.5px; font-weight:600; color:#2e5033;">NMS IoU Threshold:</label>
+                                <span id="iouValDisplay" style="font-family:'Fira Code', monospace; font-size:13px; font-weight:700; color:#18381c;">{{ "%.2f"|format(telemetry.iou_threshold or 0.45) }}</span>
+                            </div>
+                            <input type="range" id="visionIouSlider" min="0.20" max="0.80" step="0.05" value="{{ telemetry.iou_threshold or 0.45 }}" oninput="document.getElementById('iouValDisplay').textContent = parseFloat(this.value).toFixed(2)" style="width:100%; accent-color:#2b6e3c;">
+                            <span style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
+                                Default: 0.45 (suppresses redundant bounding box overlaps).
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button id="saveVisionBtn" class="btn btn-primary" onclick="saveVisionSettings()">
+                            <i class="fas fa-save"></i> Save Vision Parameters
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Filter Classes Badge List -->
+                <div>
+                    <div style="font-size:12.5px; font-weight:700; color:#24522c; margin-bottom:8px; display:flex; justify-content:space-between;">
+                        <span>Active Pest Taxonomy Classes (<span id="activeClassesCount">--</span>)</span>
+                        <span id="activeFilterDesc" style="font-size:11.5px; color:#607d64; font-weight:normal;">Strict 12 Target Pests</span>
+                    </div>
+                    <div id="activeClassesList" style="display:flex; flex-wrap:wrap; gap:6px; max-height:140px; overflow-y:auto; padding:8px; background:#f8faf6; border-radius:10px; border:1px solid #e2ede0;">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- ═══ SYSTEM LOGS TERMINAL ═══ -->
@@ -718,12 +812,109 @@
         }, 4000);
     }
 
+    // --- AI Vision Settings JS ---
+    async function fetchVisionSettings() {
+        try {
+            const res = await fetch('/api/dev/vision_settings');
+            if (!res.ok) return;
+            const data = await res.json();
+
+            // Status Badge
+            const badge = document.getElementById('visionModelBadge');
+            const badgeText = document.getElementById('visionModelBadgeText');
+            if (data.model_loaded) {
+                badge.className = 'status-pill green';
+                badgeText.textContent = 'Model Online';
+            } else {
+                badge.className = 'status-pill amber';
+                badgeText.textContent = 'Model Missing';
+            }
+
+            // Path & Runtime
+            document.getElementById('visionModelPath').textContent = data.model_path || 'edge/models/best.tflite';
+            document.getElementById('visionRuntime').textContent = data.runtime_name;
+
+            const errRow = document.getElementById('visionErrorRow');
+            if (data.model_error) {
+                errRow.style.display = 'flex';
+                document.getElementById('visionErrorText').textContent = data.model_error;
+            } else {
+                errRow.style.display = 'none';
+            }
+
+            // Form inputs
+            document.getElementById('visionFilterMode').value = data.class_filter_mode;
+            document.getElementById('visionConfSlider').value = data.conf_threshold;
+            document.getElementById('confValDisplay').textContent = parseFloat(data.conf_threshold).toFixed(2);
+            document.getElementById('visionIouSlider').value = data.iou_threshold;
+            document.getElementById('iouValDisplay').textContent = parseFloat(data.iou_threshold).toFixed(2);
+
+            // Classes list
+            renderActiveClasses(data.active_classes, data.class_filter_mode);
+
+        } catch (e) {
+            console.error('Error fetching vision settings:', e);
+        }
+    }
+
+    function renderActiveClasses(classes, mode) {
+        document.getElementById('activeClassesCount').textContent = classes.length;
+        document.getElementById('activeFilterDesc').textContent = mode === 'strict_12' ? 'Strict 12 Target Pests Mode' : 'Full 102 Taxonomy (Beta Mode)';
+
+        const listEl = document.getElementById('activeClassesList');
+        listEl.innerHTML = '';
+        classes.forEach(c => {
+            const badge = document.createElement('span');
+            badge.style.cssText = 'background:#eaf5e5; border:1px solid #cfe6c8; color:#1b4d24; border-radius:12px; padding:3px 8px; font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:4px;';
+            badge.innerHTML = `<span style="color:#52805b; font-size:10px;">#${c.id}</span> ${c.name}`;
+            listEl.appendChild(badge);
+        });
+    }
+
+    async function saveVisionSettings() {
+        const btn = document.getElementById('saveVisionBtn');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+
+        const payload = {
+            class_filter_mode: document.getElementById('visionFilterMode').value,
+            conf_threshold: parseFloat(document.getElementById('visionConfSlider').value),
+            iou_threshold: parseFloat(document.getElementById('visionIouSlider').value)
+        };
+
+        try {
+            const res = await fetch('/api/dev/vision_settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showToast('AI Vision parameters updated live.');
+                fetchVisionSettings();
+            } else {
+                showToast(`Failed to update: ${data.message}`, true);
+            }
+        } catch (err) {
+            showToast(`Error: ${err.message}`, true);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-save"></i> Save Vision Parameters`;
+        }
+    }
+
+    function onFilterModeChange() {
+        saveVisionSettings();
+    }
+
     // Initial Load & Polling
     fetchDevStatus();
+    fetchVisionSettings();
     fetchLogs();
     fetchGPSRaw();
     setInterval(fetchDevStatus, 5000);
-    setInterval(fetchGPSRaw, 2000); // refresh raw stream more frequently
+    setInterval(fetchVisionSettings, 8000);
+    setInterval(fetchGPSRaw, 2000);
 </script>
 
 </body>

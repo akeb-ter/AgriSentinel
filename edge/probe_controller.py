@@ -184,22 +184,27 @@ class ProbeController:
             )
 
             # Annotate frame
+            model_status = "Online" if getattr(self.detector, "is_model_loaded", False) else "Offline (Missing)"
             annotated = annotate_frame(
                 frame,
                 detections,
                 crop_name=crop_name,
                 soil_status=self.latest_soil.get("status", "Optimal"),
-                health_status=self.latest_health
+                health_status=self.latest_health,
+                model_status=model_status
             )
 
             with self._camera_lock:
                 self.latest_annotated_frame = annotated
 
-            # Check Auto-Pause & Confirmation Trigger
+            # Check Auto-Pause & Confirmation Trigger (only active when model is loaded)
             now = time.time()
+            min_conf = getattr(self.detector, "conf_threshold", 0.60)
+            is_loaded = getattr(self.detector, "is_model_loaded", False)
             if (
-                pest_count > 0
-                and detections[0].confidence >= 0.40
+                is_loaded
+                and pest_count > 0
+                and detections[0].confidence >= min_conf
                 and (now - self._last_auto_detection_time) > AUTO_TRIGGER_COOLDOWN_SEC
             ):
                 self._trigger_auto_confirmation(frame, detections)
@@ -217,23 +222,45 @@ class ProbeController:
 
     def _trigger_auto_confirmation(self, raw_frame: np.ndarray, detections: List[DetectionBox]):
         """
-        Executes the Auto-Pause & Confirmation workflow:
-        1. Temporarily pause preview stream for stabilization
-        2. Confirm detection and compute recommendations
-        3. Save annotated snapshot image and insert DBMS record
-        4. Broadcast WebSocket alert notification
-        5. Resume preview
+        Executes the 2-step Auto-Pause & Re-verification workflow:
+        1. Halt frame acquisition for 0.5s to eliminate motion blur.
+        2. Capture a fresh still frame from camera.
+        3. Re-run inference on still frame.
+        4. If verified, save snapshot image, insert DBMS record, and broadcast alert.
+        5. Resume preview.
         """
         self._last_auto_detection_time = time.time()
-        logger.info(f"[ProbeController] Pest detected! Executing Auto-Pause & Confirmation workflow...")
+        logger.info("[ProbeController] Pest candidate detected. Executing 2-Step Auto-Pause & Verification...")
 
         self.is_paused = True
         try:
-            # Stabilization pause (e.g. 0.3s)
-            time.sleep(0.3)
+            # 1. Stabilization pause to eliminate motion blur
+            time.sleep(0.5)
 
-            # Perform snapshot persistence and recommendation dispatch
-            self._process_and_save_detection(raw_frame, detections, trigger_type="AUTO")
+            # 2. Capture clean still frame from camera
+            still_frame = None
+            if self.cap and self.cap.isOpened():
+                with self._camera_lock:
+                    ret, frame_cap = self.cap.read()
+                    if ret and frame_cap is not None:
+                        still_frame = frame_cap
+
+            if still_frame is None:
+                still_frame = raw_frame
+
+            # 3. Re-verify detection on clean still frame
+            verified_pests = self.detector.detect(still_frame, self.active_crop)
+
+            # 4. Save and broadcast if verified
+            if verified_pests and len(verified_pests) > 0:
+                logger.info(
+                    f"[ProbeController] Detections verified on still frame ({len(verified_pests)} found). Logging alert..."
+                )
+                self._process_and_save_detection(still_frame, verified_pests, trigger_type="AUTO")
+            else:
+                logger.info(
+                    "[ProbeController] Pest not verified on clean still frame (unconfirmed motion blur/candidate). Resuming stream."
+                )
         finally:
             self.is_paused = False
             logger.info("[ProbeController] Confirmation complete. Resumed preview stream.")
@@ -356,6 +383,13 @@ class ProbeController:
             "latest_pest_count": len(self.latest_detections),
             "infestation_level": self.latest_infestation,
             "plant_health_status": self.latest_health,
+            "model_loaded": getattr(self.detector, "is_model_loaded", False),
+            "model_path": getattr(self.detector, "model_path", ""),
+            "model_error": getattr(self.detector, "model_error", None),
+            "model_runtime": getattr(self.detector, "runtime_name", "None"),
+            "class_filter_mode": getattr(self.detector, "class_filter_mode", "strict_12"),
+            "conf_threshold": getattr(self.detector, "conf_threshold", 0.60),
+            "iou_threshold": getattr(self.detector, "iou_threshold", 0.45),
             "timestamp": time.time(),
         }
 

@@ -81,3 +81,36 @@ def test_api_detections_list():
     assert "detections" in data
     assert isinstance(data["detections"], list)
 
+
+def test_api_vision_settings():
+    """Verify /api/dev/vision_settings GET and POST functionality."""
+    res = client.get("/api/dev/vision_settings")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert "model_loaded" in data
+    assert "class_filter_mode" in data
+    assert "conf_threshold" in data
+    assert "iou_threshold" in data
+    assert "active_classes" in data
+
+    # Test updating parameters
+    update_res = client.post("/api/dev/vision_settings", json={
+        "class_filter_mode": "full_102",
+        "conf_threshold": 0.65,
+        "iou_threshold": 0.40
+    })
+    assert update_res.status_code == 200
+    up_data = update_res.json()
+    assert up_data["status"] == "success"
+    assert up_data["settings"]["class_filter_mode"] == "full_102"
+    assert up_data["settings"]["conf_threshold"] == 0.65
+
+    # Reset back to default
+    client.post("/api/dev/vision_settings", json={
+        "class_filter_mode": "strict_12",
+        "conf_threshold": 0.60,
+        "iou_threshold": 0.45
+    })
+
+

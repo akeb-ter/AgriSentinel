@@ -494,6 +494,12 @@ async def dev_get_status():
             "is_active": True,
             "is_synthetic": probe.cap is None
         },
+        "model": {
+            "loaded": getattr(probe.detector, "is_model_loaded", False),
+            "path": getattr(probe.detector, "model_path", ""),
+            "runtime": getattr(probe.detector, "runtime_name", "None"),
+            "error": getattr(probe.detector, "model_error", None)
+        },
         "soil": {
             "moisture_percent": soil_data["moisture_percent"],
             "status": soil_data["status"],
@@ -587,4 +593,63 @@ async def dev_get_system_logs(lines: int = 80):
         f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Camera capture stream active (640x480)\n"
     )
     return {"status": "success", "logs": sim_logs}
+
+
+# --- AI Vision & Inference Settings Endpoints ---
+
+class VisionSettingsRequest(BaseModel):
+    class_filter_mode: Optional[str] = None
+    conf_threshold: Optional[float] = None
+    iou_threshold: Optional[float] = None
+
+
+@router.get("/api/dev/vision_settings")
+async def dev_get_vision_settings():
+    """Returns AI vision engine parameters, model status, and active taxonomy mode."""
+    detector = probe.detector
+    labels = getattr(detector, "labels", [])
+    mode = getattr(detector, "class_filter_mode", "strict_12")
+
+    from edge.vision.detector import ALLOWED_STRICT_12
+    if mode == "strict_12":
+        active_list = [{"id": k, "name": v} for k, v in sorted(ALLOWED_STRICT_12.items())]
+    else:
+        active_list = [{"id": idx, "name": name} for idx, name in enumerate(labels)]
+
+    return {
+        "status": "success",
+        "model_loaded": getattr(detector, "is_model_loaded", False),
+        "model_path": getattr(detector, "model_path", ""),
+        "model_error": getattr(detector, "model_error", None),
+        "runtime_name": getattr(detector, "runtime_name", "None"),
+        "class_filter_mode": mode,
+        "conf_threshold": getattr(detector, "conf_threshold", 0.60),
+        "iou_threshold": getattr(detector, "iou_threshold", 0.45),
+        "total_classes": len(labels),
+        "active_classes_count": len(active_list),
+        "active_classes": active_list
+    }
+
+
+@router.post("/api/dev/vision_settings")
+async def dev_update_vision_settings(req: VisionSettingsRequest):
+    """Updates AI vision engine parameters and class filtering mode live."""
+    detector = probe.detector
+    if hasattr(detector, "set_parameters"):
+        detector.set_parameters(
+            conf_threshold=req.conf_threshold,
+            iou_threshold=req.iou_threshold,
+            class_filter_mode=req.class_filter_mode
+        )
+    return {
+        "status": "success",
+        "message": "Vision parameters updated successfully.",
+        "settings": {
+            "class_filter_mode": getattr(detector, "class_filter_mode", "strict_12"),
+            "conf_threshold": getattr(detector, "conf_threshold", 0.60),
+            "iou_threshold": getattr(detector, "iou_threshold", 0.45),
+            "model_loaded": getattr(detector, "is_model_loaded", False)
+        }
+    }
+
 
