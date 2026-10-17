@@ -4,6 +4,7 @@ Integration tests for AgriSentinel REST and Web API endpoints.
 
 from fastapi.testclient import TestClient
 from edge.app import app
+from edge.database import init_db, insert_detection, delete_detections_batch
 
 client = TestClient(app)
 
@@ -114,5 +115,96 @@ def test_api_vision_settings():
         "conf_threshold": 0.25,
         "iou_threshold": 0.45
     })
+
+
+def test_api_detections_pagination_and_filters():
+    """Verify /api/detections supports pagination metadata and query filters."""
+    init_db()
+    ids = []
+    ids.append(insert_detection({
+        "crop_type": "rice",
+        "farm_area": "Test Paddy A",
+        "detected_pest": "Stem Borer",
+        "infestation_level": "Medium",
+        "confidence": 0.82,
+        "status": "CONFIRMED"
+    }))
+    ids.append(insert_detection({
+        "crop_type": "rice",
+        "farm_area": "Test Paddy B [Phone Camera]",
+        "detected_pest": "Rice Bug",
+        "infestation_level": "Severe",
+        "confidence": 0.91,
+        "status": "CONFIRMED"
+    }))
+
+    try:
+        # Test pagination query params
+        res = client.get("/api/detections?page=1&page_size=1&crop_type=rice")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "success"
+        assert len(data["detections"]) == 1
+        assert "pagination" in data
+        assert data["pagination"]["page"] == 1
+        assert data["pagination"]["page_size"] == 1
+        assert data["pagination"]["total"] >= 2
+        assert data["pagination"]["total_pages"] >= 2
+
+        # Test source filter
+        res_source = client.get("/api/detections?source=phone")
+        assert res_source.status_code == 200
+        data_src = res_source.json()
+        assert any("[Phone Camera]" in d.get("farm_area", "") for d in data_src["detections"])
+
+        # Test min confidence filter
+        res_conf = client.get("/api/detections?min_confidence=0.90")
+        assert res_conf.status_code == 200
+        for d in res_conf.json()["detections"]:
+            assert d["confidence"] >= 0.90
+
+    finally:
+        delete_detections_batch(ids)
+
+
+def test_api_detections_batch_delete():
+    """Verify /api/detections/batch-delete removes records and returns count."""
+    init_db()
+    id1 = insert_detection({"crop_type": "corn", "detected_pest": "Batch Pest 1", "status": "CONFIRMED"})
+    id2 = insert_detection({"crop_type": "corn", "detected_pest": "Batch Pest 2", "status": "CONFIRMED"})
+
+    res = client.post("/api/detections/batch-delete", json={"ids": [id1, id2]})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["deleted_count"] == 2
+
+    # Verify they no longer exist
+    res_get = client.get(f"/api/detections/{id1}")
+    assert res_get.status_code == 404
+
+
+def test_api_detections_clear():
+    """Verify /api/detections/clear removes filtered records."""
+    init_db()
+    id1 = insert_detection({"crop_type": "test_clear_crop", "detected_pest": "Clear Pest 1", "infestation_level": "Severe", "status": "CONFIRMED"})
+    id2 = insert_detection({"crop_type": "test_clear_crop", "detected_pest": "Clear Pest 2", "infestation_level": "Low", "status": "CONFIRMED"})
+
+    # Clear only the Severe one
+    res = client.post("/api/detections/clear", json={
+        "clear_all": False,
+        "filters": {
+            "crop_type": "test_clear_crop",
+            "infestation_level": "Severe"
+        }
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["deleted_count"] >= 1
+
+    # Clean up the Low one
+    delete_detections_batch([id2])
+
 
 

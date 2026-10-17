@@ -124,30 +124,91 @@ def insert_detection(data: Dict[str, Any]) -> int:
     return new_id
 
 
+def query_detections(
+    crop_type: Optional[str] = None,
+    infestation_level: Optional[str] = None,
+    search: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    min_confidence: Optional[float] = None,
+    status: Optional[str] = None,
+    source: Optional[str] = None,
+    limit: int = 25,
+    offset: int = 0
+) -> Dict[str, Any]:
+    """Queries detections with rich multi-tier filters and pagination."""
+    conn = get_db_connection()
+    where_clauses = ["1=1"]
+    params = []
+
+    if crop_type and crop_type.lower() != "all":
+        where_clauses.append("LOWER(crop_type) = ?")
+        params.append(crop_type.lower().strip())
+
+    if infestation_level and infestation_level.lower() != "all":
+        where_clauses.append("LOWER(infestation_level) = ?")
+        params.append(infestation_level.lower().strip())
+
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        where_clauses.append("(LOWER(detected_pest) LIKE ? OR LOWER(farm_area) LIKE ? OR LOWER(plant_health_status) LIKE ? OR LOWER(recommended_pesticide) LIKE ?)")
+        params.extend([term, term, term, term])
+
+    if start_date and start_date.strip():
+        where_clauses.append("timestamp >= ?")
+        params.append(start_date.strip())
+
+    if end_date and end_date.strip():
+        ed = end_date.strip()
+        if len(ed) == 10:
+            ed += "T23:59:59"
+        where_clauses.append("timestamp <= ?")
+        params.append(ed)
+
+    if min_confidence is not None and float(min_confidence) > 0:
+        where_clauses.append("confidence >= ?")
+        params.append(float(min_confidence))
+
+    if status and status.lower() != "all":
+        where_clauses.append("LOWER(status) = ?")
+        params.append(status.lower().strip())
+
+    if source and source.lower() != "all":
+        src = source.lower().strip()
+        if "phone" in src:
+            where_clauses.append("farm_area LIKE '%[Phone Camera]%'")
+        elif "robot" in src or "probe" in src:
+            where_clauses.append("farm_area NOT LIKE '%[Phone Camera]%'")
+
+    where_sql = " AND ".join(where_clauses)
+
+    count_sql = f"SELECT COUNT(*) FROM detections WHERE {where_sql}"
+    total_count = conn.execute(count_sql, params).fetchone()[0]
+
+    data_sql = f"SELECT * FROM detections WHERE {where_sql} ORDER BY id DESC LIMIT ? OFFSET ?"
+    data_params = list(params) + [max(1, int(limit)), max(0, int(offset))]
+    rows = conn.execute(data_sql, data_params).fetchall()
+    conn.close()
+
+    return {
+        "records": [dict(r) for r in rows],
+        "total": total_count
+    }
+
+
 def get_recent_detections(
     limit: int = 50,
     crop_type: Optional[str] = None,
     infestation_level: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    """Retrieves recent detections with optional filters."""
-    conn = get_db_connection()
-    query = "SELECT * FROM detections WHERE 1=1"
-    params = []
-
-    if crop_type and crop_type.lower() != "all":
-        query += " AND LOWER(crop_type) = ?"
-        params.append(crop_type.lower().strip())
-
-    if infestation_level and infestation_level.lower() != "all":
-        query += " AND LOWER(infestation_level) = ?"
-        params.append(infestation_level.lower().strip())
-
-    query += " ORDER BY id DESC LIMIT ?"
-    params.append(limit)
-
-    rows = conn.execute(query, params).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    """Retrieves recent detections with optional basic filters."""
+    res = query_detections(
+        crop_type=crop_type,
+        infestation_level=infestation_level,
+        limit=limit,
+        offset=0
+    )
+    return res["records"]
 
 
 def get_detection_by_id(detection_id: int) -> Optional[Dict[str, Any]]:
@@ -160,24 +221,139 @@ def get_detection_by_id(detection_id: int) -> Optional[Dict[str, Any]]:
 
 def delete_detection(detection_id: int) -> bool:
     """Deletes detection record and associated image file."""
+    return delete_detections_batch([detection_id]) > 0
+
+
+def delete_detections_batch(ids: List[int]) -> int:
+    """Deletes multiple detection records and their snapshot image files."""
+    if not ids:
+        return 0
+
+    valid_ids = [int(i) for i in ids if str(i).isdigit()]
+    if not valid_ids:
+        return 0
+
+    placeholders = ",".join(["?"] * len(valid_ids))
     conn = get_db_connection()
-    row = conn.execute("SELECT image_path FROM detections WHERE id = ?", (detection_id,)).fetchone()
-    if not row:
-        conn.close()
-        return False
 
-    if row["image_path"]:
-        img_full = os.path.join(BASE_DIR, "web", row["image_path"].lstrip("/"))
-        if os.path.exists(img_full):
-            try:
-                os.remove(img_full)
-            except Exception as e:
-                logger.warning(f"Failed to remove image {img_full}: {e}")
+    rows = conn.execute(
+        f"SELECT image_path FROM detections WHERE id IN ({placeholders})",
+        valid_ids
+    ).fetchall()
 
-    conn.execute("DELETE FROM detections WHERE id = ?", (detection_id,))
+    for r in rows:
+        img_path = r["image_path"]
+        if img_path:
+            img_full = os.path.join(BASE_DIR, "web", img_path.lstrip("/"))
+            if os.path.exists(img_full):
+                try:
+                    os.remove(img_full)
+                except Exception as e:
+                    logger.warning(f"Failed removing batch image {img_full}: {e}")
+
+    cursor = conn.execute(
+        f"DELETE FROM detections WHERE id IN ({placeholders})",
+        valid_ids
+    )
+    deleted_count = cursor.rowcount
     conn.commit()
     conn.close()
-    return True
+    return deleted_count
+
+
+def clear_detections(filters: Optional[Dict[str, Any]] = None, clear_all: bool = False) -> int:
+    """
+    Clears all detection records or only records matching active filters,
+    removing their associated image files from disk.
+    """
+    conn = get_db_connection()
+
+    if clear_all or not filters:
+        rows = conn.execute("SELECT image_path FROM detections").fetchall()
+        for r in rows:
+            img_path = r["image_path"]
+            if img_path:
+                img_full = os.path.join(BASE_DIR, "web", img_path.lstrip("/"))
+                if os.path.exists(img_full):
+                    try:
+                        os.remove(img_full)
+                    except Exception as e:
+                        logger.warning(f"Failed removing image {img_full}: {e}")
+
+        cursor = conn.execute("DELETE FROM detections")
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return deleted
+
+    where_clauses = ["1=1"]
+    params = []
+
+    crop_type = filters.get("crop_type")
+    if crop_type and crop_type.lower() != "all":
+        where_clauses.append("LOWER(crop_type) = ?")
+        params.append(crop_type.lower().strip())
+
+    infestation_level = filters.get("infestation_level")
+    if infestation_level and infestation_level.lower() != "all":
+        where_clauses.append("LOWER(infestation_level) = ?")
+        params.append(infestation_level.lower().strip())
+
+    search = filters.get("search")
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        where_clauses.append("(LOWER(detected_pest) LIKE ? OR LOWER(farm_area) LIKE ? OR LOWER(plant_health_status) LIKE ? OR LOWER(recommended_pesticide) LIKE ?)")
+        params.extend([term, term, term, term])
+
+    start_date = filters.get("start_date")
+    if start_date and start_date.strip():
+        where_clauses.append("timestamp >= ?")
+        params.append(start_date.strip())
+
+    end_date = filters.get("end_date")
+    if end_date and end_date.strip():
+        ed = end_date.strip()
+        if len(ed) == 10:
+            ed += "T23:59:59"
+        where_clauses.append("timestamp <= ?")
+        params.append(ed)
+
+    min_confidence = filters.get("min_confidence")
+    if min_confidence is not None and float(min_confidence) > 0:
+        where_clauses.append("confidence >= ?")
+        params.append(float(min_confidence))
+
+    status = filters.get("status")
+    if status and status.lower() != "all":
+        where_clauses.append("LOWER(status) = ?")
+        params.append(status.lower().strip())
+
+    source = filters.get("source")
+    if source and source.lower() != "all":
+        src = source.lower().strip()
+        if "phone" in src:
+            where_clauses.append("farm_area LIKE '%[Phone Camera]%'")
+        elif "robot" in src or "probe" in src:
+            where_clauses.append("farm_area NOT LIKE '%[Phone Camera]%'")
+
+    where_sql = " AND ".join(where_clauses)
+
+    rows = conn.execute(f"SELECT image_path FROM detections WHERE {where_sql}", params).fetchall()
+    for r in rows:
+        img_path = r["image_path"]
+        if img_path:
+            img_full = os.path.join(BASE_DIR, "web", img_path.lstrip("/"))
+            if os.path.exists(img_full):
+                try:
+                    os.remove(img_full)
+                except Exception as e:
+                    logger.warning(f"Failed removing filtered image {img_full}: {e}")
+
+    cursor = conn.execute(f"DELETE FROM detections WHERE {where_sql}", params)
+    deleted = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return deleted
 
 
 def get_detection_stats() -> Dict[str, Any]:

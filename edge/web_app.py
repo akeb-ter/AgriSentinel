@@ -40,6 +40,9 @@ from edge.database import (
     get_recent_detections,
     get_detection_by_id,
     delete_detection,
+    query_detections,
+    delete_detections_batch,
+    clear_detections,
     get_detection_stats,
     DETECTIONS_DIR
 )
@@ -531,18 +534,61 @@ async def detect_from_phone(
     }
 
 
+class BatchDeleteRequest(BaseModel):
+    ids: List[int]
+
+
+class ClearDetectionsRequest(BaseModel):
+    clear_all: bool = False
+    filters: Optional[Dict[str, Any]] = None
+
+
 @router.get("/api/detections")
 async def get_detections_api(
-    limit: int = 50,
+    page: int = 1,
+    page_size: int = 25,
+    limit: Optional[int] = None,
     crop_type: Optional[str] = None,
-    infestation_level: Optional[str] = None
+    infestation_level: Optional[str] = None,
+    search: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    min_confidence: Optional[float] = None,
+    status: Optional[str] = None,
+    source: Optional[str] = None
 ):
-    """Retrieves paginated historical detection logs with optional filtering."""
-    records = get_recent_detections(limit=limit, crop_type=crop_type, infestation_level=infestation_level)
+    """Retrieves paginated historical detection logs with rich multi-tier filtering."""
+    eff_limit = limit if limit is not None else page_size
+    eff_limit = max(1, min(200, eff_limit))
+    eff_page = max(1, page)
+    offset = (eff_page - 1) * eff_limit
+
+    data = query_detections(
+        crop_type=crop_type,
+        infestation_level=infestation_level,
+        search=search,
+        start_date=start_date,
+        end_date=end_date,
+        min_confidence=min_confidence,
+        status=status,
+        source=source,
+        limit=eff_limit,
+        offset=offset
+    )
+
+    total = data["total"]
+    total_pages = max(1, (total + eff_limit - 1) // eff_limit)
+
     return {
         "status": "success",
-        "count": len(records),
-        "detections": records
+        "count": len(data["records"]),
+        "detections": data["records"],
+        "pagination": {
+            "page": eff_page,
+            "page_size": eff_limit,
+            "total": total,
+            "total_pages": total_pages
+        }
     }
 
 
@@ -565,6 +611,28 @@ async def delete_detection_api(detection_id: int):
     if not success:
         raise HTTPException(status_code=404, detail="Record not found")
     return {"status": "success", "message": f"Detection {detection_id} deleted."}
+
+
+@router.post("/api/detections/batch-delete")
+async def batch_delete_detections_api(req: BatchDeleteRequest):
+    """Deletes multiple detection records and associated snapshot images."""
+    deleted_count = delete_detections_batch(req.ids)
+    return {
+        "status": "success",
+        "message": f"Successfully deleted {deleted_count} record(s).",
+        "deleted_count": deleted_count
+    }
+
+
+@router.post("/api/detections/clear")
+async def clear_detections_api(req: ClearDetectionsRequest):
+    """Clears all detection records or filtered records matching criteria."""
+    deleted_count = clear_detections(filters=req.filters, clear_all=req.clear_all)
+    return {
+        "status": "success",
+        "message": f"Successfully deleted {deleted_count} record(s).",
+        "deleted_count": deleted_count
+    }
 
 
 @router.get("/api/recommendations/{crop}/{pest}")
