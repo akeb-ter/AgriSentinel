@@ -11,8 +11,12 @@ import time
 import json
 import asyncio
 import hashlib
+import uuid
+import datetime
 import logging
 from typing import List, Optional, Dict, Any
+import cv2
+import numpy as np
 
 from fastapi import (
     APIRouter,
@@ -26,7 +30,7 @@ from fastapi import (
     File,
     Response
 )
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
@@ -36,10 +40,12 @@ from edge.database import (
     get_recent_detections,
     get_detection_by_id,
     delete_detection,
-    get_detection_stats
+    get_detection_stats,
+    DETECTIONS_DIR
 )
 from edge.knowledge_base import knowledge_base
 from edge.probe_controller import probe
+from edge.vision.detector import annotate_frame
 
 logger = logging.getLogger("AgriSentinel-WebApp")
 
@@ -119,33 +125,52 @@ async def favicon():
     return Response(status_code=204)
 
 
+@router.get("/sw.js", include_in_schema=False)
+async def serve_service_worker():
+    """Serves root-scoped service worker for PWA offline lifecycle."""
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sw_path = os.path.join(base_dir, "web", "static", "sw.js")
+    return FileResponse(
+        sw_path,
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/"}
+    )
+
+
 @router.get("/", response_class=HTMLResponse)
-async def login_page(request: Request):
+async def login_page(request: Request, next: Optional[str] = None):
     user = get_current_user(request)
     if user:
-        return RedirectResponse(url="/dashboard", status_code=302)
+        target = next if next and next.startswith("/") else "/dashboard"
+        return RedirectResponse(url=target, status_code=302)
     return templates.TemplateResponse(
         request=request,
         name="login.html",
-        context={"request": request, "message": None, "registration_success": False}
+        context={"request": request, "message": None, "registration_success": False, "next": next}
     )
 
 
 @router.post("/login", response_class=HTMLResponse)
-async def do_login(request: Request, account: str = Form(...), password: str = Form(...)):
+async def do_login(
+    request: Request,
+    account: str = Form(...),
+    password: str = Form(...),
+    next: Optional[str] = Form(None)
+):
     conn = get_db_connection()
     user = conn.execute("SELECT * FROM users_tbl WHERE ACCOUNT = ?", (account,)).fetchone()
     conn.close()
 
     if user and verify_password(password, user["PASSWORD"]):
-        response = RedirectResponse(url="/dashboard", status_code=302)
+        target = next if next and next.startswith("/") else "/dashboard"
+        response = RedirectResponse(url=target, status_code=302)
         response.set_cookie(key="user_id", value=str(user["ID"]))
         return response
 
     return templates.TemplateResponse(
         request=request,
         name="login.html",
-        context={"request": request, "message": "Invalid credentials", "registration_success": False}
+        context={"request": request, "message": "Invalid credentials", "registration_success": False, "next": next}
     )
 
 
@@ -228,6 +253,29 @@ async def dashboard_page(request: Request):
     )
 
 
+@router.get("/mobile", response_class=HTMLResponse)
+async def mobile_page(request: Request):
+    """Serves the Progressive Web App (PWA) mobile field inspection interface."""
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/?next=/mobile", status_code=302)
+
+    crops = knowledge_base.get_supported_crops()
+    telemetry = probe.get_telemetry()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="mobile.html",
+        context={
+            "request": request,
+            "user": user,
+            "telemetry": telemetry,
+            "crops": crops,
+            "active_crop": probe.active_crop
+        }
+    )
+
+
 # --- Live Video Streaming Route ---
 
 def gen_probe_stream():
@@ -269,6 +317,17 @@ def get_snapshot():
 
 
 # --- REST API Endpoints ---
+
+@router.get("/api/ping")
+async def ping():
+    """Heartbeat endpoint for connection health monitoring."""
+    return {
+        "status": "ok",
+        "device": "agrisentinel_probe",
+        "active_crop": probe.active_crop,
+        "timestamp": time.time()
+    }
+
 
 @router.get("/api/status")
 async def get_status():
@@ -332,6 +391,125 @@ async def analyze_snapshot(req: Optional[AnalyzeRequest] = None):
     return {
         "status": "success",
         "record": record
+    }
+
+
+@router.post("/api/detect/upload")
+async def detect_from_phone(
+    file: UploadFile = File(...),
+    crop_type: Optional[str] = Form(None)
+):
+    """
+    Receives an image snapshot uploaded from the smartphone camera,
+    runs TFLite YOLO inference, generates plant health & pesticide recommendations,
+    saves the annotated image, logs the detection to SQLite with [Phone Camera] tag,
+    and broadcasts alert over WebSocket.
+    """
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    if frame is None:
+        raise HTTPException(status_code=400, detail="Invalid image file format")
+
+    # Determine crop
+    target_crop = (crop_type or probe.active_crop).lower().strip()
+    supported_keys = [c["key"] for c in knowledge_base.get_supported_crops()]
+    if target_crop not in supported_keys:
+        target_crop = probe.active_crop
+
+    # Run inference
+    detections = probe.detector.detect(frame, target_crop)
+
+    # Prepare metadata & recommendations
+    crop_data = knowledge_base.get_crop(target_crop)
+    crop_name = crop_data.get("name", target_crop.capitalize()) if crop_data else target_crop.capitalize()
+
+    primary_pest = detections[0] if detections else None
+    pest_name = primary_pest.pest_key if primary_pest else "none"
+    pest_count = len(detections)
+    confidence = primary_pest.confidence if primary_pest else 1.0
+
+    infestation = knowledge_base.calculate_infestation_level(target_crop, pest_name, pest_count)
+    plant_health = knowledge_base.evaluate_plant_health(pest_count, infestation)
+
+    rec = knowledge_base.get_recommendation(
+        crop_key=target_crop,
+        pest_name=pest_name,
+        confidence=confidence if detections else 1.0,
+        pest_count=pest_count
+    )
+
+    # Annotate snapshot
+    model_status = "Online" if getattr(probe.detector, "is_model_loaded", False) else "Offline (Missing)"
+    annotated = annotate_frame(
+        frame,
+        detections,
+        crop_name=crop_name,
+        health_status=rec["plant_health_status"],
+        model_status=model_status
+    )
+
+    # Save snapshot
+    ts_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"det_{ts_str}_{target_crop}_phone_{uuid.uuid4().hex[:6]}.jpg"
+    full_path = os.path.join(DETECTIONS_DIR, filename)
+    cv2.imwrite(full_path, annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    rel_path = f"/static/detections/{filename}"
+
+    # Insert to database with [Phone Camera] tag in farm_area
+    farm_tag = f"{probe.farm_area} [Phone Camera]"
+    db_payload = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "crop_type": target_crop,
+        "farm_area": farm_tag,
+        "detected_pest": rec["detected_pest"],
+        "pest_count": pest_count,
+        "infestation_level": rec["infestation_level"],
+        "soil_moisture_percent": 0.0,
+        "soil_status": "N/A",
+        "plant_health_status": rec["plant_health_status"],
+        "confidence": confidence if detections else 1.0,
+        "recommended_pesticide": rec.get("recommended_pesticide", ""),
+        "organic_alternative": rec.get("organic_alternative", ""),
+        "dosage_instruction": rec.get("dosage_instruction", ""),
+        "safety_precautions": rec.get("safety_precautions", ""),
+        "image_path": rel_path,
+        "status": rec["status"]
+    }
+    rec_id = insert_detection(db_payload)
+    db_payload["id"] = rec_id
+
+    # Broadcast WebSocket alert
+    alert_event = {
+        "type": "PEST_DETECTION_ALERT",
+        "trigger": "PHONE_CAMERA",
+        "record": db_payload,
+        "summary": f"{rec['detected_pest']} ({pest_count} detected via Phone Camera) in {crop_name}"
+    }
+    probe._broadcast_alert(alert_event)
+
+    findings = [
+        {
+            "name": d.label,
+            "pest_key": d.pest_key,
+            "confidence": round(d.confidence, 3),
+            "box": {"x": d.x, "y": d.y, "width": d.width, "height": d.height}
+        }
+        for d in detections
+    ]
+
+    return {
+        "status": "success",
+        "source": "PHONE_CAMERA",
+        "crop_type": target_crop,
+        "crop_name": crop_name,
+        "pest_count": pest_count,
+        "findings": findings,
+        "recommendation": rec,
+        "plant_health": rec["plant_health_status"],
+        "record": db_payload,
+        "image_url": rel_path
     }
 
 

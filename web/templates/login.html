@@ -592,6 +592,7 @@
                 {% endif %}
 
                 <form method="POST" action="/login" id="loginFormElement">
+                    <input type="hidden" name="next" value="{{ next or '' }}" />
                     <div class="form-group">
                         <label><i class="fas fa-user"></i> Username / Account</label>
                         <div class="input-wrap">
