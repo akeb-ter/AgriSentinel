@@ -13,3 +13,12 @@ build/
 bin/
 blueprint.md
 markdowns/
+.pytest_cache/
+web/static/detections/*.jpg
+
+# Raw ML model archives and heavy export formats
+Crop_Pest_Edge_Models_TFLite_ONNX/
+*.onnx
+!edge/models/quarrying_insect_identifier_224x224.onnx
+*.pt
+*.tar.xz

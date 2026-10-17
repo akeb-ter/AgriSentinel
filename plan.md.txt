@@ -1,0 +1,185 @@
+# TASK: Integrate TFLite Pest Detection Inference Engine into AgriSentinel Edge Runtime
+
+Please update the edge codebase to replace or extend the vision pipeline with a dedicated TensorFlow Lite (`tflite-runtime`) inference engine for the pre-trained IP102 pest detection model (`pest_detector.tflite`). Ensure the detection output interfaces directly with the autonomous pause mechanism, active buzzer, and SQLite/WebSocket alert pipeline.
+
+---
+
+### 1. Requirements & Dependency Updates
+
+Update `requirements.txt` (or create `edge/requirements.txt`) to include the lightweight edge runtime dependencies:
+
+```text
+tflite-runtime>=2.14.0
+opencv-python>=4.8.0
+numpy>=1.23.0
+Note: Do not add full tensorflow, torch, or ultralytics to the edge dependencies. The Raspberry Pi must rely strictly on tflite-runtime to prevent memory starvation and thermal throttling.
+
+2. Vision Inference Module (edge/vision.py)
+Create or update edge/vision.py with an optimized YOLO-TFLite interpreter supporting IP102 class filtering:
+
+Python
+import cv2
+import numpy as np
+from tflite_runtime.interpreter import Interpreter
+
+class PestDetector:
+    def __init__(
+        self,
+        model_path: str = "edge/models/pest_detector.tflite",
+        conf_threshold: float = 0.60,
+        iou_threshold: float = 0.45
+    ):
+        self.conf_threshold = conf_threshold
+        self.iou_threshold = iou_threshold
+
+        # Initialize TFLite interpreter and allocate memory buffers
+        self.interpreter = Interpreter(model_path=model_path)
+        self.interpreter.allocate_tensors()
+
+        self.input_details = self.interpreter.get_input_details()
+        self.output_details = self.interpreter.get_output_details()
+
+        # Input dimensions (expected: 416x416)
+        self.input_height = self.input_details[0]['shape'][1]
+        self.input_width = self.input_details[0]['shape'][2]
+
+        # Target IP102 Class IDs for Rice, Corn, Eggplant, Squash, and Mungbean pests
+        self.ALLOWED_CLASSES = {
+            0: "Rice leaf roller",
+            1: "Rice leaf caterpillar",
+            3: "Asiatic rice borer",
+            4: "Yellow rice borer",
+            7: "Brown plant hopper",
+            8: "White backed plant hopper",
+            12: "Grain spreader thrips",
+            18: "Black cutworm",
+            19: "Large cutworm",
+            45: "Corn leaf aphid",
+            56: "Fall armyworm",
+            78: "Whitefly"
+        }
+
+    def preprocess(self, frame: np.ndarray) -> np.ndarray:
+        """Resizes, normalizes, and expands dimensions for model inference."""
+        resized = cv2.resize(frame, (self.input_width, self.input_height))
+        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        normalized = rgb.astype(np.float32) / 255.0
+        return np.expand_dims(normalized, axis=0)
+
+    def detect(self, frame: np.ndarray) -> list[dict]:
+        """Runs inference, filters for target crop pests, and applies NMS."""
+        orig_h, orig_w = frame.shape[:2]
+        input_data = self.preprocess(frame)
+
+        self.interpreter.set_tensor(self.input_details[0]['index'], input_data)
+        self.interpreter.invoke()
+
+        # YOLO TFLite output shape: [1, 4 + classes, anchors] -> Transpose to [anchors, 4 + classes]
+        raw_output = self.interpreter.get_tensor(self.output_details[0]['index'])
+        predictions = np.squeeze(raw_output).T
+
+        boxes = []
+        scores = []
+        class_ids = []
+
+        for pred in predictions:
+            class_scores = pred[4:]
+            max_idx = int(np.argmax(class_scores))
+            confidence = float(class_scores[max_idx])
+
+            # Apply confidence threshold and isolate allowed target crop pests
+            if confidence >= self.conf_threshold and max_idx in self.ALLOWED_CLASSES:
+                cx, cy, w, h = pred[0:4]
+                x1 = int((cx - w / 2) * orig_w)
+                y1 = int((cy - h / 2) * orig_h)
+                box_w = int(w * orig_w)
+                box_h = int(h * orig_h)
+
+                boxes.append([x1, y1, box_w, box_h])
+                scores.append(confidence)
+                class_ids.append(max_idx)
+
+        # Non-Maximum Suppression to remove redundant boxes
+        indices = cv2.dnn.NMSBoxes(boxes, scores, self.conf_threshold, self.iou_threshold)
+
+        detected_pests = []
+        if len(indices) > 0:
+            for idx in indices.flatten():
+                detected_pests.append({
+                    "class_id": class_ids[idx],
+                    "name": self.ALLOWED_CLASSES[class_ids[idx]],
+                    "confidence": round(scores[idx], 4),
+                    "box": boxes[idx]
+                })
+
+        return detected_pests
+3. Robot Loop & Operational State Integration (edge/robot_main.py)
+Hook the vision detector into the main control script to manage the Patrol → Stop/Capture → Deter/Log → Resume state machine:
+
+Python
+import time
+import cv2
+from edge.vision import PestDetector
+# Import existing drivers:
+# from edge.drivers.motors import MotorController
+# from edge.drivers.buzzer import BuzzerController
+# from edge.drivers.gps import GPSReader
+
+def main():
+    detector = PestDetector(model_path="edge/models/pest_detector.tflite", conf_threshold=0.60)
+    cap = cv2.VideoCapture(0)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+    print("[SYSTEM] AgriSentinel TFLite Engine Initialized. Entering Patrol Loop...")
+
+    try:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                continue
+
+            pests = detector.detect(frame)
+
+            if pests:
+                # 1. Immediate Autonomous Pause to eliminate motion blur
+                # motor.stop()
+                print(f"[ACTION] Target pest detected ({len(pests)} found). Halting motors.")
+                time.sleep(0.5)
+
+                # 2. Capture clean still frame and re-verify
+                ret_still, still_frame = cap.read()
+                verified_pests = detector.detect(still_frame) if ret_still else pests
+
+                if verified_pests:
+                    pest_summary = ", ".join([f"{p['name']} ({p['confidence']:.2f})" for p in verified_pests])
+                    print(f"[ALERT] Verified Detections: {pest_summary}")
+
+                    # 3. Trigger Active Buzzer Pattern
+                    # buzzer.pulse_pattern(pest_class=verified_pests[0]['class_id'])
+
+                    # 4. Dispatch Telemetry & Persist to SQLite
+                    # db.insert_detection(crop="Corn", pests=verified_pests, ...)
+                    # ws_client.send_alert(verified_pests)
+
+                # 5. Resume Patrol
+                time.sleep(1.0)
+                # motor.resume_patrol()
+
+            # Optional local preview (disable in headless production)
+            # cv2.imshow("AgriSentinel Feed", frame)
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #     break
+
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    main()
+4. Implementation Checklist for Antigravity
+Verify File Paths: Ensure edge/models/pest_detector.tflite is verified or that the path is loaded from an environment variable/config file.
+
+Pluggable Integration: If edge/vision.py currently houses the Edge Impulse .eim runner, refactor vision.py into a modular factory or pluggable interface (TFLiteRunner vs. EIMRunner) so either runtime can be selected via a configuration flag.
+
+Pest Counting & Payload: Ensure the output list length (len(detected_pests)) is mapped to the pest_count field expected by the FastAPI backend and SQLite database schemas.

@@ -2,6 +2,10 @@
 Unit and integration tests for edge.camera_test module.
 """
 
+import os
+# Force synthetic camera for deterministic test environment
+os.environ["CAMERA_BACKEND"] = "synthetic"
+
 import io
 import time
 import threading
@@ -30,7 +34,7 @@ def test_camera_manager_jpeg_encoding():
 
 
 def test_api_index_endpoint():
-    """Verify root HTML preview endpoint."""
+    """Verify camera diagnostic HTML preview endpoint."""
     with TestClient(app) as client:
         response = client.get("/camera_diagnostic")
         assert response.status_code == 200

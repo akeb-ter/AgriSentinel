@@ -1,0 +1,166 @@
+{
+  "model": "cerealpestaid_mobilenetv3_fp32_528x528",
+  "description": "CerealPestAID MobileNetV3 with strict crop pest filtering",
+  "allowed_classes": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    16,
+    17,
+    18,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25
+  ],
+  "excluded_classes": [
+    14,
+    15,
+    19
+  ],
+  "classes": {
+    "0": {
+      "name": "Cabbage seedpod weevil",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "1": {
+      "name": "Bird cherry oat aphid",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "2": {
+      "name": "Cabbage aphid",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "3": {
+      "name": "Cereal grass aphid",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "4": {
+      "name": "Cereal leaf beetle",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "5": {
+      "name": "Clickbeetles / wireworms",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "6": {
+      "name": "Crucifer flea beetle",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "7": {
+      "name": "Cutworms",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "8": {
+      "name": "Diamondback moth",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "9": {
+      "name": "English grain aphid",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "10": {
+      "name": "Greenbug",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "11": {
+      "name": "Green peach aphid",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "12": {
+      "name": "Hessian fly",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "13": {
+      "name": "Lygus bug",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "14": {
+      "name": "Non-pest herbivores",
+      "is_crop_pest": false,
+      "type": "non_pest_herbivore"
+    },
+    "15": {
+      "name": "Occasional pest",
+      "is_crop_pest": false,
+      "type": "occasional_pest"
+    },
+    "16": {
+      "name": "Pea aphid",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "17": {
+      "name": "Pea leaf weevil",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "18": {
+      "name": "Pea weevil",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "19": {
+      "name": "Predators",
+      "is_crop_pest": false,
+      "type": "beneficial_predator"
+    },
+    "20": {
+      "name": "Rose grain aphid",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "21": {
+      "name": "Russian wheat aphid",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "22": {
+      "name": "Stink bug",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "23": {
+      "name": "Striped flea beetle",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "24": {
+      "name": "Turnip aphid",
+      "is_crop_pest": true,
+      "type": "pest"
+    },
+    "25": {
+      "name": "Wheathead armyworm (Dargida diffusa)",
+      "is_crop_pest": true,
+      "type": "pest"
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "version": "1.0",
+  "purpose": "Filter out non-crop pests, beneficial predators, and vertebrate animals from edge model outputs",
+  "models": {
+    "ip102_yolo11s_102pests_640x640": {
+      "model_type": "yolo",
+      "total_classes": 102,
+      "filter_required": false,
+      "all_classes_are_crop_pests": true,
+      "notes": "100% of the 102 classes are verified economic agricultural crop pests and mites across 8 field crops."
+    },
+    "yolov8n_aphid_fruitfly_scale_640x640": {
+      "model_type": "yolo",
+      "total_classes": 3,
+      "filter_required": false,
+      "all_classes_are_crop_pests": true,
+      "allowed_class_ids": [
+        0,
+        1,
+        2
+      ],
+      "notes": "All 3 classes (aphid, fruit fly, scale insect) are high-impact agricultural crop pests."
+    },
+    "yolov8n_beetle_detection_640x640": {
+      "model_type": "yolo",
+      "total_classes": 1,
+      "filter_required": true,
+      "all_classes_are_crop_pests": false,
+      "notes": "Generic 'beetle'. Contains both destructive crop pests and beneficial predators. Pair with IP102 or CerealPestAID for species confirmation."
+    },
+    "cerealpestaid_mobilenetv3_fp32_528x528": {
+      "model_type": "classifier",
+      "total_classes": 26,
+      "filter_required": true,
+      "all_classes_are_crop_pests": false,
+      "allowed_class_ids": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        16,
+        17,
+        18,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25
+      ],
+      "suppressed_class_ids": [
+        14,
+        15,
+        19
+      ],
+      "suppressed_reasons": {
+        "14": "Non-pest herbivores (feeding on wild weeds/plants, non-economic)",
+        "15": "Occasional pest (transient, sub-economic)",
+        "19": "Predators (BENEFICIAL biological control insects like ladybugs/lacewings; must NOT be harmed)"
+      }
+    }
+  }
+}

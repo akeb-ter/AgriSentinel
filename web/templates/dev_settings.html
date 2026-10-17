@@ -443,41 +443,115 @@
             </div>
         </div>
 
-        <!-- CARD 4: GPS & TELEMETRY -->
-        <div class="dev-card">
+        <!-- CARD 4: AI VISION & TFLITE INFERENCE ENGINE -->
+        <div class="dev-card" style="grid-column: 1 / -1;">
             <div>
                 <div class="card-header">
                     <div class="card-title">
-                        <i class="fas fa-satellite-dish"></i>
-                        <span>GPS &amp; Telemetry</span>
+                        <i class="fas fa-brain"></i>
+                        <span>AI Vision &amp; TFLite Inference Engine</span>
                     </div>
-                    <span id="gpsBadge" class="status-pill blue">
-                        <span class="pulse-dot"></span> <span id="gpsBadgeText">Checking...</span>
+                    <span id="visionModelBadge" class="status-pill {% if telemetry.model_loaded %}green{% else %}amber{% endif %}">
+                        <span class="pulse-dot"></span> <span id="visionModelBadgeText">{% if telemetry.model_loaded %}Model Online{% else %}Model Missing{% endif %}</span>
                     </span>
                 </div>
 
-                <div class="info-list" style="margin-bottom: 12px;">
+                <div class="info-list" style="margin-bottom: 16px;">
                     <div class="info-row">
-                        <span class="info-label">Baud Rate / Port:</span>
-                        <span id="gpsPort" class="info-val">--</span>
+                        <span class="info-label">Active Weights File:</span>
+                        <span id="visionModelPath" class="info-val" style="font-family:'Fira Code', monospace; font-size:12px;">{{ telemetry.model_path or 'edge/models/best.tflite' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">TFLite Runtime:</span>
+                        <span id="visionRuntime" class="info-val">{{ telemetry.model_runtime }}</span>
+                    </div>
+                    <div class="info-row" id="visionErrorRow" style="{% if not telemetry.model_error %}display:none;{% endif %}">
+                        <span class="info-label" style="color:#ef4444;">Status Message:</span>
+                        <span id="visionErrorText" class="info-val" style="color:#ef4444; font-size:12px;">{{ telemetry.model_error or 'None' }}</span>
                     </div>
                 </div>
 
-                <div style="background: #0f172a; border-radius: 12px; padding: 12px; margin-bottom: 16px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <div style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Raw NMEA Stream (Last 5 lines)</div>
-                        <label style="font-size: 11px; color: #94a3b8; font-weight: 600; display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;">
-                            <input type="checkbox" id="gpsAutoRefresh" checked style="cursor: pointer; accent-color: #2b6e3c;">
-                            <span>Auto Refresh</span>
-                        </label>
+                <!-- Vision Configuration Form -->
+                <div style="background: #f4fcf0; border-radius: 16px; padding: 18px; border: 1.5px solid #dce8d6; margin-bottom: 14px;">
+                    <div style="font-size: 14px; font-weight: 700; color: #18381c; margin-bottom: 14px; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-sliders-h" style="color:#2b6e3c;"></i> Inference Parameters &amp; Pest Taxonomy Mode
                     </div>
-                    <div id="gpsRawStream" style="font-family: 'Fira Code', monospace; font-size: 11.5px; color: #38bdf8; line-height: 1.5; height: 85px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">Loading stream...</div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 16px;">
+                        <!-- Model Profile Selection -->
+                        <div style="grid-column: 1 / -1;">
+                            <label style="display:block; font-size:12.5px; font-weight:600; color:#2e5033; margin-bottom:6px;">
+                                <i class="fas fa-layer-group" style="color:#2b6e3c;"></i> Active Vision Model Profile:
+                            </label>
+                            <select id="visionModelProfile" onchange="onModelProfileChange()" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; font-weight:600; background:white; color:#1e293b;">
+                                <option value="comprehensive_102">Comprehensive 102 Pests (YOLO11s: Full IP102 catalog)</option>
+                                <option value="tropical_27_pests">Tropical Field Scout (YOLOv8n FP16: 27 Field Pests)</option>
+                                <option value="fast_scout_3pests">Fast Edge Scout (YOLOv8n: Aphids, Fruit Flies, Scale Insects)</option>
+                                <option value="cereal_diagnostic">Close-Up Cereal Diagnostic (MobileNetV3 + Beneficial Predator Guard)</option>
+                                <option value="species_encyclopedia">Species Encyclopedia (Quarrying ONNX: 2,037 wild insect species)</option>
+                            </select>
+                            <span id="visionModelDesc" style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
+                                Switches inference weights, runtime engine, and class taxonomies dynamically on edge.
+                            </span>
+                        </div>
+
+                        <!-- Taxonomy Filter Mode -->
+                        <div>
+                            <label style="display:block; font-size:12.5px; font-weight:600; color:#2e5033; margin-bottom:6px;">
+                                Pest Taxonomy Filtering Mode:
+                            </label>
+                            <select id="visionFilterMode" onchange="onFilterModeChange()" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; font-weight:600; background:white; color:#1e293b;">
+                                <option value="full_102" {% if telemetry.class_filter_mode != 'strict_12' %}selected{% endif %}>Full 102 IP102 Catalog (Recommended)</option>
+                                <option value="strict_12" {% if telemetry.class_filter_mode == 'strict_12' %}selected{% endif %}>Strict 12 Target Pests</option>
+                            </select>
+                            <span style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
+                                Full 102 mode enables detection for all trained IP102 pest species. Strict 12 isolates major target crops.
+                            </span>
+                        </div>
+
+                        <!-- Confidence Threshold -->
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-size:12.5px; font-weight:600; color:#2e5033;">Confidence Threshold:</label>
+                                <span id="confValDisplay" style="font-family:'Fira Code', monospace; font-size:13px; font-weight:700; color:#18381c;">{{ "%.2f"|format(telemetry.conf_threshold or 0.25) }}</span>
+                            </div>
+                            <input type="range" id="visionConfSlider" min="0.10" max="0.90" step="0.05" value="{{ telemetry.conf_threshold or 0.25 }}" oninput="document.getElementById('confValDisplay').textContent = parseFloat(this.value).toFixed(2)" style="width:100%; accent-color:#2b6e3c;">
+                            <span style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
+                                Default: 0.25 (recommended for sensitive pest identification).
+                            </span>
+                        </div>
+
+                        <!-- IoU NMS Threshold -->
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-size:12.5px; font-weight:600; color:#2e5033;">NMS IoU Threshold:</label>
+                                <span id="iouValDisplay" style="font-family:'Fira Code', monospace; font-size:13px; font-weight:700; color:#18381c;">{{ "%.2f"|format(telemetry.iou_threshold or 0.45) }}</span>
+                            </div>
+                            <input type="range" id="visionIouSlider" min="0.20" max="0.80" step="0.05" value="{{ telemetry.iou_threshold or 0.45 }}" oninput="document.getElementById('iouValDisplay').textContent = parseFloat(this.value).toFixed(2)" style="width:100%; accent-color:#2b6e3c;">
+                            <span style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
+                                Default: 0.45 (suppresses redundant bounding box overlaps).
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button id="saveVisionBtn" class="btn btn-primary" onclick="saveVisionSettings()">
+                            <i class="fas fa-save"></i> Save Vision Parameters
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Filter Classes Badge List -->
+                <div>
+                    <div style="font-size:12.5px; font-weight:700; color:#24522c; margin-bottom:8px; display:flex; justify-content:space-between;">
+                        <span>Active Pest Taxonomy Classes (<span id="activeClassesCount">--</span>)</span>
+                        <span id="activeFilterDesc" style="font-size:11.5px; color:#607d64; font-weight:normal;">Strict 12 Target Pests</span>
+                    </div>
+                    <div id="activeClassesList" style="display:flex; flex-wrap:wrap; gap:6px; max-height:140px; overflow-y:auto; padding:8px; background:#f8faf6; border-radius:10px; border:1px solid #e2ede0;">
+                        <!-- Rendered by JS -->
+                    </div>
                 </div>
             </div>
-
-            <button id="gpsRestartBtn" class="btn btn-secondary" onclick="restartGPS()">
-                <i class="fas fa-sync-alt"></i> Restart Serial Connection
-            </button>
         </div>
 
     </div>
@@ -577,99 +651,6 @@
         }
     }
 
-    // Connect Wi-Fi
-    async function connectWifi() {
-        const ssid = document.getElementById('wifiSsid').value.trim();
-        const pass = document.getElementById('wifiPass').value;
-        const btn = document.getElementById('wifiConnectBtn');
-        
-        if (!ssid) {
-            showToast('SSID cannot be empty', true);
-            return;
-        }
-        
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Connecting...`;
-
-        showToast(`Attempting to connect to ${ssid}. Please wait...`);
-
-        try {
-            const res = await fetch('/api/dev/wifi/connect', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ssid: ssid, password: pass })
-            });
-            const data = await res.json();
-            if (data.status === 'success') {
-                showToast(`Successfully connected to ${ssid}!`);
-            } else {
-                showToast(`Error: ${data.stderr || data.message || 'Connection failed'}`, true);
-            }
-        } catch (err) {
-            showToast(`Request failed: ${err.message}`, true);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-link"></i> Connect & Save`;
-            fetchDevStatus();
-            fetchLogs();
-        }
-    }
-
-    // Fetch GPS Raw Data
-    async function fetchGPSRaw(force = false) {
-        const autoRefreshCb = document.getElementById('gpsAutoRefresh');
-        if (!force && autoRefreshCb && !autoRefreshCb.checked) return;
-
-        try {
-            const res = await fetch('/api/dev/gps/raw');
-            if (!res.ok) return;
-            const data = await res.json();
-            
-            const badge = document.getElementById('gpsBadge');
-            const badgeText = document.getElementById('gpsBadgeText');
-            
-            if (data.is_synthetic) {
-                badge.className = 'status-pill amber';
-                badgeText.textContent = 'HARDWARE OFFLINE (SYNTHETIC)';
-            } else {
-                badge.className = 'status-pill green';
-                badgeText.textContent = 'SERIAL ACTIVE';
-            }
-            
-            document.getElementById('gpsPort').textContent = `${data.baudrate} baud | ${data.port}`;
-            
-            const streamDiv = document.getElementById('gpsRawStream');
-            if (data.raw_stream && data.raw_stream.length > 0) {
-                // Show last 5 lines
-                const recent = data.raw_stream.slice(-5);
-                streamDiv.textContent = recent.join('\n');
-            } else {
-                streamDiv.textContent = '[No data received from serial yet...]';
-            }
-        } catch (err) {
-            console.error('Error fetching raw GPS:', err);
-        }
-    }
-
-    // Restart GPS
-    async function restartGPS() {
-        const btn = document.getElementById('gpsRestartBtn');
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Restarting Serial...`;
-
-        try {
-            const res = await fetch('/api/dev/gps/restart', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message, data.status !== 'success');
-        } catch (err) {
-            showToast(`Error: ${err.message}`, true);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-sync-alt"></i> Restart Serial Connection`;
-            fetchGPSRaw(true);
-        }
-    }
-
     // Restart Camera
     async function restartCamera() {
         const btn = document.getElementById('camRestartBtn');
@@ -700,7 +681,7 @@
         const count = document.getElementById('logLinesSelect').value;
 
         try {
-            const res = await fetch(`/api/dev/logs?lines=${count}`);
+            const res = await fetch(`/api/dev/system/logs?lines=${count}`);
             if (res.ok) {
                 const data = await res.json();
                 document.getElementById('terminalText').textContent = data.logs || '[No logs available]';
@@ -726,7 +707,7 @@
         if (type === 'reboot') {
             icon.textContent = '🔄';
             title.textContent = 'Reboot Raspberry Pi?';
-            desc.textContent = 'This will reboot the robot immediately. The web interface will temporarily disconnect for ~45 seconds.';
+            desc.textContent = 'This will reboot the probe immediately. The web interface will temporarily disconnect for ~45 seconds.';
             confirmBtn.className = 'btn btn-amber';
             confirmBtn.textContent = 'Yes, Reboot';
         } else if (type === 'shutdown') {
@@ -752,7 +733,11 @@
         showToast(`Sending ${action} command...`);
 
         try {
-            const res = await fetch(`/api/dev/system/${action}`, { method: 'POST' });
+            const res = await fetch(`/api/dev/system/power`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: action })
+            });
             const data = await res.json();
             showToast(data.message || `${action} initiated.`);
         } catch (err) {
@@ -780,20 +765,117 @@
         }, 4000);
     }
 
-    // Initial Load & Polling
-    fetchDevStatus();
-    fetchLogs();
-    fetchGPSRaw(true);
-    
-    const gpsAutoRefreshCb = document.getElementById('gpsAutoRefresh');
-    if (gpsAutoRefreshCb) {
-        gpsAutoRefreshCb.addEventListener('change', (e) => {
-            if (e.target.checked) fetchGPSRaw(true);
+    // --- AI Vision Settings JS ---
+    async function fetchVisionSettings() {
+        try {
+            const res = await fetch('/api/dev/vision_settings');
+            if (!res.ok) return;
+            const data = await res.json();
+
+            // Status Badge
+            const badge = document.getElementById('visionModelBadge');
+            const badgeText = document.getElementById('visionModelBadgeText');
+            if (data.model_loaded) {
+                badge.className = 'status-pill green';
+                badgeText.textContent = 'Model Online';
+            } else {
+                badge.className = 'status-pill amber';
+                badgeText.textContent = 'Model Missing';
+            }
+
+            // Path & Runtime
+            document.getElementById('visionModelPath').textContent = data.model_path || 'edge/models/best.tflite';
+            document.getElementById('visionRuntime').textContent = data.runtime_name;
+
+            const errRow = document.getElementById('visionErrorRow');
+            if (data.model_error) {
+                errRow.style.display = 'flex';
+                document.getElementById('visionErrorText').textContent = data.model_error;
+            } else {
+                errRow.style.display = 'none';
+            }
+
+            // Form inputs
+            if (data.active_model_profile) {
+                document.getElementById('visionModelProfile').value = data.active_model_profile;
+            }
+            document.getElementById('visionFilterMode').value = data.class_filter_mode;
+            document.getElementById('visionConfSlider').value = data.conf_threshold;
+            document.getElementById('confValDisplay').textContent = parseFloat(data.conf_threshold).toFixed(2);
+            document.getElementById('visionIouSlider').value = data.iou_threshold;
+            document.getElementById('iouValDisplay').textContent = parseFloat(data.iou_threshold).toFixed(2);
+
+            // Classes list
+            renderActiveClasses(data.active_classes, data.class_filter_mode);
+
+        } catch (e) {
+            console.error('Error fetching vision settings:', e);
+        }
+    }
+
+    function renderActiveClasses(classes, mode) {
+        document.getElementById('activeClassesCount').textContent = classes.length;
+        document.getElementById('activeFilterDesc').textContent = mode === 'strict_12' ? 'Strict 12 Target Pests Mode' : 'Full 102 Taxonomy (Beta Mode)';
+
+        const listEl = document.getElementById('activeClassesList');
+        listEl.innerHTML = '';
+        classes.forEach(c => {
+            const badge = document.createElement('span');
+            badge.style.cssText = 'background:#eaf5e5; border:1px solid #cfe6c8; color:#1b4d24; border-radius:12px; padding:3px 8px; font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:4px;';
+            badge.innerHTML = `<span style="color:#52805b; font-size:10px;">#${c.id}</span> ${c.name}`;
+            listEl.appendChild(badge);
         });
     }
 
+    async function saveVisionSettings() {
+        const btn = document.getElementById('saveVisionBtn');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
+
+        const payload = {
+            model_profile: document.getElementById('visionModelProfile').value,
+            class_filter_mode: document.getElementById('visionFilterMode').value,
+            conf_threshold: parseFloat(document.getElementById('visionConfSlider').value),
+            iou_threshold: parseFloat(document.getElementById('visionIouSlider').value)
+        };
+
+        try {
+            const res = await fetch('/api/dev/vision_settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showToast('AI Vision parameters updated live.');
+                fetchVisionSettings();
+            } else {
+                showToast(`Failed to update: ${data.message}`, true);
+            }
+        } catch (err) {
+            showToast(`Error: ${err.message}`, true);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-save"></i> Save Vision Parameters`;
+        }
+    }
+
+    function onFilterModeChange() {
+        saveVisionSettings();
+    }
+
+    function onModelProfileChange() {
+        saveVisionSettings();
+    }
+
+    // Initial Load & Polling
+    fetchDevStatus();
+    fetchVisionSettings();
+    fetchLogs();
+    fetchGPSRaw();
     setInterval(fetchDevStatus, 5000);
-    setInterval(fetchGPSRaw, 2000); // refresh raw stream more frequently when auto-refresh enabled
+    setInterval(fetchVisionSettings, 8000);
+    setInterval(fetchGPSRaw, 2000);
 </script>
 
 </body>

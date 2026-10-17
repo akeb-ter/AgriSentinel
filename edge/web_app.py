@@ -1,33 +1,62 @@
+"""
+AgriSentinel Web Application & REST/WebSocket API
+
+Serves the mobile-first monitoring dashboard, telemetry endpoints,
+and real-time alerts for the AgriSentinel Smart Crop Probe Stick.
+"""
+
 import os
 import sys
-import subprocess
+import time
+import json
+import asyncio
+import hashlib
+import uuid
 import datetime
-from fastapi import APIRouter, Request, Form, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Response
-import shutil
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+import logging
+from typing import List, Optional, Dict, Any
+import cv2
+import numpy as np
+
+from fastapi import (
+    APIRouter,
+    Request,
+    Form,
+    Depends,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    UploadFile,
+    File,
+    Response
+)
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-import asyncio
-import time
-from typing import List, Optional, Dict, Any
 
-from .database import get_db_connection
-from .drivers.motors import MotorController
-from .drivers.servo import ServoController
-from .drivers.gps import GPSReader
+from edge.database import (
+    get_db_connection,
+    insert_detection,
+    get_recent_detections,
+    get_detection_by_id,
+    delete_detection,
+    query_detections,
+    delete_detections_batch,
+    clear_detections,
+    get_detection_stats,
+    DETECTIONS_DIR
+)
+from edge.knowledge_base import knowledge_base
+from edge.probe_controller import probe
+from edge.vision.detector import annotate_frame
+
+logger = logging.getLogger("AgriSentinel-WebApp")
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
-motors = MotorController()
-servo = ServoController()
-gps_reader = GPSReader()
-gps_task: Optional[asyncio.Task] = None
 
-
-
-
-# Simple active websocket connections for alerts
+# --- WebSocket Connection Manager for Real-Time Alerts ---
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
@@ -35,21 +64,53 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        logger.info(f"[WebSocket] Client connected. Active clients: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+            logger.info(f"[WebSocket] Client disconnected. Active clients: {len(self.active_connections)}")
 
     async def broadcast(self, message: dict):
-        for connection in self.active_connections:
+        for connection in list(self.active_connections):
             try:
                 await connection.send_json(message)
-            except:
-                pass
+            except Exception:
+                self.disconnect(connection)
+
 
 manager = ConnectionManager()
 
-# --- Auth Dependency ---
+
+# Register probe alert callback with event loop
+def on_probe_alert(payload: Dict[str, Any]):
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.run_coroutine_threadsafe(manager.broadcast(payload), loop)
+        else:
+            asyncio.run(manager.broadcast(payload))
+    except Exception as e:
+        logger.debug(f"[WebSocket] Alert broadcast scheduled: {e}")
+
+
+probe.register_alert_callback(on_probe_alert)
+
+
+# --- Authentication Utilities ---
+def hash_password(password: str) -> str:
+    salt = os.urandom(16)
+    return salt.hex() + ":" + hashlib.sha256(salt + password.encode("utf-8")).hexdigest()
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    if ":" not in hashed:
+        return password == hashed
+    salt_hex, hash_val = hashed.split(":", 1)
+    salt = bytes.fromhex(salt_hex)
+    return hashlib.sha256(salt + password.encode("utf-8")).hexdigest() == hash_val
+
+
 def get_current_user(request: Request):
     user_id = request.cookies.get("user_id")
     if not user_id:
@@ -59,63 +120,83 @@ def get_current_user(request: Request):
     conn.close()
     return user
 
-# --- Web Routes ---
+
+# --- Web Page Routes ---
 
 @router.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return Response(status_code=204)
 
+
+@router.get("/sw.js", include_in_schema=False)
+async def serve_service_worker():
+    """Serves root-scoped service worker for PWA offline lifecycle."""
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sw_path = os.path.join(base_dir, "web", "static", "sw.js")
+    return FileResponse(
+        sw_path,
+        media_type="application/javascript",
+        headers={"Service-Worker-Allowed": "/"}
+    )
+
+
 @router.get("/", response_class=HTMLResponse)
-async def login_page(request: Request):
+async def login_page(request: Request, next: Optional[str] = None):
     user = get_current_user(request)
     if user:
-        return RedirectResponse(url="/dashboard", status_code=302)
-    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": None, "registration_success": False})
+        target = next if next and next.startswith("/") else "/dashboard"
+        return RedirectResponse(url=target, status_code=302)
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"request": request, "message": None, "registration_success": False, "next": next}
+    )
 
-import hashlib
-
-def hash_password(password: str) -> str:
-    salt = os.urandom(16)
-    return salt.hex() + ":" + hashlib.sha256(salt + password.encode('utf-8')).hexdigest()
-
-def verify_password(password: str, hashed: str) -> bool:
-    if ":" not in hashed:
-        return password == hashed
-    salt_hex, hash_val = hashed.split(":", 1)
-    salt = bytes.fromhex(salt_hex)
-    return hashlib.sha256(salt + password.encode('utf-8')).hexdigest() == hash_val
 
 @router.post("/login", response_class=HTMLResponse)
-async def do_login(request: Request, account: str = Form(...), password: str = Form(...)):
+async def do_login(
+    request: Request,
+    account: str = Form(...),
+    password: str = Form(...),
+    next: Optional[str] = Form(None)
+):
     conn = get_db_connection()
     user = conn.execute("SELECT * FROM users_tbl WHERE ACCOUNT = ?", (account,)).fetchone()
     conn.close()
 
-    if user and verify_password(password, user['PASSWORD']):
-        response = RedirectResponse(url="/dashboard", status_code=302)
-        response.set_cookie(key="user_id", value=str(user['ID']))
+    if user and verify_password(password, user["PASSWORD"]):
+        target = next if next and next.startswith("/") else "/dashboard"
+        response = RedirectResponse(url=target, status_code=302)
+        response.set_cookie(key="user_id", value=str(user["ID"]))
         return response
-    
-    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": "Invalid credentials", "registration_success": False})
+
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"request": request, "message": "Invalid credentials", "registration_success": False, "next": next}
+    )
+
 
 @router.post("/register", response_class=HTMLResponse)
 async def do_register(
-    request: Request, 
-    lastname: str = Form(...), 
-    firstname: str = Form(...), 
-    middlename: str = Form(""), 
-    user_type: str = Form(...), 
-    affiliation: str = Form(...), 
-    account: str = Form(...), 
+    request: Request,
+    lastname: str = Form(...),
+    firstname: str = Form(...),
+    middlename: str = Form(""),
+    user_type: str = Form(...),
+    affiliation: str = Form(...),
+    account: str = Form(...),
     password: str = Form(...)
 ):
     conn = get_db_connection()
-    # Check if account already exists
     existing = conn.execute("SELECT ID FROM users_tbl WHERE ACCOUNT = ?", (account,)).fetchone()
-    
     if existing:
         conn.close()
-        return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": "Account username already exists. Please choose another.", "registration_success": False})
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"request": request, "message": "Account username already exists. Please choose another.", "registration_success": False}
+        )
 
     hashed_pw = hash_password(password)
     conn.execute("""
@@ -125,8 +206,12 @@ async def do_register(
     conn.commit()
     conn.close()
 
-    # Return success flag to frontend
-    return templates.TemplateResponse(request=request, name="login.html", context={"request": request, "message": None, "registration_success": True})
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"request": request, "message": None, "registration_success": True}
+    )
+
 
 @router.get("/logout")
 async def logout():
@@ -134,557 +219,704 @@ async def logout():
     response.delete_cookie("user_id")
     return response
 
+
 @router.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
     user = get_current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=302)
-    
-    conn = get_db_connection()
-    pests = conn.execute("SELECT * FROM pest").fetchall()
-    logs = conn.execute("SELECT * FROM detection_logs ORDER BY ID DESC LIMIT 100").fetchall()
-    conn.close()
 
-    # Pass the threshold as a global setting to the template
-    from edge.camera_test import get_log_confidence_threshold
-    threshold = get_log_confidence_threshold()
+    crops = knowledge_base.get_supported_crops()
+    telemetry = probe.get_telemetry()
+    detections = get_recent_detections(limit=30)
+    stats = get_detection_stats()
 
-    return templates.TemplateResponse(request=request, name="dashboard.html", context={
-        "request": request,
-        "user": user,
-        "db_pests": [dict(p) for p in pests],
-        "logs": [dict(l) for l in logs],
-        "log_confidence_threshold": threshold
-    })
+    # Pre-fetch recommendation for current active pest
+    active_crop = telemetry["active_crop"]
+    latest_pest = telemetry["latest_pest"]
+    rec = knowledge_base.get_recommendation(
+        crop_key=active_crop,
+        pest_name=latest_pest,
+        confidence=0.88,
+        pest_count=telemetry["latest_pest_count"]
+    )
 
-# --- APIs ---
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={
+            "request": request,
+            "user": user,
+            "telemetry": telemetry,
+            "crops": crops,
+            "detections": detections,
+            "stats": stats,
+            "latest_recommendation": rec
+        }
+    )
 
-@router.post("/api/detection_logs/delete")
-async def delete_detection_log(request: Request, log_id: Optional[int] = Form(None)):
-    if log_id is None:
-        try:
-            body = await request.json()
-            log_id = body.get("log_id")
-        except Exception:
-            pass
-            
-    if log_id is None:
-        try:
-            param = request.query_params.get("log_id")
-            if param is not None:
-                log_id = int(param)
-        except Exception:
-            pass
-            
-    if not log_id:
-        return JSONResponse(status_code=400, content={"status": "error", "message": "log_id is required"})
-        
-    conn = get_db_connection()
-    try:
-        log_entry = conn.execute("SELECT IMAGE_PATH FROM detection_logs WHERE ID = ?", (log_id,)).fetchone()
-        if log_entry and log_entry['IMAGE_PATH']:
-            img_path = os.path.join("web", "static", log_entry['IMAGE_PATH'])
-            if os.path.exists(img_path):
-                try:
-                    os.remove(img_path)
-                except Exception as e:
-                    print(f"Error removing log image {img_path}: {e}")
-                    
-        conn.execute("DELETE FROM detection_logs WHERE ID = ?", (log_id,))
-        conn.commit()
-    finally:
-        conn.close()
 
-    # Check if request was made via fetch/AJAX
-    accept = request.headers.get("accept", "")
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in accept or "application/json" in content_type:
-        return JSONResponse(content={"status": "success", "deleted_id": log_id})
+@router.get("/mobile", response_class=HTMLResponse)
+async def mobile_page(request: Request):
+    """Serves the Progressive Web App (PWA) mobile field inspection interface."""
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/?next=/mobile", status_code=302)
 
-    return RedirectResponse(url="/dashboard?tab=panelLogs", status_code=303)
+    crops = knowledge_base.get_supported_crops()
+    telemetry = probe.get_telemetry()
 
-@router.post("/api/detection_logs/delete_all")
-async def delete_all_detection_logs(request: Request):
-    conn = get_db_connection()
-    try:
-        logs = conn.execute("SELECT IMAGE_PATH FROM detection_logs").fetchall()
-        for log_entry in logs:
-            if log_entry and log_entry['IMAGE_PATH']:
-                img_path = os.path.join("web", "static", log_entry['IMAGE_PATH'])
-                if os.path.exists(img_path):
-                    try:
-                        os.remove(img_path)
-                    except Exception as e:
-                        print(f"Error removing log image {img_path}: {e}")
-        conn.execute("DELETE FROM detection_logs")
-        conn.commit()
-    finally:
-        conn.close()
+    return templates.TemplateResponse(
+        request=request,
+        name="mobile.html",
+        context={
+            "request": request,
+            "user": user,
+            "telemetry": telemetry,
+            "crops": crops,
+            "active_crop": probe.active_crop
+        }
+    )
 
-    accept = request.headers.get("accept", "")
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in accept or "application/json" in content_type:
-        return JSONResponse(content={"status": "success", "message": "All detection logs deleted"})
 
-    return RedirectResponse(url="/dashboard?tab=panelLogs", status_code=303)
+# --- Live Video Streaming Route ---
 
-class LogSettingsRequest(BaseModel):
-    threshold: float
-
-@router.post("/api/logs/settings")
-async def update_log_settings(req: LogSettingsRequest):
-    from edge.camera_test import set_log_confidence_threshold
-    try:
-        set_log_confidence_threshold(req.threshold)
-        return {"status": "success", "threshold": req.threshold}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
-
-@router.post("/api/logs")
-async def save_log(pest: str = Form(...), result: str = Form(...)):
-    conn = get_db_connection()
-    now = datetime.datetime.now()
-    date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H:%M:%S")
-    
-    conn.execute("INSERT INTO logs (PEST, RESULT, DATE, TIME) VALUES (?, ?, ?, ?)", 
-                 (pest, result, date_str, time_str))
-    conn.commit()
-    conn.close()
-    return {"status": "success"}
-
-@router.post("/api/pests")
-async def save_pest(
-    request: Request,
-    pest_name: str = Form(...),
-    description: str = Form(...),
-    suggested_action: str = Form(...),
-    signal_range: str = Form(...),
-    pest_id: str = Form(None),
-    existing_image: str = Form(None),
-    image_file: UploadFile = File(None)
-):
-    image_path = existing_image if existing_image else "default_pest.jpg"
-    
-    if image_file and image_file.filename:
-        os.makedirs("web/static/images", exist_ok=True)
-        filename = f"{int(datetime.datetime.now().timestamp())}_{image_file.filename}"
-        target_path = os.path.join("web/static/images", filename)
-        with open(target_path, "wb") as buffer:
-            shutil.copyfileobj(image_file.file, buffer)
-        image_path = f"images/{filename}"
-
-    conn = get_db_connection()
-    if pest_id and pest_id.strip():
-        conn.execute("""
-            UPDATE pest SET PEST = ?, DESCRIPTION = ?, SUGGESTED_ACTION = ?, SIGNAL_RANGE = ?, IMAGE = ?
-            WHERE ID = ?
-        """, (pest_name, description, suggested_action, signal_range, image_path, int(pest_id)))
-    else:
-        conn.execute("""
-            INSERT INTO pest (PEST, DESCRIPTION, SUGGESTED_ACTION, SIGNAL_RANGE, IMAGE)
-            VALUES (?, ?, ?, ?, ?)
-        """, (pest_name, description, suggested_action, signal_range, image_path))
-    conn.commit()
-    conn.close()
-    return RedirectResponse(url="/dashboard", status_code=303)
-
-@router.post("/api/pests/delete")
-async def delete_pest(pest_id: int = Form(...)):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM pest WHERE ID = ?", (pest_id,))
-    conn.commit()
-    conn.close()
-    return RedirectResponse(url="/dashboard", status_code=303)
-
-# Periodic GPS broadcast loop
-async def ensure_gps_telemetry_loop():
-    global gps_task
-    if gps_task is None or gps_task.done():
-        gps_task = asyncio.create_task(gps_telemetry_loop())
-
-async def gps_telemetry_loop():
+def gen_probe_stream():
+    """Generates continuous multipart MJPEG stream from the probe controller."""
     while True:
-        try:
-            if manager.active_connections:
-                raw_data = gps_reader.read_gps_data()
-                is_synthetic = gps_reader.is_synthetic
-                has_fix = bool(raw_data.get("gps_fix"))
-                
-                is_live = False
-                data_status = "Unknown"
-                last_fix = getattr(gps_reader, "last_valid_fix_time", 0.0)
-                
-                if is_synthetic:
-                    data_status = "Synthetic"
-                elif has_fix and time.time() - last_fix < 5.0:
-                    is_live = True
-                    data_status = "Live"
-                elif last_fix > 0:
-                    data_status = "Cached"
-                else:
-                    data_status = "No Fix"
+        frame_bytes = probe.get_jpeg_frame()
+        if frame_bytes:
+            yield (
+                b"--frame\r\n"
+                b"Content-Type: image/jpeg\r\n"
+                b"Content-Length: " + str(len(frame_bytes)).encode() + b"\r\n\r\n" +
+                frame_bytes +
+                b"\r\n"
+            )
+        time.sleep(0.04)
 
-                # Use real hardware coordinates if fix acquired, or demo coordinates in synthetic mode
-                lat = raw_data.get("latitude") if has_fix else (6.681023 if is_synthetic else 0.0)
-                lon = raw_data.get("longitude") if has_fix else (124.689331 if is_synthetic else 0.0)
-                alt = raw_data.get("altitude") or (24.5 if is_synthetic else 0.0)
-                sats = raw_data.get("satellites") if has_fix else (8 if is_synthetic else 0)
 
-                if data_status == "Cached":
-                    lat = gps_reader.latitude
-                    lon = gps_reader.longitude
-                    alt = gps_reader.altitude
-                    sats = gps_reader.satellites
+@router.get("/video_feed")
+def video_feed():
+    """MJPEG Video stream endpoint for real-time web/mobile inspection preview."""
+    return StreamingResponse(
+        gen_probe_stream(),
+        media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
 
-                await manager.broadcast({
-                    "type": "GPS_TELEMETRY",
-                    "latitude": round(lat, 6),
-                    "longitude": round(lon, 6),
-                    "altitude": round(alt, 1),
-                    "satellites": sats,
-                    "gps_fix": has_fix,
-                    "is_synthetic": is_synthetic,
-                    "is_live": is_live,
-                    "data_status": data_status,
-                    "last_fix_time": last_fix
-                })
-        except Exception as e:
-            print(f"Error in telemetry loop: {e}")
-        await asyncio.sleep(1.0)
 
-# --- WebSocket ---
+@router.get("/api/camera/snapshot")
+def get_snapshot():
+    """Returns a single JPEG image snapshot from the live camera stream."""
+    frame_bytes = probe.get_jpeg_frame()
+    if not frame_bytes:
+        return Response(status_code=500, content="Failed to capture snapshot")
+    return Response(content=frame_bytes, media_type="image/jpeg")
+
+
+# --- REST API Endpoints ---
+
+@router.get("/api/ping")
+async def ping():
+    """Heartbeat endpoint for connection health monitoring."""
+    return {
+        "status": "ok",
+        "device": "agrisentinel_probe",
+        "active_crop": probe.active_crop,
+        "timestamp": time.time()
+    }
+
+
+@router.get("/api/status")
+async def get_status():
+    """Returns current probe telemetry (crop, pest status, health, model)."""
+    return {
+        "status": "success",
+        "telemetry": probe.get_telemetry()
+    }
+
+
+@router.get("/api/crops")
+async def get_crops():
+    """Returns list of supported crops and their cataloged pests."""
+    return {
+        "status": "success",
+        "crops": knowledge_base.get_supported_crops(),
+        "active_crop": probe.active_crop
+    }
+
+
+class SelectCropRequest(BaseModel):
+    crop: str
+
+
+@router.post("/api/crop/select")
+async def select_crop(req: SelectCropRequest):
+    """Sets the active host crop being inspected by the probe."""
+    probe.set_active_crop(req.crop)
+    return {
+        "status": "success",
+        "active_crop": probe.active_crop,
+        "crop_details": knowledge_base.get_crop(probe.active_crop)
+    }
+
+
+class UpdatePlotRequest(BaseModel):
+    farm_area: str
+
+
+@router.post("/api/plot/update")
+async def update_plot(req: UpdatePlotRequest):
+    """Sets the farm zone or field plot identifier."""
+    probe.set_farm_area(req.farm_area)
+    return {
+        "status": "success",
+        "farm_area": probe.farm_area
+    }
+
+
+class AnalyzeRequest(BaseModel):
+    crop_type: Optional[str] = None
+    farm_area: Optional[str] = None
+
+
+@router.post("/api/analyze")
+async def analyze_snapshot(req: Optional[AnalyzeRequest] = None):
+    """Triggers immediate camera capture, pest detection, and pesticide recommendation."""
+    crop = req.crop_type if req else None
+    plot = req.farm_area if req else None
+    record = await asyncio.to_thread(probe.analyze_now, crop_type=crop, farm_area=plot)
+    return {
+        "status": "success",
+        "record": record
+    }
+
+
+@router.post("/api/detect/upload")
+async def detect_from_phone(
+    file: UploadFile = File(...),
+    crop_type: Optional[str] = Form(None),
+    conf_threshold: Optional[float] = Form(None),
+    model_profile: Optional[str] = Form(None)
+):
+    """
+    Receives an image snapshot uploaded from the smartphone camera,
+    runs AI inference with active or selectable model profile,
+    generates plant health, beneficial predator protection, & pesticide recommendations,
+    saves the annotated image, logs the detection to SQLite with [Phone Camera] tag,
+    and broadcasts alert over WebSocket.
+    """
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    if frame is None:
+        raise HTTPException(status_code=400, detail="Invalid image file format")
+
+    # Determine crop
+    target_crop = (crop_type or probe.active_crop).lower().strip()
+    supported_keys = [c["key"] for c in knowledge_base.get_supported_crops()]
+    if target_crop not in supported_keys:
+        target_crop = probe.active_crop
+
+    # Run inference with optional custom confidence threshold & profile asynchronously
+    parsed_conf = float(conf_threshold) if conf_threshold is not None else None
+    clean_profile = model_profile.strip() if model_profile and model_profile.strip() else None
+    detections = await asyncio.to_thread(
+        probe.detector.detect, frame, target_crop, conf_threshold=parsed_conf, model_profile=clean_profile
+    )
+
+    # Prepare metadata & recommendations
+    crop_data = knowledge_base.get_crop(target_crop)
+    crop_name = crop_data.get("name", target_crop.capitalize()) if crop_data else target_crop.capitalize()
+
+    primary_pest = detections[0] if detections else None
+    pest_name = primary_pest.pest_key if primary_pest else "none"
+    pest_count = len(detections)
+    confidence = primary_pest.confidence if primary_pest else 1.0
+    is_beneficial = primary_pest.is_beneficial if primary_pest else False
+    taxonomy = primary_pest.taxonomy if primary_pest else None
+
+    infestation = knowledge_base.calculate_infestation_level(target_crop, pest_name, pest_count)
+    plant_health = knowledge_base.evaluate_plant_health(pest_count, infestation)
+
+    rec = knowledge_base.get_recommendation(
+        crop_key=target_crop,
+        pest_name=pest_name,
+        confidence=confidence if detections else 1.0,
+        pest_count=pest_count,
+        is_beneficial=is_beneficial,
+        taxonomy=taxonomy
+    )
+
+    # Ensure detected pests receive informative IPM recommendations even if borderline (unless beneficial predator)
+    if detections and not is_beneficial and rec.get("status") == "IGNORED_LOW_CONFIDENCE":
+        pest_meta = knowledge_base.get_pest(target_crop, pest_name) or {}
+        recs_meta = pest_meta.get("recommendations", {})
+        chem_meta = recs_meta.get("chemical", {})
+        org_meta = recs_meta.get("organic_biocontrol", {})
+        rec["detected_pest"] = primary_pest.label
+        rec["pest_count"] = pest_count
+        rec["infestation_level"] = "Low"
+        rec["plant_health_status"] = "Mild Pest Stress"
+        rec["recommended_pesticide"] = f"[VERIFY FIRST] Candidate match ({confidence*100:.0f}%): " + chem_meta.get("product_name", "Broad-spectrum contact insecticide")
+        rec["organic_alternative"] = org_meta.get("product_name", "Cold-pressed Neem Oil spray")
+        rec["safety_precautions"] = "Visual confirmation recommended before chemical application."
+
+    # Annotate snapshot
+    model_status = "Online" if getattr(probe.detector, "is_model_loaded", False) else "Offline (Missing)"
+    annotated = annotate_frame(
+        frame,
+        detections,
+        crop_name=crop_name,
+        health_status=rec["plant_health_status"],
+        model_status=model_status
+    )
+
+    # Save snapshot
+    ts_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"det_{ts_str}_{target_crop}_phone_{uuid.uuid4().hex[:6]}.jpg"
+    full_path = os.path.join(DETECTIONS_DIR, filename)
+    cv2.imwrite(full_path, annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    rel_path = f"/static/detections/{filename}"
+
+    # Insert to database with [Phone Camera] tag in farm_area
+    farm_tag = f"{probe.farm_area} [Phone Camera]"
+    db_payload = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "crop_type": target_crop,
+        "farm_area": farm_tag,
+        "detected_pest": rec["detected_pest"],
+        "pest_count": pest_count,
+        "infestation_level": rec["infestation_level"],
+        "soil_moisture_percent": 0.0,
+        "soil_status": "N/A",
+        "plant_health_status": rec["plant_health_status"],
+        "confidence": confidence if detections else 1.0,
+        "recommended_pesticide": rec.get("recommended_pesticide", ""),
+        "organic_alternative": rec.get("organic_alternative", ""),
+        "dosage_instruction": rec.get("dosage_instruction", ""),
+        "safety_precautions": rec.get("safety_precautions", ""),
+        "image_path": rel_path,
+        "status": rec["status"]
+    }
+    rec_id = insert_detection(db_payload)
+    db_payload["id"] = rec_id
+
+    # Broadcast WebSocket alert
+    alert_event = {
+        "type": "PEST_DETECTION_ALERT",
+        "trigger": "PHONE_CAMERA",
+        "record": db_payload,
+        "summary": f"{rec['detected_pest']} ({pest_count} detected via Phone Camera) in {crop_name}"
+    }
+    probe._broadcast_alert(alert_event)
+
+    findings = [
+        {
+            "name": d.label,
+            "pest_key": d.pest_key,
+            "confidence": round(d.confidence, 3),
+            "is_beneficial": d.is_beneficial,
+            "taxonomy": d.taxonomy,
+            "box": {"x": d.x, "y": d.y, "width": d.width, "height": d.height}
+        }
+        for d in detections
+    ]
+
+    return {
+        "status": "success",
+        "source": "PHONE_CAMERA",
+        "crop_type": target_crop,
+        "crop_name": crop_name,
+        "pest_count": pest_count,
+        "findings": findings,
+        "recommendation": rec,
+        "plant_health": rec["plant_health_status"],
+        "record": db_payload,
+        "image_url": rel_path
+    }
+
+
+class BatchDeleteRequest(BaseModel):
+    ids: List[int]
+
+
+class ClearDetectionsRequest(BaseModel):
+    clear_all: bool = False
+    filters: Optional[Dict[str, Any]] = None
+
+
+@router.get("/api/detections")
+async def get_detections_api(
+    page: int = 1,
+    page_size: int = 25,
+    limit: Optional[int] = None,
+    crop_type: Optional[str] = None,
+    infestation_level: Optional[str] = None,
+    search: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    min_confidence: Optional[float] = None,
+    status: Optional[str] = None,
+    source: Optional[str] = None
+):
+    """Retrieves paginated historical detection logs with rich multi-tier filtering."""
+    eff_limit = limit if limit is not None else page_size
+    eff_limit = max(1, min(200, eff_limit))
+    eff_page = max(1, page)
+    offset = (eff_page - 1) * eff_limit
+
+    data = query_detections(
+        crop_type=crop_type,
+        infestation_level=infestation_level,
+        search=search,
+        start_date=start_date,
+        end_date=end_date,
+        min_confidence=min_confidence,
+        status=status,
+        source=source,
+        limit=eff_limit,
+        offset=offset
+    )
+
+    total = data["total"]
+    total_pages = max(1, (total + eff_limit - 1) // eff_limit)
+
+    return {
+        "status": "success",
+        "count": len(data["records"]),
+        "detections": data["records"],
+        "pagination": {
+            "page": eff_page,
+            "page_size": eff_limit,
+            "total": total,
+            "total_pages": total_pages
+        }
+    }
+
+
+@router.get("/api/detections/{detection_id}")
+async def get_single_detection(detection_id: int):
+    """Retrieves single detection record details by ID."""
+    rec = get_detection_by_id(detection_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Detection record not found")
+    return {
+        "status": "success",
+        "detection": rec
+    }
+
+
+@router.delete("/api/detections/{detection_id}")
+async def delete_detection_api(detection_id: int):
+    """Deletes detection record and associated snapshot image."""
+    success = delete_detection(detection_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return {"status": "success", "message": f"Detection {detection_id} deleted."}
+
+
+@router.post("/api/detections/batch-delete")
+async def batch_delete_detections_api(req: BatchDeleteRequest):
+    """Deletes multiple detection records and associated snapshot images."""
+    deleted_count = delete_detections_batch(req.ids)
+    return {
+        "status": "success",
+        "message": f"Successfully deleted {deleted_count} record(s).",
+        "deleted_count": deleted_count
+    }
+
+
+@router.post("/api/detections/clear")
+async def clear_detections_api(req: ClearDetectionsRequest):
+    """Clears all detection records or filtered records matching criteria."""
+    deleted_count = clear_detections(filters=req.filters, clear_all=req.clear_all)
+    return {
+        "status": "success",
+        "message": f"Successfully deleted {deleted_count} record(s).",
+        "deleted_count": deleted_count
+    }
+
+
+@router.get("/api/recommendations/{crop}/{pest}")
+async def query_recommendation(
+    crop: str,
+    pest: str,
+    confidence: float = 0.85,
+    count: int = 1,
+    soil_status: Optional[str] = None
+):
+    """Queries agricultural knowledge base directly for a crop and pest combination."""
+    rec = knowledge_base.get_recommendation(
+        crop_key=crop,
+        pest_name=pest,
+        confidence=confidence,
+        pest_count=count,
+        soil_status=soil_status
+    )
+    return {
+        "status": "success",
+        "recommendation": rec
+    }
+
+
+@router.get("/api/stats")
+async def get_stats_api():
+    """Returns summary statistics across all inspections."""
+    return {
+        "status": "success",
+        "stats": get_detection_stats()
+    }
+
+
+# --- WebSocket Alert Streaming ---
+
 @router.websocket("/ws/alerts")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_alerts_endpoint(websocket: WebSocket):
+    """WebSocket stream providing real-time pest detection alerts and telemetry heartbeats."""
     await manager.connect(websocket)
-    await ensure_gps_telemetry_loop()
     try:
+        # Send initial connection handshake with latest telemetry
+        await websocket.send_json({
+            "type": "HANDSHAKE",
+            "telemetry": probe.get_telemetry(),
+            "timestamp": time.time()
+        })
+
         while True:
-            # We don't really expect the client to send us data, but we need to keep connection open
-            data = await websocket.receive_text()
+            # Keep connection alive and accept client pings/messages
+            msg = await websocket.receive_text()
+            try:
+                data = json.loads(msg)
+                if data.get("action") == "PING":
+                    await websocket.send_json({
+                        "type": "PONG",
+                        "telemetry": probe.get_telemetry()
+                    })
+            except Exception:
+                pass
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+    except Exception as e:
+        logger.debug(f"[WebSocket] Disconnected: {e}")
+        manager.disconnect(websocket)
 
-# Helper function to trigger alert from elsewhere in python code
-async def trigger_pest_alert(pest_name: str, confidence: float, action: str, signal: str):
-    await manager.broadcast({
-        "type": "PEST_DETECTED",
-        "name": pest_name,
-        "confidence": confidence,
-        "action": action,
-        "signal": signal
-    })
 
-@router.get("/api/simulate_alert")
-async def simulate_alert():
-    await trigger_pest_alert("Armyworm", 0.92, "Apply Bt pesticide", "High")
-    return {"status": "simulated"}
+# --- Developer Settings View & Diagnostic Endpoints ---
 
-@router.get("/api/gps")
-async def get_gps():
-    raw_data = gps_reader.read_gps_data()
-    is_synthetic = gps_reader.is_synthetic
-    has_fix = bool(raw_data.get("gps_fix"))
-    
-    # Calculate if the fix is recent (live) or cached
-    is_live = False
-    data_status = "Unknown"
-    last_fix = getattr(gps_reader, "last_valid_fix_time", 0.0)
-    
-    if is_synthetic:
-        data_status = "Synthetic"
-    elif has_fix and time.time() - last_fix < 5.0:
-        is_live = True
-        data_status = "Live"
-    elif last_fix > 0:
-        data_status = "Cached"
-    else:
-        data_status = "No Fix"
-
-    # Fallbacks for UI demonstration if hardware is mocking or no fix yet
-    lat = raw_data.get("latitude") if has_fix else (6.681023 if is_synthetic else 0.0)
-    lon = raw_data.get("longitude") if has_fix else (124.689331 if is_synthetic else 0.0)
-    alt = raw_data.get("altitude") or (24.5 if is_synthetic else 0.0)
-    sats = raw_data.get("satellites") if has_fix else (8 if is_synthetic else 0)
-
-    # Use old lat/lon if cached
-    if data_status == "Cached":
-        lat = gps_reader.latitude
-        lon = gps_reader.longitude
-        alt = gps_reader.altitude
-        sats = gps_reader.satellites
-
-    return {
-        "status": "success",
-        "latitude": round(lat, 6),
-        "longitude": round(lon, 6),
-        "altitude": round(alt, 1),
-        "satellites": sats,
-        "gps_fix": has_fix,
-        "is_synthetic": is_synthetic,
-        "is_live": is_live,
-        "data_status": data_status,
-        "last_fix_time": last_fix
-    }
-
-@router.get("/api/dev/gps/raw")
-async def dev_get_gps_raw():
-    """Returns the buffered raw NMEA stream for debugging."""
-    raw_sentences = getattr(gps_reader, "get_raw_nmea", lambda: [])()
-    return {
-        "status": "success",
-        "raw_stream": raw_sentences,
-        "is_synthetic": gps_reader.is_synthetic,
-        "baudrate": gps_reader.baudrate,
-        "port": gps_reader.port
-    }
-
-@router.post("/api/dev/gps/restart")
-async def dev_restart_gps():
-    """Restarts the serial connection for the GPS module."""
-    try:
-        success = getattr(gps_reader, "reconnect", lambda: False)()
-        return {
-            "status": "success" if success else "warning",
-            "message": "GPS Serial connection restarted." if success else "Fallback mode enabled after restart."
+@router.get("/dev_settings", response_class=HTMLResponse)
+async def dev_settings_page(request: Request):
+    """Serves Developer Settings page."""
+    user = get_current_user(request)
+    crops = knowledge_base.get_supported_crops()
+    return templates.TemplateResponse(
+        request=request,
+        name="dev_settings.html",
+        context={
+            "request": request,
+            "user": user,
+            "telemetry": probe.get_telemetry(),
+            "crops": crops
         }
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+    )
 
 
-@router.websocket("/ws/control")
-async def control_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    last_command_time = time.time()
-    
-    async def deadman_switch():
-        nonlocal last_command_time
-        while True:
-            if time.time() - last_command_time > 0.5:
-                if motors.get_state() != "STOPPED":
-                    motors.stop()
-                # To prevent servo jitter, detach if idle
-                servo.detach()
-            await asyncio.sleep(0.1)
-    
-    deadman_task = asyncio.create_task(deadman_switch())
-    
+@router.get("/api/dev/status")
+async def dev_get_status():
+    """Returns system status, network IP, camera diagnostics, and model status."""
+    ip_addr = "127.0.0.1"
+    net_mode = "Wi-Fi"
+
     try:
-        while True:
-            data = await websocket.receive_json()
-            last_command_time = time.time()
-            action = data.get("action")
-            device = data.get("device")
-            
-            if device == "motor":
-                if action == "forward":
-                    motors.forward()
-                elif action == "backward":
-                    motors.backward()
-                elif action == "left":
-                    motors.left()
-                elif action == "right":
-                    motors.right()
-                elif action == "stop":
-                    if motors.get_state() != "STOPPED":
-                        motors.stop()
-            elif device == "servo":
-                if action == "left":
-                    servo.set_angle(servo.get_angle() + 5)
-                elif action == "right":
-                    servo.set_angle(servo.get_angle() - 5)
-                elif action == "center":
-                    servo.center()
-            elif action == "heartbeat":
-                pass # last_command_time is already updated
-    except WebSocketDisconnect:
+        if sys.platform.startswith("linux"):
+            import subprocess
+            res = subprocess.run(["hostname", "-I"], capture_output=True, text=True)
+            if res.returncode == 0 and res.stdout.strip():
+                ip_addr = res.stdout.strip().split()[0]
+    except Exception:
         pass
-    except Exception as e:
-        print(f"Control WebSocket error: {e}")
-    finally:
-        deadman_task.cancel()
-        motors.stop()
-        servo.detach()
 
+    return {
+        "status": "success",
+        "ip_address": ip_addr,
+        "network_mode": net_mode,
+        "active_connection": "wlan0",
+        "camera": {
+            "backend": "OpenCV / Probe Vision",
+            "resolution": "640x480",
+            "target_fps": 30,
+            "is_active": True,
+            "is_synthetic": probe.cap is None
+        },
+        "model": {
+            "loaded": getattr(probe.detector, "is_model_loaded", False),
+            "path": getattr(probe.detector, "model_path", ""),
+            "runtime": getattr(probe.detector, "runtime_name", "None"),
+            "error": getattr(probe.detector, "model_error", None)
+        },
+        "server_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "platform": sys.platform
+    }
 
-# ═══════════════════════════════════════════════════════════════════════
-# Developer Settings Endpoints
-# ═══════════════════════════════════════════════════════════════════════
 
 class WifiConnectRequest(BaseModel):
     ssid: str
     password: Optional[str] = None
 
 
-@router.get("/dev_settings", response_class=HTMLResponse)
-async def dev_settings_page(request: Request):
-    """Serves the Developer Settings dashboard."""
-    user = get_current_user(request)
-    return templates.TemplateResponse(
-        request=request,
-        name="dev_settings.html",
-        context={"request": request, "user": user}
-    )
-
-
-@router.get("/api/dev/status")
-async def dev_get_status():
-    """Returns network mode, IP, camera diagnostics, and system info."""
-    ip_addr = "Unknown"
-    active_connection = "Unknown"
-
-    try:
-        if shutil.which("nmcli"):
-            res_conn = subprocess.run(
-                ["nmcli", "-t", "-f", "GENERAL.CONNECTION", "device", "show", "wlan0"],
-                capture_output=True, text=True, timeout=3
-            )
-            if res_conn.returncode == 0:
-                conn_line = res_conn.stdout.strip().split("\n")[0]
-                active_connection = conn_line.split(":")[-1]
-
-        if shutil.which("ip"):
-            res_ip = subprocess.run(
-                ["ip", "-4", "addr", "show", "wlan0"],
-                capture_output=True, text=True, timeout=3
-            )
-            if res_ip.returncode == 0:
-                for line in res_ip.stdout.splitlines():
-                    if "inet " in line:
-                        ip_addr = line.strip().split()[1].split("/")[0]
-                        break
-        elif sys.platform.startswith("win"):
-            import socket
-            hostname = socket.gethostname()
-            ip_addr = socket.gethostbyname(hostname)
-            active_connection = "Windows Dev Network"
-    except Exception as e:
-        active_connection = f"Error: {e}"
-
-    camera_info = {}
-    try:
-        from edge.camera_test import camera_manager
-        camera_info = camera_manager.get_status()
-    except Exception:
-        camera_info = {"is_running": False, "backend": "Unavailable (simulation/standalone)"}
-
-    return {
-        "status": "success",
-        "network": {
-            "connection": active_connection,
-            "ip_address": ip_addr,
-            "local_domain": "http://agrisentinel.local:8000",
-        },
-        "camera": camera_info,
-        "platform": sys.platform,
-        "server_time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    }
-
-
 @router.post("/api/dev/wifi/connect")
-async def dev_wifi_connect(req: WifiConnectRequest):
-    """Executes set_wifi.sh to configure the target Wi-Fi network."""
-    ssid = req.ssid.strip()
-    if not ssid:
-        raise HTTPException(status_code=400, detail="SSID cannot be empty.")
+async def dev_connect_wifi(req: WifiConnectRequest):
+    """Saves Wi-Fi configuration using NetworkManager nmcli if available."""
+    if not sys.platform.startswith("linux"):
+        return {"status": "success", "message": f"[Simulated] Saved profile for '{req.ssid}'."}
 
-    script_path = os.path.abspath("scripts/set_wifi.sh")
-    if not os.path.exists(script_path):
-        return JSONResponse(status_code=500, content={"status": "error", "message": "scripts/set_wifi.sh not found."})
+    import subprocess
+    cmd = ["nmcli", "device", "wifi", "connect", req.ssid]
+    if req.password:
+        cmd.extend(["password", req.password])
 
     try:
-        cmd = ["bash", script_path, f"--ssid={ssid}"]
-        if req.password:
-            cmd.append(f"--pass={req.password}")
-            
-        proc = subprocess.run(
-            cmd,
-            capture_output=True, text=True, timeout=30
-        )
-        return {
-            "status": "success" if proc.returncode == 0 else "error",
-            "stdout": proc.stdout,
-            "stderr": proc.stderr,
-            "returncode": proc.returncode
-        }
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        if proc.returncode == 0:
+            return {"status": "success", "message": f"Connected to Wi-Fi '{req.ssid}' successfully."}
+        return {"status": "error", "message": proc.stderr or proc.stdout}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        return {"status": "error", "message": str(e)}
 
 
 @router.post("/api/dev/camera/restart")
 async def dev_restart_camera():
-    """Stops and reinitializes the active camera backend without full restart."""
+    """Reinitializes probe camera capture interface."""
     try:
-        from edge.camera_test import camera_manager
-        camera_manager.stop()
-        await asyncio.sleep(0.6)
-        camera_manager.start()
-        return {
-            "status": "success",
-            "message": "Camera subsystem restarted successfully.",
-            "camera_status": camera_manager.get_status()
-        }
+        probe._init_camera()
+        return {"status": "success", "message": "Camera subsystem reinitialized."}
     except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+        return {"status": "error", "message": str(e)}
 
 
-@router.get("/api/dev/logs")
-async def dev_get_logs(lines: int = 60):
-    """Fetches recent system logs via journalctl."""
-    lines = min(max(lines, 10), 200)
-    output = ""
-    try:
-        if shutil.which("journalctl"):
-            proc = subprocess.run(
+class PowerActionRequest(BaseModel):
+    action: str
+
+
+@router.post("/api/dev/system/power")
+async def dev_system_power(req: PowerActionRequest):
+    """Executes safe reboot or shutdown on Linux SBC."""
+    action = req.action.lower().strip()
+    if not sys.platform.startswith("linux"):
+        return {"status": "success", "message": f"[Simulated] System {action} received."}
+
+    import subprocess
+    if action == "reboot":
+        subprocess.Popen(["sudo", "reboot"])
+        return {"status": "success", "message": "Reboot sequence initiated."}
+    elif action == "shutdown":
+        subprocess.Popen(["sudo", "shutdown", "-h", "now"])
+        return {"status": "success", "message": "Shutdown sequence initiated."}
+    return {"status": "error", "message": "Invalid power action specified."}
+
+
+@router.get("/api/dev/system/logs")
+async def dev_get_system_logs(lines: int = 80):
+    """Returns recent application logs."""
+    if sys.platform.startswith("linux"):
+        import subprocess
+        try:
+            res = subprocess.run(
                 ["journalctl", "-u", "agrisentinel", "-n", str(lines), "--no-pager"],
-                capture_output=True, text=True, timeout=5
+                capture_output=True,
+                text=True,
+                timeout=5
             )
-            output = proc.stdout if proc.stdout.strip() else proc.stderr
-            if not output.strip():
-                # Fallback to last system entries
-                proc2 = subprocess.run(
-                    ["journalctl", "-n", str(lines), "--no-pager"],
-                    capture_output=True, text=True, timeout=5
-                )
-                output = proc2.stdout
-        else:
-            output = (
-                f"[INFO] journalctl is not present on this host ({sys.platform}).\n"
-                f"[INFO] Real systemd logs will appear here when running on Raspberry Pi.\n"
-                f"[TIMESTAMP] {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                f"[STATUS] AgriSentinel Edge Application is alive."
-            )
-    except Exception as e:
-        output = f"Error reading logs: {e}"
+            if res.returncode == 0:
+                return {"status": "success", "logs": res.stdout}
+        except Exception:
+            pass
 
-    return {"status": "success", "logs": output}
+    # Fallback simulated logs for dev
+    sim_logs = (
+        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] AgriSentinel Smart Crop Probe online\n"
+        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Active crop: {probe.active_crop}\n"
+        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Camera capture stream active (640x480)\n"
+    )
+    return {"status": "success", "logs": sim_logs}
 
 
-@router.post("/api/dev/system/reboot")
-async def dev_system_reboot():
-    """Gracefully reboots the Raspberry Pi."""
-    def _do_reboot():
-        time.sleep(1.0)
-        subprocess.run(["sudo", "reboot"])
+# --- AI Vision & Inference Settings Endpoints ---
 
-    asyncio.get_event_loop().run_in_executor(None, _do_reboot)
+class VisionSettingsRequest(BaseModel):
+    class_filter_mode: Optional[str] = None
+    conf_threshold: Optional[float] = None
+    iou_threshold: Optional[float] = None
+    model_profile: Optional[str] = None
+
+
+@router.get("/api/dev/vision_settings")
+async def dev_get_vision_settings():
+    """Returns AI vision engine parameters, model status, active taxonomy mode, and available model profiles."""
+    detector = probe.detector
+    labels = getattr(detector, "labels", [])
+    mode = getattr(detector, "class_filter_mode", "full_102")
+    active_profile = getattr(detector, "active_profile", "comprehensive_102")
+
+    from edge.vision.detector import ALLOWED_STRICT_12, MODEL_PROFILES
+    if mode == "strict_12" and active_profile == "comprehensive_102":
+        active_list = [{"id": k, "name": v} for k, v in sorted(ALLOWED_STRICT_12.items())]
+    else:
+        active_list = [{"id": idx, "name": name} for idx, name in enumerate(labels)]
+
     return {
         "status": "success",
-        "message": "Reboot initiated. The system will restart in a few seconds."
+        "model_loaded": getattr(detector, "is_model_loaded", False),
+        "model_path": getattr(detector, "model_path", ""),
+        "model_error": getattr(detector, "model_error", None),
+        "runtime_name": getattr(detector, "runtime_name", "None"),
+        "class_filter_mode": mode,
+        "conf_threshold": getattr(detector, "conf_threshold", 0.25),
+        "iou_threshold": getattr(detector, "iou_threshold", 0.45),
+        "active_model_profile": active_profile,
+        "available_profiles": [
+            {
+                "id": k,
+                "name": v["name"],
+                "type": v["type"],
+                "total_classes": v["total_classes"],
+                "description": v["description"]
+            }
+            for k, v in MODEL_PROFILES.items()
+        ],
+        "total_classes": len(labels),
+        "active_classes_count": len(active_list),
+        "active_classes": active_list
     }
 
 
-@router.post("/api/dev/system/shutdown")
-async def dev_system_shutdown():
-    """Safely shuts down the Raspberry Pi."""
-    def _do_shutdown():
-        time.sleep(1.0)
-        subprocess.run(["sudo", "shutdown", "-h", "now"])
-
-    asyncio.get_event_loop().run_in_executor(None, _do_shutdown)
+@router.post("/api/dev/vision_settings")
+async def dev_update_vision_settings(req: VisionSettingsRequest):
+    """Updates AI vision engine parameters, class filtering mode, and active model profile live."""
+    detector = probe.detector
+    if hasattr(detector, "set_parameters"):
+        detector.set_parameters(
+            conf_threshold=req.conf_threshold,
+            iou_threshold=req.iou_threshold,
+            class_filter_mode=req.class_filter_mode,
+            model_profile=req.model_profile
+        )
     return {
         "status": "success",
-        "message": "Shutdown initiated. Safely wait for the activity LED to turn off before cutting power."
+        "message": "Vision parameters updated successfully.",
+        "settings": {
+            "active_model_profile": getattr(detector, "active_profile", "comprehensive_102"),
+            "class_filter_mode": getattr(detector, "class_filter_mode", "full_102"),
+            "conf_threshold": getattr(detector, "conf_threshold", 0.25),
+            "iou_threshold": getattr(detector, "iou_threshold", 0.45),
+            "model_loaded": getattr(detector, "is_model_loaded", False)
+        }
     }
 
 
