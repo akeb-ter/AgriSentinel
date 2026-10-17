@@ -110,11 +110,37 @@
       <!-- 1. Robot Stream (Default) -->
       <img id="robotFeed" src="/video_feed" class="w-full h-full object-cover" alt="Robot Feed" onerror="handleStreamError()" />
 
-      <!-- 2. Phone Local Camera (Hidden by default) -->
+      <!-- 2. Phone Local Camera (Hidden by default, used when getUserMedia is supported) -->
       <video id="phoneVideo" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
 
+      <!-- 3. Phone Photo Preview (When snapping with native camera or uploading photo) -->
+      <img id="phonePhotoPreview" class="w-full h-full object-contain bg-slate-950 hidden" alt="Phone Snapshot Preview" />
+
+      <!-- 4. HTTP / Non-Secure Context Notice & Native Shutter Prompt -->
+      <div id="httpCameraNotice" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center space-y-3 hidden">
+        <div class="w-12 h-12 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <div>
+          <h4 class="text-xs font-bold text-slate-100 uppercase tracking-wider">Phone Camera (LAN HTTP Mode)</h4>
+          <p class="text-[11px] text-slate-400 mt-1 max-w-xs">
+            Live video streaming requires HTTPS. Tap below to snap high-resolution crop photos using your phone's native camera!
+          </p>
+        </div>
+        <button id="viewfinderShutterBtn" type="button" class="px-4 py-2 bg-green-600 hover:bg-green-500 active:scale-95 transition text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-md shadow-green-900/40">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span>Open Phone Camera</span>
+        </button>
+      </div>
+
       <!-- Overlay Reticle for Diagnostics -->
-      <div class="absolute inset-0 border-2 border-dashed border-green-500/30 pointer-events-none rounded-lg m-4"></div>
+      <div id="cameraReticle" class="absolute inset-0 border-2 border-dashed border-green-500/30 pointer-events-none rounded-lg m-4"></div>
     </div>
 
     <!-- Stream Toggle & Controls -->
@@ -132,12 +158,32 @@
         </label>
       </div>
 
-      <!-- Action Button for Mobile Camera Snapshot Detection -->
+      <!-- Hidden native camera & gallery file inputs -->
+      <input type="file" id="phoneCameraInput" accept="image/*" capture="environment" class="hidden" />
+      <input type="file" id="phoneGalleryInput" accept="image/*" class="hidden" />
+
+      <!-- Action Buttons for Mobile Camera Snapshot Detection -->
       <div id="phoneCaptureArea" class="hidden space-y-2">
-        <button id="capturePestBtn" class="w-full py-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 active:scale-[0.98] transition font-bold rounded-xl text-xs flex items-center justify-center space-x-2 shadow-lg shadow-green-900/40 text-white">
+        <div class="grid grid-cols-2 gap-2">
+          <button id="snapNativeBtn" type="button" class="py-2.5 px-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-500 hover:to-green-400 active:scale-[0.98] transition font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-green-900/30 text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span id="snapNativeBtnText">Snap Photo</span>
+          </button>
+          <button id="uploadGalleryBtn" type="button" class="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] transition font-semibold rounded-xl text-xs flex items-center justify-center space-x-1.5 border border-slate-700 text-slate-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span>Upload Photo</span>
+          </button>
+        </div>
+
+        <!-- Live stream snapshot button (shown when live video stream is active) -->
+        <button id="capturePestBtn" type="button" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 active:scale-[0.98] transition font-bold rounded-xl text-xs flex items-center justify-center space-x-2 shadow-lg shadow-green-900/40 text-white hidden">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span id="captureBtnText">Run Diagnosis on Current View</span>
         </button>
@@ -245,50 +291,90 @@
     }
 
     // -------------------------------------------------------------
-    // 3. Camera Toggle: Robot Stream vs. Mobile Camera
+    // 3. Camera Controls & Diagnosis
     // -------------------------------------------------------------
     const toggle = document.getElementById("cameraToggle");
     const robotFeed = document.getElementById("robotFeed");
     const phoneVideo = document.getElementById("phoneVideo");
+    const phonePhotoPreview = document.getElementById("phonePhotoPreview");
+    const httpCameraNotice = document.getElementById("httpCameraNotice");
     const streamLabel = document.getElementById("streamLabel");
     const latencyTag = document.getElementById("latencyTag");
     const activeSourceText = document.getElementById("activeSourceText");
     const phoneCaptureArea = document.getElementById("phoneCaptureArea");
     const captureBtn = document.getElementById("capturePestBtn");
     const captureBtnText = document.getElementById("captureBtnText");
+    const snapNativeBtn = document.getElementById("snapNativeBtn");
+    const snapNativeBtnText = document.getElementById("snapNativeBtnText");
+    const uploadGalleryBtn = document.getElementById("uploadGalleryBtn");
+    const viewfinderShutterBtn = document.getElementById("viewfinderShutterBtn");
+    const phoneCameraInput = document.getElementById("phoneCameraInput");
+    const phoneGalleryInput = document.getElementById("phoneGalleryInput");
 
     let phoneStream = null;
+    let lastCapturedBlob = null;
+
+    // Check if live camera streaming is available in current browser/security context
+    function canUseGetUserMedia() {
+      return !!(
+        navigator.mediaDevices &&
+        typeof navigator.mediaDevices.getUserMedia === "function"
+      );
+    }
 
     toggle.addEventListener("change", async (e) => {
       if (e.target.checked) {
         // Switch to PHONE CAMERA
-        try {
-          phoneStream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: "environment" } },
-            audio: false
-          });
-          phoneVideo.srcObject = phoneStream;
+        robotFeed.classList.add("hidden");
+        phoneCaptureArea.classList.remove("hidden");
+        streamLabel.innerText = "Phone Camera";
 
-          // Switch UI displays
-          robotFeed.classList.add("hidden");
-          phoneVideo.classList.remove("hidden");
-          phoneCaptureArea.classList.remove("hidden");
+        if (canUseGetUserMedia()) {
+          try {
+            phoneStream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: { ideal: "environment" } },
+              audio: false
+            });
+            phoneVideo.srcObject = phoneStream;
+            phoneVideo.classList.remove("hidden");
+            phonePhotoPreview.classList.add("hidden");
+            httpCameraNotice.classList.add("hidden");
+            captureBtn.classList.remove("hidden");
 
-          streamLabel.innerText = "Phone Camera";
-          latencyTag.innerText = "Local Device";
-          activeSourceText.innerText = "Smartphone Rear Lens";
-        } catch (err) {
-          alert("Could not access phone camera: " + err.message);
-          toggle.checked = false;
+            latencyTag.innerText = "Live Stream";
+            activeSourceText.innerText = "Smartphone Rear Lens (Live Stream)";
+            return;
+          } catch (err) {
+            console.warn("Live camera stream unavailable or permission denied:", err);
+            // Fall back to native camera photo capture below
+          }
         }
+
+        // Native Camera / Non-Secure (HTTP LAN) Mode
+        stopPhoneStream();
+        phoneVideo.classList.add("hidden");
+        captureBtn.classList.add("hidden");
+
+        if (lastCapturedBlob) {
+          phonePhotoPreview.classList.remove("hidden");
+          httpCameraNotice.classList.add("hidden");
+        } else {
+          phonePhotoPreview.classList.add("hidden");
+          httpCameraNotice.classList.remove("hidden");
+        }
+
+        latencyTag.innerText = "Native Camera";
+        activeSourceText.innerText = "Smartphone Native Camera (LAN HTTP Mode)";
       } else {
         // Switch to ROBOT CAMERA
         stopPhoneStream();
         phoneVideo.classList.add("hidden");
-        robotFeed.classList.remove("hidden");
+        phonePhotoPreview.classList.add("hidden");
+        httpCameraNotice.classList.add("hidden");
         phoneCaptureArea.classList.add("hidden");
+        captureBtn.classList.add("hidden");
 
-        // Force reload robot stream src
+        robotFeed.classList.remove("hidden");
         robotFeed.src = "/video_feed?t=" + new Date().getTime();
 
         streamLabel.innerText = "Robot Camera";
@@ -305,8 +391,38 @@
       }
     }
 
-    // Capture snapshot from phone camera and send to backend
+    // Native Camera & Gallery Shutter Triggers
+    snapNativeBtn.addEventListener("click", () => phoneCameraInput.click());
+    viewfinderShutterBtn.addEventListener("click", () => phoneCameraInput.click());
+    uploadGalleryBtn.addEventListener("click", () => phoneGalleryInput.click());
+
+    phoneCameraInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) handlePhotoSelected(file);
+      e.target.value = "";
+    });
+
+    phoneGalleryInput.addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) handlePhotoSelected(file);
+      e.target.value = "";
+    });
+
+    function handlePhotoSelected(file) {
+      lastCapturedBlob = file;
+      const objectUrl = URL.createObjectURL(file);
+      phonePhotoPreview.src = objectUrl;
+      phonePhotoPreview.classList.remove("hidden");
+      httpCameraNotice.classList.add("hidden");
+      phoneVideo.classList.add("hidden");
+
+      snapNativeBtnText.innerText = "Retake Photo";
+      submitImageForDiagnosis(file);
+    }
+
+    // Capture snapshot from phone live video stream (when live stream is supported)
     captureBtn.addEventListener("click", async () => {
+      if (!phoneStream) return;
       const canvas = document.getElementById("snapshotCanvas");
       canvas.width = phoneVideo.videoWidth || 640;
       canvas.height = phoneVideo.videoHeight || 480;
@@ -317,48 +433,56 @@
       captureBtnText.innerText = "Analyzing frame with AI...";
 
       canvas.toBlob(async (blob) => {
-        const cropKey = document.getElementById("mobileCropSelect").value;
-        const formData = new FormData();
-        formData.append("file", blob, "phone_capture.jpg");
-        formData.append("crop_type", cropKey);
-
-        document.getElementById("pestFinding").innerText = "Analyzing frame...";
-        try {
-          const res = await fetch("/api/detect/upload", { method: "POST", body: formData });
-          const data = await res.json();
-
-          if (data.status === "success") {
-            const hasPests = data.findings && data.findings.length > 0;
-            if (hasPests) {
-              const top = data.findings[0];
-              document.getElementById("pestFinding").innerText = `${top.name} (${data.pest_count} found)`;
-              document.getElementById("confidenceFinding").innerText = `${(top.confidence * 100).toFixed(1)}%`;
-            } else {
-              document.getElementById("pestFinding").innerText = "Pest-Free (No pests detected)";
-              document.getElementById("confidenceFinding").innerText = "100%";
-            }
-
-            document.getElementById("plantHealthFinding").innerText = data.plant_health || "--";
-            document.getElementById("sourceBadgeRow").style.display = "flex";
-
-            // Recommendations
-            if (data.recommendation) {
-              document.getElementById("recCard").classList.remove("hidden");
-              document.getElementById("recPesticideText").innerText = data.recommendation.recommended_pesticide || "None needed";
-              document.getElementById("recOrganicText").innerText = data.recommendation.organic_alternative || "Neem oil spray";
-              document.getElementById("recSafetyText").innerText = data.recommendation.safety_precautions || "Standard PPE";
-            }
-          } else {
-            document.getElementById("pestFinding").innerText = "Analysis error";
-          }
-        } catch (e) {
-          document.getElementById("pestFinding").innerText = "Analysis failed (Check connection)";
-        } finally {
-          captureBtn.disabled = false;
-          captureBtnText.innerText = "Run Diagnosis on Current View";
-        }
+        lastCapturedBlob = blob;
+        await submitImageForDiagnosis(blob);
+        captureBtn.disabled = false;
+        captureBtnText.innerText = "Run Diagnosis on Current View";
       }, "image/jpeg");
     });
+
+    // Centralized diagnosis submission for both live stream snapshot and native camera photos
+    async function submitImageForDiagnosis(blobOrFile) {
+      const cropKey = document.getElementById("mobileCropSelect").value;
+      const formData = new FormData();
+      formData.append("file", blobOrFile, "phone_capture.jpg");
+      formData.append("crop_type", cropKey);
+
+      document.getElementById("pestFinding").innerText = "Analyzing image with AI...";
+      document.getElementById("confidenceFinding").innerText = "--";
+      document.getElementById("plantHealthFinding").innerText = "--";
+
+      try {
+        const res = await fetch("/api/detect/upload", { method: "POST", body: formData });
+        const data = await res.json();
+
+        if (data.status === "success") {
+          const hasPests = data.findings && data.findings.length > 0;
+          if (hasPests) {
+            const top = data.findings[0];
+            document.getElementById("pestFinding").innerText = `${top.name} (${data.pest_count} found)`;
+            document.getElementById("confidenceFinding").innerText = `${(top.confidence * 100).toFixed(1)}%`;
+          } else {
+            document.getElementById("pestFinding").innerText = "Pest-Free (No pests detected)";
+            document.getElementById("confidenceFinding").innerText = "100%";
+          }
+
+          document.getElementById("plantHealthFinding").innerText = data.plant_health || "--";
+          document.getElementById("sourceBadgeRow").style.display = "flex";
+
+          // Recommendations
+          if (data.recommendation) {
+            document.getElementById("recCard").classList.remove("hidden");
+            document.getElementById("recPesticideText").innerText = data.recommendation.recommended_pesticide || "None needed";
+            document.getElementById("recOrganicText").innerText = data.recommendation.organic_alternative || "Neem oil spray";
+            document.getElementById("recSafetyText").innerText = data.recommendation.safety_precautions || "Standard PPE";
+          }
+        } else {
+          document.getElementById("pestFinding").innerText = "Analysis error: " + (data.message || "Failed");
+        }
+      } catch (e) {
+        document.getElementById("pestFinding").innerText = "Analysis failed (Check connection)";
+      }
+    }
 
     // -------------------------------------------------------------
     // 4. Heartbeat / Disconnected from Pi Error Handling
