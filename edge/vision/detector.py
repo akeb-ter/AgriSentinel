@@ -223,6 +223,8 @@ class TfliteRunner(BasePestDetector):
             except Exception as e:
                 logger.debug(f"[TfliteRunner] Could not parse labels from metadata: {e}")
 
+        last_err = None
+
         # 1. Try tflite_runtime (preferred on Raspberry Pi / Linux)
         try:
             import tflite_runtime.interpreter as tflite
@@ -235,6 +237,9 @@ class TfliteRunner(BasePestDetector):
             return
         except ImportError:
             pass
+        except Exception as e:
+            last_err = f"tflite_runtime error: {e}"
+            logger.warning(f"[TfliteRunner] {last_err}")
 
         # 2. Try ai_edge_litert (official Google LiteRT for Python 3.11-3.13 on Windows/Linux)
         try:
@@ -248,6 +253,9 @@ class TfliteRunner(BasePestDetector):
             return
         except ImportError:
             pass
+        except Exception as e:
+            last_err = f"ai_edge_litert error: {e}"
+            logger.warning(f"[TfliteRunner] {last_err}")
 
         # 3. Try full tensorflow.lite
         try:
@@ -261,9 +269,12 @@ class TfliteRunner(BasePestDetector):
             return
         except ImportError:
             pass
+        except Exception as e:
+            last_err = f"tensorflow.lite error: {e}"
+            logger.warning(f"[TfliteRunner] {last_err}")
 
         self.is_model_loaded = False
-        self.model_error = "No supported TFLite runtime found (install tflite-runtime or ai-edge-litert)"
+        self.model_error = last_err or "No supported TFLite runtime found (install tflite-runtime or ai-edge-litert)"
         logger.warning(f"[TfliteRunner] {self.model_error}")
 
     def _setup_details(self):
