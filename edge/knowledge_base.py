@@ -444,10 +444,14 @@ class KnowledgeBase:
         pest_name: str,
         confidence: float,
         pest_count: int = 1,
-        soil_status: Optional[str] = None
+        soil_status: Optional[str] = None,
+        is_beneficial: bool = False,
+        taxonomy: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Queries recommendation with Two-Tier Confidence & Uncertainty enforcement:
+        Queries recommendation with Two-Tier Confidence & Uncertainty enforcement
+        and Beneficial Natural Predator Protection:
+        - is_beneficial: Locked non-spray biological conservation recommendation
         - confidence >= 0.50: Full Confirmed Recommendation
         - 0.20 <= confidence < 0.50: Uncertain Borderline Recommendation with Amber Warning
         - confidence < 0.20: Low Confidence Ignored / Rejected
@@ -455,10 +459,44 @@ class KnowledgeBase:
         crop_data = self.get_crop(crop_key)
         crop_display = crop_data.get("name", crop_key.capitalize()) if crop_data else crop_key.capitalize()
 
+        # 0. Beneficial Natural Predator Protection Guard
+        norm_pest = pest_name.lower().strip().replace("-", "_").replace(" ", "_")
+        tax_str = (taxonomy or "").lower()
+        is_predator = is_beneficial or (
+            any(k in norm_pest for k in ["beneficial", "predator", "ladybug", "ladybird", "lacewing", "hoverfly", "mantis", "spider"])
+            or (tax_str and any(k in tax_str for k in [
+                "odonata", "mantodea", "neuroptera", "araneae", "coccinellidae",
+                "syrphidae", "chrysopidae", "蜻蜓", "螳螂", "草蛉", "蜘蛛", "瓢虫"
+            ]))
+        )
+
+        if is_predator:
+            clean_name = pest_name.replace("_", " ").title()
+            display_name = clean_name if "beneficial" in clean_name.lower() else f"Beneficial Predator ({clean_name})"
+            return {
+                "status": "BENEFICIAL_PRESENT",
+                "is_uncertain": False,
+                "is_beneficial": True,
+                "confidence": round(confidence, 3),
+                "crop_type": crop_key,
+                "crop_name": crop_display,
+                "detected_pest": display_name,
+                "scientific_name": taxonomy or "Predatory Biocontrol Agent",
+                "pest_count": pest_count,
+                "infestation_level": "None",
+                "plant_health_status": "Beneficial Biological Control Active",
+                "recommended_pesticide": "DO NOT SPRAY: Beneficial natural predator detected. Chemical spraying will destroy natural biological pest control.",
+                "organic_alternative": "Conserve insect habitat and flowering border strips (e.g. Alyssum, Marigold, Dill) to support predator populations.",
+                "dosage_instruction": "LOCKED: Spraying locked to protect natural predators.",
+                "safety_precautions": "Beneficial predator actively preying on crop pests. Avoid broad-spectrum insecticide sprays to protect natural biocontrol.",
+                "taxonomy": taxonomy
+            }
+
         if confidence < self.conf_uncertain:
             return {
                 "status": "IGNORED_LOW_CONFIDENCE",
                 "is_uncertain": True,
+                "is_beneficial": False,
                 "confidence": confidence,
                 "crop_type": crop_key,
                 "detected_pest": "Uncertain / Noise",
@@ -510,6 +548,7 @@ class KnowledgeBase:
         return {
             "status": status,
             "is_uncertain": is_uncertain,
+            "is_beneficial": False,
             "confidence": round(confidence, 3),
             "crop_type": crop_key,
             "crop_name": crop_display,
@@ -522,6 +561,7 @@ class KnowledgeBase:
             "organic_alternative": org_str,
             "dosage_instruction": dosage,
             "safety_precautions": safety,
+            "taxonomy": taxonomy
         }
 
     def _get_builtin_fallback(self) -> Dict[str, Any]:

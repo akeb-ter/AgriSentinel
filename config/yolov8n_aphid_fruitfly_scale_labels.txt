@@ -1,0 +1,3 @@
+0: aphid
+1: fruit fly
+2: scale insect

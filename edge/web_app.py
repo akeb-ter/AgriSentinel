@@ -401,11 +401,13 @@ async def analyze_snapshot(req: Optional[AnalyzeRequest] = None):
 async def detect_from_phone(
     file: UploadFile = File(...),
     crop_type: Optional[str] = Form(None),
-    conf_threshold: Optional[float] = Form(None)
+    conf_threshold: Optional[float] = Form(None),
+    model_profile: Optional[str] = Form(None)
 ):
     """
     Receives an image snapshot uploaded from the smartphone camera,
-    runs TFLite YOLO inference, generates plant health & pesticide recommendations,
+    runs AI inference with active or selectable model profile,
+    generates plant health, beneficial predator protection, & pesticide recommendations,
     saves the annotated image, logs the detection to SQLite with [Phone Camera] tag,
     and broadcasts alert over WebSocket.
     """
@@ -422,10 +424,11 @@ async def detect_from_phone(
     if target_crop not in supported_keys:
         target_crop = probe.active_crop
 
-    # Run inference with optional custom confidence threshold asynchronously to avoid event loop blocking
+    # Run inference with optional custom confidence threshold & profile asynchronously
     parsed_conf = float(conf_threshold) if conf_threshold is not None else None
+    clean_profile = model_profile.strip() if model_profile and model_profile.strip() else None
     detections = await asyncio.to_thread(
-        probe.detector.detect, frame, target_crop, conf_threshold=parsed_conf
+        probe.detector.detect, frame, target_crop, conf_threshold=parsed_conf, model_profile=clean_profile
     )
 
     # Prepare metadata & recommendations
@@ -436,6 +439,8 @@ async def detect_from_phone(
     pest_name = primary_pest.pest_key if primary_pest else "none"
     pest_count = len(detections)
     confidence = primary_pest.confidence if primary_pest else 1.0
+    is_beneficial = primary_pest.is_beneficial if primary_pest else False
+    taxonomy = primary_pest.taxonomy if primary_pest else None
 
     infestation = knowledge_base.calculate_infestation_level(target_crop, pest_name, pest_count)
     plant_health = knowledge_base.evaluate_plant_health(pest_count, infestation)
@@ -444,11 +449,13 @@ async def detect_from_phone(
         crop_key=target_crop,
         pest_name=pest_name,
         confidence=confidence if detections else 1.0,
-        pest_count=pest_count
+        pest_count=pest_count,
+        is_beneficial=is_beneficial,
+        taxonomy=taxonomy
     )
 
-    # Ensure detected pests receive informative IPM recommendations even if borderline
-    if detections and rec.get("status") == "IGNORED_LOW_CONFIDENCE":
+    # Ensure detected pests receive informative IPM recommendations even if borderline (unless beneficial predator)
+    if detections and not is_beneficial and rec.get("status") == "IGNORED_LOW_CONFIDENCE":
         pest_meta = knowledge_base.get_pest(target_crop, pest_name) or {}
         recs_meta = pest_meta.get("recommendations", {})
         chem_meta = recs_meta.get("chemical", {})
@@ -515,6 +522,8 @@ async def detect_from_phone(
             "name": d.label,
             "pest_key": d.pest_key,
             "confidence": round(d.confidence, 3),
+            "is_beneficial": d.is_beneficial,
+            "taxonomy": d.taxonomy,
             "box": {"x": d.x, "y": d.y, "width": d.width, "height": d.height}
         }
         for d in detections
@@ -844,17 +853,19 @@ class VisionSettingsRequest(BaseModel):
     class_filter_mode: Optional[str] = None
     conf_threshold: Optional[float] = None
     iou_threshold: Optional[float] = None
+    model_profile: Optional[str] = None
 
 
 @router.get("/api/dev/vision_settings")
 async def dev_get_vision_settings():
-    """Returns AI vision engine parameters, model status, and active taxonomy mode."""
+    """Returns AI vision engine parameters, model status, active taxonomy mode, and available model profiles."""
     detector = probe.detector
     labels = getattr(detector, "labels", [])
     mode = getattr(detector, "class_filter_mode", "full_102")
+    active_profile = getattr(detector, "active_profile", "comprehensive_102")
 
-    from edge.vision.detector import ALLOWED_STRICT_12
-    if mode == "strict_12":
+    from edge.vision.detector import ALLOWED_STRICT_12, MODEL_PROFILES
+    if mode == "strict_12" and active_profile == "comprehensive_102":
         active_list = [{"id": k, "name": v} for k, v in sorted(ALLOWED_STRICT_12.items())]
     else:
         active_list = [{"id": idx, "name": name} for idx, name in enumerate(labels)]
@@ -868,6 +879,17 @@ async def dev_get_vision_settings():
         "class_filter_mode": mode,
         "conf_threshold": getattr(detector, "conf_threshold", 0.25),
         "iou_threshold": getattr(detector, "iou_threshold", 0.45),
+        "active_model_profile": active_profile,
+        "available_profiles": [
+            {
+                "id": k,
+                "name": v["name"],
+                "type": v["type"],
+                "total_classes": v["total_classes"],
+                "description": v["description"]
+            }
+            for k, v in MODEL_PROFILES.items()
+        ],
         "total_classes": len(labels),
         "active_classes_count": len(active_list),
         "active_classes": active_list
@@ -876,18 +898,20 @@ async def dev_get_vision_settings():
 
 @router.post("/api/dev/vision_settings")
 async def dev_update_vision_settings(req: VisionSettingsRequest):
-    """Updates AI vision engine parameters and class filtering mode live."""
+    """Updates AI vision engine parameters, class filtering mode, and active model profile live."""
     detector = probe.detector
     if hasattr(detector, "set_parameters"):
         detector.set_parameters(
             conf_threshold=req.conf_threshold,
             iou_threshold=req.iou_threshold,
-            class_filter_mode=req.class_filter_mode
+            class_filter_mode=req.class_filter_mode,
+            model_profile=req.model_profile
         )
     return {
         "status": "success",
         "message": "Vision parameters updated successfully.",
         "settings": {
+            "active_model_profile": getattr(detector, "active_profile", "comprehensive_102"),
             "class_filter_mode": getattr(detector, "class_filter_mode", "full_102"),
             "conf_threshold": getattr(detector, "conf_threshold", 0.25),
             "iou_threshold": getattr(detector, "iou_threshold", 0.45),

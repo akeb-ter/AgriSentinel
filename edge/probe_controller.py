@@ -270,13 +270,17 @@ class ProbeController:
         pest_name = primary_pest.pest_key if primary_pest else "none"
         pest_count = len(detections)
         confidence = primary_pest.confidence if primary_pest else 1.0
+        is_beneficial = primary_pest.is_beneficial if primary_pest else False
+        taxonomy = primary_pest.taxonomy if primary_pest else None
 
         # Query recommendation & plant health
         rec = knowledge_base.get_recommendation(
             crop_key=crop_clean,
             pest_name=pest_name,
             confidence=confidence,
-            pest_count=pest_count
+            pest_count=pest_count,
+            is_beneficial=is_beneficial,
+            taxonomy=taxonomy
         )
 
         # Annotate snapshot

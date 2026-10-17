@@ -90,12 +90,12 @@ def test_tflite_runner_missing_model_no_simulation():
 
 
 def test_get_detector_loads_model():
-    """Verify get_detector factory initializes and loads the best.tflite model."""
+    """Verify get_detector factory initializes and loads the active model."""
     detector = get_detector()
     assert detector is not None
     assert detector.is_model_loaded is True
     assert detector.model_error is None
-    assert detector.input_shape == (416, 416)
+    assert detector.input_shape in [(416, 416), (640, 640)]
     assert detector.class_filter_mode == "full_102"
     assert detector.conf_threshold == 0.25
     assert detector.iou_threshold == 0.45
@@ -170,4 +170,88 @@ def test_concurrent_detection_thread_safety():
         t.join()
 
     assert len(errors) == 0
+
+
+def test_multi_model_profile_switching():
+    """Verify switching across all 4 MODEL_PROFILES."""
+    from edge.vision.detector import MODEL_PROFILES
+    detector = get_detector()
+
+    assert "comprehensive_102" in MODEL_PROFILES
+    assert "fast_scout_3pests" in MODEL_PROFILES
+    assert "cereal_diagnostic" in MODEL_PROFILES
+    assert "species_encyclopedia" in MODEL_PROFILES
+
+    # 1. Switch to Fast Scout 3-Pests
+    ok_scout = detector.switch_model("fast_scout_3pests")
+    assert ok_scout is True
+    assert detector.active_profile == "fast_scout_3pests"
+    assert detector.is_model_loaded is True
+    assert len(detector.labels) == 3
+
+    # 2. Switch to Cereal Diagnostic
+    ok_cereal = detector.switch_model("cereal_diagnostic")
+    assert ok_cereal is True
+    assert detector.active_profile == "cereal_diagnostic"
+    assert detector.is_model_loaded is True
+    assert len(detector.labels) == 26
+
+    # 3. Switch to Species Encyclopedia (Quarrying ONNX)
+    ok_onnx = detector.switch_model("species_encyclopedia")
+    assert ok_onnx is True
+    assert detector.active_profile == "species_encyclopedia"
+    assert detector.is_model_loaded is True
+    assert detector.runtime_name == "onnxruntime"
+    assert len(detector.labels) == 2037
+
+    # 4. Switch back to Comprehensive 102
+    ok_comp = detector.switch_model("comprehensive_102")
+    assert ok_comp is True
+    assert detector.active_profile == "comprehensive_102"
+    assert detector.is_model_loaded is True
+    assert len(detector.labels) == 102
+
+
+def test_detection_box_beneficial_flag():
+    """Verify DetectionBox beneficial flag and serialization."""
+    b_pest = DetectionBox("Fall Armyworm", 0.85, 10, 20, 50, 50, is_beneficial=False)
+    assert b_pest.is_beneficial is False
+    assert b_pest.to_dict()["is_beneficial"] is False
+
+    b_pred = DetectionBox("Ladybug", 0.94, 30, 40, 60, 60, is_beneficial=True, taxonomy="Coleoptera: Coccinellidae")
+    assert b_pred.is_beneficial is True
+    assert b_pred.taxonomy == "Coleoptera: Coccinellidae"
+    assert b_pred.to_dict()["is_beneficial"] is True
+    assert b_pred.to_dict()["taxonomy"] == "Coleoptera: Coccinellidae"
+
+
+def test_annotate_frame_beneficial_badge():
+    """Verify annotate_frame renders beneficial predator alert without errors."""
+    from edge.vision.detector import annotate_frame
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    boxes = [
+        DetectionBox(label="Ladybug", confidence=0.92, x=20, y=30, width=60, height=60, is_beneficial=True)
+    ]
+    annotated = annotate_frame(frame, boxes, crop_name="Corn", health_status="Healthy / Pest-Free")
+    assert annotated.shape == (480, 640, 3)
+
+
+def test_cereal_and_quarrying_inference_execution():
+    """Verify that cereal and quarrying models run inference on sample frames without crashing."""
+    detector = get_detector()
+    blank = np.zeros((480, 640, 3), dtype=np.uint8)
+
+    # Test cereal inference
+    detector.switch_model("cereal_diagnostic")
+    res_cereal = detector.detect(blank, conf_threshold=0.99)
+    assert isinstance(res_cereal, list)
+
+    # Test quarrying inference
+    detector.switch_model("species_encyclopedia")
+    res_quarry = detector.detect(blank, conf_threshold=0.99)
+    assert isinstance(res_quarry, list)
+
+    # Reset back to comprehensive
+    detector.switch_model("comprehensive_102")
+
 

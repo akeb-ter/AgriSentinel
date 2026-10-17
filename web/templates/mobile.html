@@ -176,6 +176,20 @@
       <input type="file" id="phoneCameraInput" accept="image/*" capture="environment" class="hidden" />
       <input type="file" id="phoneGalleryInput" accept="image/*" class="hidden" />
 
+      <!-- Vision Model Profile Selector -->
+      <div class="flex items-center justify-between bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-700/60 text-[11px]">
+        <span class="text-slate-300 flex items-center gap-1.5 font-medium">
+          <i class="fas fa-brain text-green-400"></i>
+          AI Vision Model:
+        </span>
+        <select id="mobileModelProfile" class="bg-slate-800 text-green-400 font-semibold text-xs px-2 py-1 rounded-lg border border-slate-700 outline-none">
+          <option value="comprehensive_102" selected>Comprehensive 102 Pests</option>
+          <option value="fast_scout_3pests">Fast Scout (Aphids/Flies/Scales)</option>
+          <option value="cereal_diagnostic">Close-up Cereal (Predator Guard)</option>
+          <option value="species_encyclopedia">Wild Species Encyclopedia (2,037)</option>
+        </select>
+      </div>
+
       <!-- Detection Sensitivity Selector -->
       <div class="flex items-center justify-between bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-700/60 text-[11px]">
         <span class="text-slate-300 flex items-center gap-1.5 font-medium">
@@ -259,7 +273,7 @@
             <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Organic Alternative:</span>
             <p id="recOrganicText" class="text-[11px] text-slate-300"></p>
           </div>
-          <div class="bg-red-950/40 p-2 rounded-lg border border-red-900/40 text-[10px] text-red-200">
+          <div id="recSafetyBox" class="bg-red-950/40 p-2 rounded-lg border border-red-900/40 text-[10px] text-red-200">
             <strong>Safety &amp; PPE:</strong> <span id="recSafetyText"></span>
           </div>
         </div>
@@ -543,11 +557,14 @@
       const cropKey = document.getElementById("mobileCropSelect").value;
       const sensitivityEl = document.getElementById("mobileSensitivity");
       const confThreshold = sensitivityEl ? sensitivityEl.value : "0.25";
+      const modelProfileEl = document.getElementById("mobileModelProfile");
+      const modelProfile = modelProfileEl ? modelProfileEl.value : "comprehensive_102";
 
       const formData = new FormData();
       formData.append("file", blobOrFile, "phone_capture.jpg");
       formData.append("crop_type", cropKey);
       formData.append("conf_threshold", confThreshold);
+      formData.append("model_profile", modelProfile);
 
       // 1. Show visual loading indicators & lock controls
       analyzePhotoBtn.disabled = true;
@@ -572,8 +589,15 @@
           const hasPests = data.findings && data.findings.length > 0;
           if (hasPests) {
             const top = data.findings[0];
+            const isBeneficial = top.is_beneficial || (data.recommendation && data.recommendation.status === "BENEFICIAL_PRESENT");
             const pestName = top.label || top.name || (data.recommendation && data.recommendation.detected_pest) || "Pest Detected";
-            document.getElementById("pestFinding").innerText = `${pestName} (${data.pest_count} found)`;
+
+            if (isBeneficial) {
+              document.getElementById("pestFinding").innerHTML = `<span class="text-emerald-400 font-bold flex items-center gap-1"><i class="fas fa-shield-alt text-emerald-400"></i> ${pestName}</span>`;
+            } else {
+              document.getElementById("pestFinding").innerText = `${pestName} (${data.pest_count} found)`;
+            }
+
             document.getElementById("confidenceFinding").innerText = `${(top.confidence * 100).toFixed(1)}%`;
 
             // If annotated image path returned, display annotated boxes on preview
@@ -592,9 +616,24 @@
           // Recommendations
           if (data.recommendation) {
             document.getElementById("recCard").classList.remove("hidden");
-            document.getElementById("recPesticideText").innerText = data.recommendation.recommended_pesticide || "None needed";
-            document.getElementById("recOrganicText").innerText = data.recommendation.organic_alternative || "Neem oil spray";
-            document.getElementById("recSafetyText").innerText = data.recommendation.safety_precautions || "Standard PPE";
+            const rec = data.recommendation;
+            const isBeneficial = rec.status === "BENEFICIAL_PRESENT" || rec.is_beneficial;
+
+            if (isBeneficial) {
+              document.getElementById("recPesticideText").className = "text-xs font-bold text-emerald-400";
+              document.getElementById("recPesticideText").innerText = "🛡️ " + (rec.recommended_pesticide || "DO NOT SPRAY: Natural predator detected");
+              document.getElementById("recOrganicText").innerText = rec.organic_alternative || "Conserve beneficial insect habitat";
+              const sBox = document.getElementById("recSafetyBox");
+              if (sBox) sBox.className = "bg-emerald-950/40 p-2 rounded-lg border border-emerald-900/40 text-[10px] text-emerald-200";
+              document.getElementById("recSafetyText").innerText = rec.safety_precautions || "Protect natural predators.";
+            } else {
+              document.getElementById("recPesticideText").className = "text-xs font-bold text-green-400";
+              document.getElementById("recPesticideText").innerText = rec.recommended_pesticide || "None needed";
+              document.getElementById("recOrganicText").innerText = rec.organic_alternative || "Neem oil spray";
+              const sBox = document.getElementById("recSafetyBox");
+              if (sBox) sBox.className = "bg-red-950/40 p-2 rounded-lg border border-red-900/40 text-[10px] text-red-200";
+              document.getElementById("recSafetyText").innerText = rec.safety_precautions || "Standard PPE";
+            }
           }
         } else {
           document.getElementById("pestFinding").innerText = "Analysis error: " + (data.message || "Failed");

@@ -478,6 +478,22 @@
                     </div>
 
                     <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 16px;">
+                        <!-- Model Profile Selection -->
+                        <div style="grid-column: 1 / -1;">
+                            <label style="display:block; font-size:12.5px; font-weight:600; color:#2e5033; margin-bottom:6px;">
+                                <i class="fas fa-layer-group" style="color:#2b6e3c;"></i> Active Vision Model Profile:
+                            </label>
+                            <select id="visionModelProfile" onchange="onModelProfileChange()" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; font-weight:600; background:white; color:#1e293b;">
+                                <option value="comprehensive_102">Comprehensive 102 Pests (YOLO11s: Full IP102 catalog)</option>
+                                <option value="fast_scout_3pests">Fast Edge Scout (YOLOv8n: Aphids, Fruit Flies, Scale Insects)</option>
+                                <option value="cereal_diagnostic">Close-Up Cereal Diagnostic (MobileNetV3 + Beneficial Predator Guard)</option>
+                                <option value="species_encyclopedia">Species Encyclopedia (Quarrying ONNX: 2,037 wild insect species)</option>
+                            </select>
+                            <span id="visionModelDesc" style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
+                                Switches inference weights, runtime engine, and class taxonomies dynamically on edge.
+                            </span>
+                        </div>
+
                         <!-- Taxonomy Filter Mode -->
                         <div>
                             <label style="display:block; font-size:12.5px; font-weight:600; color:#2e5033; margin-bottom:6px;">
@@ -779,6 +795,9 @@
             }
 
             // Form inputs
+            if (data.active_model_profile) {
+                document.getElementById('visionModelProfile').value = data.active_model_profile;
+            }
             document.getElementById('visionFilterMode').value = data.class_filter_mode;
             document.getElementById('visionConfSlider').value = data.conf_threshold;
             document.getElementById('confValDisplay').textContent = parseFloat(data.conf_threshold).toFixed(2);
@@ -813,6 +832,7 @@
         btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Saving...`;
 
         const payload = {
+            model_profile: document.getElementById('visionModelProfile').value,
             class_filter_mode: document.getElementById('visionFilterMode').value,
             conf_threshold: parseFloat(document.getElementById('visionConfSlider').value),
             iou_threshold: parseFloat(document.getElementById('visionIouSlider').value)
@@ -840,6 +860,10 @@
     }
 
     function onFilterModeChange() {
+        saveVisionSettings();
+    }
+
+    function onModelProfileChange() {
         saveVisionSettings();
     }
 

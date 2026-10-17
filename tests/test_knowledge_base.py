@@ -109,3 +109,33 @@ def test_ip102_catalog_fallback_recommendations():
     assert "Lambda-Cyhalothrin" in rec_weevil["recommended_pesticide"] or "Spinosad" in rec_weevil["recommended_pesticide"]
 
 
+def test_beneficial_predator_protection_guard():
+    """Verify that beneficial natural predators trigger biological protection and lock chemical spraying."""
+    # 1. Direct is_beneficial flag
+    rec_ladybug = knowledge_base.get_recommendation("corn", "ladybug", confidence=0.92, pest_count=2, is_beneficial=True)
+    assert rec_ladybug["status"] == "BENEFICIAL_PRESENT"
+    assert rec_ladybug["is_beneficial"] is True
+    assert "DO NOT SPRAY" in rec_ladybug["recommended_pesticide"]
+    assert "LOCKED" in rec_ladybug["dosage_instruction"]
+    assert rec_ladybug["plant_health_status"] == "Beneficial Biological Control Active"
+    assert rec_ladybug["infestation_level"] == "None"
+
+    # 2. CerealPestAID Class 19 'predators'
+    rec_predators = knowledge_base.get_recommendation("corn", "predators", confidence=0.88, pest_count=1)
+    assert rec_predators["status"] == "BENEFICIAL_PRESENT"
+    assert rec_predators["is_beneficial"] is True
+    assert "DO NOT SPRAY" in rec_predators["recommended_pesticide"]
+
+    # 3. Predatory taxonomy keyword (e.g. Odonata dragonfly, Neuroptera lacewing)
+    rec_dragonfly = knowledge_base.get_recommendation("rice", "dragonfly", confidence=0.95, pest_count=1, taxonomy="Odonata: Libellulidae")
+    assert rec_dragonfly["status"] == "BENEFICIAL_PRESENT"
+    assert rec_dragonfly["is_beneficial"] is True
+
+    # 4. Harmful pest is NOT treated as beneficial
+    rec_pest = knowledge_base.get_recommendation("corn", "fall_armyworm", confidence=0.88, pest_count=2, is_beneficial=False)
+    assert rec_pest["status"] == "CONFIRMED"
+    assert rec_pest["is_beneficial"] is False
+    assert "DO NOT SPRAY" not in rec_pest["recommended_pesticide"]
+
+
+

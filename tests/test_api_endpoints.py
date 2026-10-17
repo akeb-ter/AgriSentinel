@@ -207,4 +207,56 @@ def test_api_detections_clear():
     delete_detections_batch([id2])
 
 
+def test_api_dev_vision_settings_get_and_post():
+    """Verify /api/dev/vision_settings returns profiles and accepts model_profile update."""
+    res_get = client.get("/api/dev/vision_settings")
+    assert res_get.status_code == 200
+    data_get = res_get.json()
+    assert data_get["status"] == "success"
+    assert "active_model_profile" in data_get
+    assert "available_profiles" in data_get
+    assert len(data_get["available_profiles"]) == 4
+
+    # Update model profile to fast_scout_3pests
+    res_post = client.post("/api/dev/vision_settings", json={
+        "model_profile": "fast_scout_3pests",
+        "conf_threshold": 0.30,
+        "class_filter_mode": "full_102"
+    })
+    assert res_post.status_code == 200
+    data_post = res_post.json()
+    assert data_post["status"] == "success"
+    assert data_post["settings"]["active_model_profile"] == "fast_scout_3pests"
+    assert data_post["settings"]["conf_threshold"] == 0.30
+
+    # Reset back to comprehensive_102
+    res_reset = client.post("/api/dev/vision_settings", json={
+        "model_profile": "comprehensive_102",
+        "conf_threshold": 0.25,
+        "class_filter_mode": "full_102"
+    })
+    assert res_reset.status_code == 200
+    assert res_reset.json()["settings"]["active_model_profile"] == "comprehensive_102"
+
+
+def test_api_detect_upload_with_model_profile():
+    """Verify /api/detect/upload accepts custom model_profile form field."""
+    import cv2
+    import numpy as np
+    dummy_img = np.zeros((224, 224, 3), dtype=np.uint8)
+    _, encoded = cv2.imencode(".jpg", dummy_img)
+
+    res = client.post(
+        "/api/detect/upload",
+        files={"file": ("test.jpg", encoded.tobytes(), "image/jpeg")},
+        data={"crop_type": "corn", "conf_threshold": "0.99", "model_profile": "species_encyclopedia"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["source"] == "PHONE_CAMERA"
+    assert "recommendation" in data
+
+
+
 

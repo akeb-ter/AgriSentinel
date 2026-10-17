@@ -993,6 +993,7 @@
                     <select id="histStatusFilter" class="form-control" style="height:34px; font-size:12px;" onchange="onFilterChange()">
                         <option value="all">All Statuses</option>
                         <option value="CONFIRMED">Confirmed</option>
+                        <option value="BENEFICIAL_PRESENT">Beneficial Predator</option>
                         <option value="UNCERTAIN">Uncertain</option>
                         <option value="PEST_FREE">Pest-Free</option>
                     </select>
@@ -1075,6 +1076,8 @@
                                 <td>
                                     {% if d.status == 'CONFIRMED' %}
                                     <span style="color:var(--primary); font-weight:700;"><i class="fas fa-check-circle"></i> Confirmed</span>
+                                    {% elif d.status == 'BENEFICIAL_PRESENT' %}
+                                    <span style="color:#10b981; font-weight:700;"><i class="fas fa-shield-alt"></i> Beneficial</span>
                                     {% elif d.status == 'UNCERTAIN' %}
                                     <span style="color:var(--warning); font-weight:700;"><i class="fas fa-question-circle"></i> Uncertain</span>
                                     {% else %}
@@ -1700,6 +1703,8 @@
             let statusHtml = '';
             if (status === 'CONFIRMED') {
                 statusHtml = `<span style="color:var(--primary); font-weight:700;"><i class="fas fa-check-circle"></i> Confirmed</span>`;
+            } else if (status === 'BENEFICIAL_PRESENT') {
+                statusHtml = `<span style="color:#10b981; font-weight:700;"><i class="fas fa-shield-alt"></i> Beneficial</span>`;
             } else if (status === 'UNCERTAIN') {
                 statusHtml = `<span style="color:var(--warning); font-weight:700;"><i class="fas fa-question-circle"></i> Uncertain</span>`;
             } else {
