@@ -215,7 +215,18 @@ def test_api_dev_vision_settings_get_and_post():
     assert data_get["status"] == "success"
     assert "active_model_profile" in data_get
     assert "available_profiles" in data_get
-    assert len(data_get["available_profiles"]) == 4
+    assert len(data_get["available_profiles"]) == 5
+    profile_ids = [p["id"] for p in data_get["available_profiles"]]
+    assert "tropical_27_pests" in profile_ids
+
+    # Update model profile to tropical_27_pests
+    res_post_trop = client.post("/api/dev/vision_settings", json={
+        "model_profile": "tropical_27_pests",
+        "conf_threshold": 0.25,
+        "class_filter_mode": "full_102"
+    })
+    assert res_post_trop.status_code == 200
+    assert res_post_trop.json()["settings"]["active_model_profile"] == "tropical_27_pests"
 
     # Update model profile to fast_scout_3pests
     res_post = client.post("/api/dev/vision_settings", json={

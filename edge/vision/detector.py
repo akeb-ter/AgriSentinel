@@ -71,6 +71,27 @@ TARGET_PEST_ALIASES = {
     15: "Mole cricket"
 }
 
+# Semantic aliases mapping custom field models (e.g. Pest Uruhn v2) to knowledge base pests
+PEST_KEY_ALIASES = {
+    "wereng_coklat": "brown_plant_hopper",
+    "red_cotton_steiner": "red_cotton_stainer",
+    "diamondback_moth": "diamondback_moth",
+    "coconut_black_headed_caterpillar": "coconut_black_headed_caterpillar",
+    "citricola_scale": "citricola_scale",
+    "black_grass_caterpillar": "black_cutworm"
+}
+
+# 27 Classes in pest_uruhn_v2_yolov8n_float16.tflite
+TROPICAL_PEST_LABELS_27 = [
+    "Adulto", "Black-Grass-Caterpillar", "Cerambycidae_larvae", "Cnidocampa_flavescens-Walker_pupa-",
+    "Coconut-black-headed-caterpillar", "Cricket", "Diamondback-moth", "Drosicha_contrahens_female",
+    "Erthesina_fullo_nymph-2", "Grasshopper", "Hyphantria_cunea_larvae", "Hyphantria_cunea_pupa",
+    "Latoia_consocia_Walker_larvae", "Leaf-eating-caterpillar", "Micromelalopha_troglodyta-Graeser-_larvae",
+    "Ninfa", "Ovo", "Phenacoccus", "Plagiodera_versicolora-Laicharting-", "Plagiodera_versicolora-Laicharting-_larvae",
+    "Plagiodera_versicolora-Laicharting-_ovum", "Red cotton steiner", "Sericinus_montela_larvae",
+    "Spilarctia_subcarnea-Walker-_larvae-2", "Wereng coklat", "aphid", "citricola scale"
+]
+
 
 def load_102_labels() -> List[str]:
     """Loads 102 pest class labels from config file, with fallback."""
@@ -224,6 +245,16 @@ MODEL_PROFILES: Dict[str, Dict[str, Any]] = {
         "input_shape": (224, 224),
         "total_classes": 2037,
         "description": "Deep taxonomic identification across 2,037 wild insect and arthropod species"
+    },
+    "tropical_27_pests": {
+        "id": "tropical_27_pests",
+        "name": "Tropical Field Scout (YOLOv8n FP16: 27 Pests)",
+        "file": "pest_uruhn_v2_yolov8n_float16.tflite",
+        "fallback_file": "pest_uruhn_v2_yolov8n_float16.tflite",
+        "type": "yolo",
+        "input_shape": (640, 640),
+        "total_classes": 27,
+        "description": "Ultra-fast 12MB float16 detector for 27 field pests (Brown Planthopper, Diamondback Moth, Aphids, Scales, Borers)"
     }
 }
 
@@ -497,6 +528,17 @@ class TfliteRunner(BasePestDetector):
                     elif profile_key == "cereal_diagnostic":
                         self.labels = [self.cereal_labels.get(i, {}).get("name", f"Cereal_Pest_{i}") for i in range(len(self.cereal_labels))]
 
+                    elif profile_key == "tropical_27_pests":
+                        self.labels = list(TROPICAL_PEST_LABELS_27)
+                        meta = extract_tflite_metadata(target_path)
+                        if meta and "names" in meta:
+                            try:
+                                names_dict = meta["names"]
+                                sorted_keys = sorted([int(k) for k in names_dict.keys()])
+                                self.labels = [names_dict[str(k)] for k in sorted_keys]
+                            except Exception:
+                                pass
+
                     self.is_model_loaded = True
                     self.model_error = None
                     logger.info(f"[TfliteRunner] Switched to profile '{profile_key}' ({self.runtime_name}) from {target_path}")
@@ -711,7 +753,7 @@ class TfliteRunner(BasePestDetector):
                             class_ids = []
                             labels_out = []
 
-                            is_3pest = (self.active_profile == "fast_scout_3pests")
+                            is_custom_yolo = (self.active_profile in ["fast_scout_3pests", "tropical_27_pests"] or len(self.labels) != 102)
 
                             for pred in predictions:
                                 class_scores = pred[4:]
@@ -721,7 +763,7 @@ class TfliteRunner(BasePestDetector):
                                 if confidence < effective_conf:
                                     continue
 
-                                if is_3pest:
+                                if is_custom_yolo:
                                     if 0 <= max_idx < len(self.labels):
                                         label_name = self.labels[max_idx]
                                     else:
@@ -774,14 +816,17 @@ class TfliteRunner(BasePestDetector):
                             detected_pests: List[DetectionBox] = []
                             if len(indices) > 0:
                                 for idx in np.array(indices).flatten():
+                                    raw_key = labels_out[idx].lower().strip().replace(" ", "_").replace("-", "_")
+                                    pest_key = PEST_KEY_ALIASES.get(raw_key, raw_key)
+                                    clean_label = labels_out[idx].replace("_", " ").replace("-", " ").title()
                                     detected_pests.append(DetectionBox(
-                                        label=labels_out[idx].title(),
+                                        label=clean_label,
                                         confidence=round(scores[idx], 4),
                                         x=boxes[idx][0],
                                         y=boxes[idx][1],
                                         width=boxes[idx][2],
                                         height=boxes[idx][3],
-                                        pest_key=labels_out[idx].lower().replace(" ", "_"),
+                                        pest_key=pest_key,
                                         is_beneficial=False
                                     ))
                             return detected_pests

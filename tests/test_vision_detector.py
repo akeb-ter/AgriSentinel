@@ -173,7 +173,7 @@ def test_concurrent_detection_thread_safety():
 
 
 def test_multi_model_profile_switching():
-    """Verify switching across all 4 MODEL_PROFILES."""
+    """Verify switching across all 5 MODEL_PROFILES."""
     from edge.vision.detector import MODEL_PROFILES
     detector = get_detector()
 
@@ -181,6 +181,7 @@ def test_multi_model_profile_switching():
     assert "fast_scout_3pests" in MODEL_PROFILES
     assert "cereal_diagnostic" in MODEL_PROFILES
     assert "species_encyclopedia" in MODEL_PROFILES
+    assert "tropical_27_pests" in MODEL_PROFILES
 
     # 1. Switch to Fast Scout 3-Pests
     ok_scout = detector.switch_model("fast_scout_3pests")
@@ -189,14 +190,21 @@ def test_multi_model_profile_switching():
     assert detector.is_model_loaded is True
     assert len(detector.labels) == 3
 
-    # 2. Switch to Cereal Diagnostic
+    # 2. Switch to Tropical Field Scout (27 Pests)
+    ok_trop = detector.switch_model("tropical_27_pests")
+    assert ok_trop is True
+    assert detector.active_profile == "tropical_27_pests"
+    assert detector.is_model_loaded is True
+    assert len(detector.labels) == 27
+
+    # 3. Switch to Cereal Diagnostic
     ok_cereal = detector.switch_model("cereal_diagnostic")
     assert ok_cereal is True
     assert detector.active_profile == "cereal_diagnostic"
     assert detector.is_model_loaded is True
     assert len(detector.labels) == 26
 
-    # 3. Switch to Species Encyclopedia (Quarrying ONNX)
+    # 4. Switch to Species Encyclopedia (Quarrying ONNX)
     ok_onnx = detector.switch_model("species_encyclopedia")
     assert ok_onnx is True
     assert detector.active_profile == "species_encyclopedia"
@@ -204,12 +212,33 @@ def test_multi_model_profile_switching():
     assert detector.runtime_name == "onnxruntime"
     assert len(detector.labels) == 2037
 
-    # 4. Switch back to Comprehensive 102
+    # 5. Switch back to Comprehensive 102
     ok_comp = detector.switch_model("comprehensive_102")
     assert ok_comp is True
     assert detector.active_profile == "comprehensive_102"
     assert detector.is_model_loaded is True
     assert len(detector.labels) == 102
+
+
+def test_tropical_27_pests_profile_and_alias():
+    """Verify Tropical Field Scout (27 Pests) loads, recognizes Wereng Coklat, and aliases to brown_plant_hopper."""
+    from edge.vision.detector import PEST_KEY_ALIASES
+    detector = get_detector()
+    ok = detector.switch_model("tropical_27_pests")
+    assert ok is True
+    assert detector.active_profile == "tropical_27_pests"
+    assert len(detector.labels) == 27
+    assert "Wereng coklat" in detector.labels
+    assert "Diamondback-moth" in detector.labels
+    assert PEST_KEY_ALIASES["wereng_coklat"] == "brown_plant_hopper"
+
+    # Test inference on blank frame
+    blank = np.zeros((640, 640, 3), dtype=np.uint8)
+    boxes = detector.detect(blank, conf_threshold=0.25)
+    assert isinstance(boxes, list)
+
+    # Reset back to comprehensive
+    detector.switch_model("comprehensive_102")
 
 
 def test_detection_box_beneficial_flag():
