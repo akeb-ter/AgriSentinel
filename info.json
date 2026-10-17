@@ -1,0 +1,2353 @@
+{
+  "dataset_name": "AgriSentinel IP102 Agronomic Intelligence Matrix",
+  "version": "2.0.0",
+  "total_classes": 102,
+  "pests": [
+    {
+      "class_id": 0,
+      "key": "rice_leaf_roller",
+      "common_name": "Rice Leaf Roller",
+      "scientific_name": "Cnaphalocrocis medinalis",
+      "pest_category": "Defoliator",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Leaves",
+        "primary_symptom": "Foliar Folding & Skeletonization",
+        "severity_level": "Moderate",
+        "visual_cues": "Leaves rolled lengthwise with white scraped streaks and transparent patches."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Cartap hydrochloride",
+        "formulation": "50% SP",
+        "application_rate": "1.2 kg/ha in 400L water",
+        "bio_rational_alternative": "Bacillus thuringiensis subsp. kurstaki @ 1.5 kg/ha",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Toxic to fish; do not allow spray drift into adjacent aquatic channels."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 1,
+      "key": "rice_leaf_caterpillar",
+      "common_name": "Rice Leaf Caterpillar",
+      "scientific_name": "Naranga aenescens",
+      "pest_category": "Defoliator",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Leaves",
+        "primary_symptom": "Marginal Tissue Notching",
+        "severity_level": "Low",
+        "visual_cues": "Irregular serrations and missing margins on vegetative leaves."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Lambda-cyhalothrin",
+        "formulation": "2.5% EC",
+        "application_rate": "1.2 ml/L water",
+        "bio_rational_alternative": "Conserve Braconid wasps; apply botanical neem extract",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Flammable solvent base; wear chemical-resistant apron and face shield."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 2,
+      "key": "paddy_stem_maggot",
+      "common_name": "Paddy Stem Maggot",
+      "scientific_name": "Hydrellia sasakii",
+      "pest_category": "Leaf Miner / Stem Feeder",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Leaves & Young Shoots",
+        "primary_symptom": "Linear Streak Mining & Deformed Tips",
+        "severity_level": "Low",
+        "visual_cues": "Small yellowish-white linear chlorotic feeding tracks on young emergent leaves."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole",
+        "formulation": "18.5% SC",
+        "application_rate": "0.3 ml/L water",
+        "bio_rational_alternative": "Intermittent field drainage to expose and desiccate larvae",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Avoid spraying during windy conditions to reduce drift into ditches."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 3,
+      "key": "asiatic_rice_borer",
+      "common_name": "Asiatic Rice Borer",
+      "scientific_name": "Chilo suppressalis",
+      "pest_category": "Stem Borer",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Stem & Vascular Tissue",
+        "primary_symptom": "Deadheart & Whitehead",
+        "severity_level": "High",
+        "visual_cues": "Central vegetative tiller drying (Deadheart) or bleached white panicles (Whitehead)."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Cartap hydrochloride",
+        "formulation": "50% SP",
+        "application_rate": "1.5 kg/ha",
+        "bio_rational_alternative": "Trichogramma chilonis egg parasitoid cards (50,000 parasitoids/ha)",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Wear nitrile gloves; do not apply during active rain conditions."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 4,
+      "key": "yellow_rice_borer",
+      "common_name": "Yellow Rice Borer",
+      "scientific_name": "Scirpophaga incertulas",
+      "pest_category": "Stem Borer",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Basal Stem",
+        "primary_symptom": "Stem Pinhole Entry & Tillers Lodging",
+        "severity_level": "Severe",
+        "visual_cues": "Basal boreholes packed with wet frass; tillers pull away easily without resistance."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole",
+        "formulation": "18.5% SC",
+        "application_rate": "150 ml/ha",
+        "bio_rational_alternative": "Beauveria bassiana foliar spray @ 2 g/L; pheromone delta traps",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Target basal stems. Rotate chemical classes to prevent insect resistance."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 5,
+      "key": "rice_gall_midge",
+      "common_name": "Rice Gall Midge",
+      "scientific_name": "Orseolia oryzae",
+      "pest_category": "Gall Maker",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Tillers & Growing Points",
+        "primary_symptom": "Silver Shoot / Onion Leaf Gall",
+        "severity_level": "High",
+        "visual_cues": "Tillers transformed into tubular pale white/silver hollow galls resembling onion leaves."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Fipronil",
+        "formulation": "0.3% GR",
+        "application_rate": "20 kg/ha broadcast into moist soil",
+        "bio_rational_alternative": "Conserve Platygaster oryzae larval parasitoids; avoid early standing water",
+        "pre_harvest_interval_days": 30,
+        "safety_precautions": "Do not apply near aquatic aquaculture; wear protective rubber boots."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 6,
+      "key": "rice_stemfly",
+      "common_name": "Rice Stemfly",
+      "scientific_name": "Chlorops oryzae",
+      "pest_category": "Stem Feeder",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Stem & Young Panicle",
+        "primary_symptom": "Ragged Leaf Margins & Aborted Heads",
+        "severity_level": "Moderate",
+        "visual_cues": "Deformed panicles with missing grains; ragged holes on youngest emerging leaves."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Imidacloprid",
+        "formulation": "17.8% SL",
+        "application_rate": "0.25 ml/L water",
+        "bio_rational_alternative": "Botanical neem oil spray (3 ml/L) with soap emulsifier",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Harmful to bees; spray late afternoon during dormant flight hours."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 7,
+      "key": "brown_plant_hopper",
+      "common_name": "Brown Plant Hopper",
+      "scientific_name": "Nilaparvata lugens",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Stem Base",
+        "primary_symptom": "Hopperburn & Ragged Stunt",
+        "severity_level": "Severe",
+        "visual_cues": "Dense patches of yellow-brown scorched dry tillers collapsing in circular rings."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Pymetrozine",
+        "formulation": "50% WDG",
+        "application_rate": "300 g/ha",
+        "bio_rational_alternative": "Metarhizium anisopliae entomopathogen @ 2.5 kg/ha; temporary field drainage",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Direct nozzle toward plant bases; avoid synthetic pyrethroid resurgence."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 8,
+      "key": "white_backed_plant_hopper",
+      "common_name": "White Backed Plant Hopper",
+      "scientific_name": "Sogatella furcifera",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Tillers & Leaves",
+        "primary_symptom": "Stunted Growth & Orange Discoloration",
+        "severity_level": "Moderate",
+        "visual_cues": "Orange leaf tip discoloration, stunted vegetative tillering, reduced panicle count."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Buprofezin",
+        "formulation": "25% SC",
+        "application_rate": "1.0 L/ha",
+        "bio_rational_alternative": "Conserve Cyrtorhinus lividipennis (mirid bug) egg predators",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Chitin synthesis inhibitor. Wear respirator to avoid inhaling fine aerosols."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 9,
+      "key": "small_brown_plant_hopper",
+      "common_name": "Small Brown Plant Hopper",
+      "scientific_name": "Laodelphax striatellus",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Leaves & Stem",
+        "primary_symptom": "Rice Stripe Virus Transmission & Chlorosis",
+        "severity_level": "High",
+        "visual_cues": "Chlorotic leaf striping, stippled tillers, and sooty mold on honeydew deposits."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Dinotefuran",
+        "formulation": "20% SG",
+        "application_rate": "200 g/ha",
+        "bio_rational_alternative": "Metarhizium rileyi foliar spray; border trap crops",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Keep livestock out of treated fields for 48 hours post-application."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 10,
+      "key": "rice_water_weevil",
+      "common_name": "Rice Water Weevil",
+      "scientific_name": "Lissorhoptrus oryzophilus",
+      "pest_category": "Root & Foliar Weevil",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Roots & Leaves",
+        "primary_symptom": "Windowpane Scars & Pruned Root System",
+        "severity_level": "High",
+        "visual_cues": "Narrow longitudinal feeding scars on leaf blades; severely pruned, blackened roots."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorpyrifos + Cypermethrin",
+        "formulation": "50% + 5% EC",
+        "application_rate": "1.0 L/ha",
+        "bio_rational_alternative": "Intermittent paddy drying; delay shallow flooding post-transplant",
+        "pre_harvest_interval_days": 28,
+        "safety_precautions": "Highly toxic to fish and aquatic life; strictly contain drain water."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 11,
+      "key": "rice_leafhopper",
+      "common_name": "Rice Leafhopper",
+      "scientific_name": "Nephotettix cincticeps",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Leaves & Tillers",
+        "primary_symptom": "Yellowing & Tungro Virus Stunting",
+        "severity_level": "High",
+        "visual_cues": "Yellow-orange leaf discoloration starting from tips, marked stunting, and viral spreading."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Clothianidin",
+        "formulation": "50% WDG",
+        "application_rate": "40 g/ha",
+        "bio_rational_alternative": "Yellow sticky cards (30/ha); release Beauveria bassiana",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Do not exceed recommended dosage; wear protective eyewear."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 12,
+      "key": "grain_spreader_thrips",
+      "common_name": "Grain Spreader Thrips",
+      "scientific_name": "Stenchaetothrips biformis",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Seedling Leaves",
+        "primary_symptom": "Leaf Curl & Silvery Stippling",
+        "severity_level": "Low",
+        "visual_cues": "Upward leaf curling accompanied by translucent silvery longitudinal streaks."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spinetoram",
+        "formulation": "11.7% SC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Blue sticky cards (25/ha); botanical chili-garlic extract spray",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Limit to two sprays per crop season. Highly toxic to aquatic invertebrates."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 13,
+      "key": "rice_shell_pest",
+      "common_name": "Rice Shell Pest",
+      "scientific_name": "Dicladispa armigera",
+      "pest_category": "Foliar Miner / Beetle",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Leaves",
+        "primary_symptom": "White Blister Mines & Leaf Scorching",
+        "severity_level": "Moderate",
+        "visual_cues": "Spiny adult beetles scraping leaf epidermal layers; larvae creating parallel blister mines."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Acephate",
+        "formulation": "75% SP",
+        "application_rate": "1.0 g/L water",
+        "bio_rational_alternative": "Sweep netting of adults; manual clipping of infested seedling leaf tips",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Use protective mask; wash skin thoroughly after handling organophosphates."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 14,
+      "key": "grub",
+      "common_name": "Grub (White Grub)",
+      "scientific_name": "Holotrichia spp.",
+      "pest_category": "Root Pest",
+      "primary_crop": "Corn",
+      "plant_health": {
+        "affected_part": "Root System",
+        "primary_symptom": "Root Pruning & Plant Lodging",
+        "severity_level": "High",
+        "visual_cues": "Severe root severance causing emergent plants to wilt and tip over under wind load."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Fipronil",
+        "formulation": "0.3% GR",
+        "application_rate": "20 kg/ha in furrows",
+        "bio_rational_alternative": "Metarhizium majus soil granules incorporated during land preparation",
+        "pre_harvest_interval_days": 60,
+        "safety_precautions": "Soil incorporated only. Do not handle granules without heavy rubber gloves."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 15,
+      "key": "mole_cricket",
+      "common_name": "Mole Cricket",
+      "scientific_name": "Gryllotalpa africana",
+      "pest_category": "Subterranean Pest",
+      "primary_crop": "Rice / Corn",
+      "plant_health": {
+        "affected_part": "Sub-surface Roots & Seeds",
+        "primary_symptom": "Seedling Severing & Burrow Trenches",
+        "severity_level": "Moderate",
+        "visual_cues": "Raised winding soil ridges, seedlings missing crowns and dragged underground."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole",
+        "formulation": "0.4% GR",
+        "application_rate": "15 kg/ha",
+        "bio_rational_alternative": "Flood seedbed to 3 cm depth for 24 hours to drive crickets to surface",
+        "pre_harvest_interval_days": 45,
+        "safety_precautions": "Ensure granules are buried beneath topsoil. Toxic to aquatic organisms."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 16,
+      "key": "wireworm",
+      "common_name": "Wireworm",
+      "scientific_name": "Agriotes spp.",
+      "pest_category": "Subterranean Pest",
+      "primary_crop": "Corn / Wheat",
+      "plant_health": {
+        "affected_part": "Germinating Seed & Crown",
+        "primary_symptom": "Hollowed Seeds & Wilting Seedlings",
+        "severity_level": "High",
+        "visual_cues": "Seeds bored hollow prior to emergence; wilted seedlings with chewed underground stems."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Bifenthrin",
+        "formulation": "10% EC",
+        "application_rate": "1.5 L/ha furrow drench",
+        "bio_rational_alternative": "Entomopathogenic nematodes (Heterorhabditis bacteriophora)",
+        "pre_harvest_interval_days": 30,
+        "safety_precautions": "Directed soil furrow application; avoid surface water contamination."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 17,
+      "key": "white_margined_moth",
+      "common_name": "White Margined Moth",
+      "scientific_name": "Mythimna separata",
+      "pest_category": "Defoliator",
+      "primary_crop": "Corn / Cereals",
+      "plant_health": {
+        "affected_part": "Foliage",
+        "primary_symptom": "Extensive Ragged Defoliation",
+        "severity_level": "High",
+        "visual_cues": "Aggressive leaf chewing leaving only thick midribs; abundant pellet frass in axils."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Emamectin benzoate",
+        "formulation": "5% SG",
+        "application_rate": "200 g/ha",
+        "bio_rational_alternative": "Bacillus thuringiensis subsp. kurstaki @ 1.5 kg/ha",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Toxic to bees; avoid spraying during active crop flowering periods."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 18,
+      "key": "black_cutworm",
+      "common_name": "Black Cutworm",
+      "scientific_name": "Agrotis ipsilon",
+      "pest_category": "Defoliator / Cutter",
+      "primary_crop": "Corn",
+      "plant_health": {
+        "affected_part": "Seedling Crown",
+        "primary_symptom": "Seedling Shearing & Fallen Stalks",
+        "severity_level": "Severe",
+        "visual_cues": "Fresh emergent seedlings severed cleanly at soil surface line; fallen stalks."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Beta-cyfluthrin",
+        "formulation": "2.5% SC",
+        "application_rate": "1.5 ml/L water",
+        "bio_rational_alternative": "Poisoned wheat bran bait (carbaryl + molasses + bran) placed at field margins",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Apply at twilight when caterpillars emerge from underground hiding burrows."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 19,
+      "key": "large_cutworm",
+      "common_name": "Large Cutworm",
+      "scientific_name": "Xestia c-nigrum",
+      "pest_category": "Defoliator / Cutter",
+      "primary_crop": "Corn / Vegetables",
+      "plant_health": {
+        "affected_part": "Lower Stems & Foliage",
+        "primary_symptom": "Basal Stem Notching & Leaf Chewing",
+        "severity_level": "Moderate",
+        "visual_cues": "Large ragged irregular holes in lower leaves; young stems clipped near ground level."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Indoxacarb",
+        "formulation": "14.5% SC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Trichogramma wasp release; handpicking larvae from soil mulch at night",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Wear nitrile gloves and respiratory mask during spray preparation."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 20,
+      "key": "yellow_cutworm",
+      "common_name": "Yellow Cutworm",
+      "scientific_name": "Peridroma saucia",
+      "pest_category": "Defoliator",
+      "primary_crop": "Corn / Vegetables",
+      "plant_health": {
+        "affected_part": "Leaves & Stems",
+        "primary_symptom": "Nocturnal Foliar Skeletonization",
+        "severity_level": "Moderate",
+        "visual_cues": "Caterpillars active at dusk chewing large irregular holes in leaves and fruit stalks."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Lambda-cyhalothrin",
+        "formulation": "5% EC",
+        "application_rate": "0.8 ml/L water",
+        "bio_rational_alternative": "Bacillus thuringiensis subsp. aizawai foliar spray @ 1.0 kg/ha",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Keep spray drift away from open irrigation ponds; wear protective clothing."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 21,
+      "key": "red_spider",
+      "common_name": "Red Spider Mite",
+      "scientific_name": "Tetranychus urticae",
+      "pest_category": "Mite / Sap Sucker",
+      "primary_crop": "Corn / Vegetables",
+      "plant_health": {
+        "affected_part": "Foliage Underside",
+        "primary_symptom": "Chlorotic Stippling & Silky Webbing",
+        "severity_level": "High",
+        "visual_cues": "Dense pale yellow stippling on leaf surface with fine silky webbing beneath leaves."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spiromesifen",
+        "formulation": "22.9% SC",
+        "application_rate": "0.8 ml/L water",
+        "bio_rational_alternative": "Predatory mites (Phytoseiulus persimilis); wettable sulfur @ 2.5 g/L",
+        "pre_harvest_interval_days": 5,
+        "safety_precautions": "Ensure thorough coverage of leaf undersides; toxic to aquatic organisms."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 22,
+      "key": "corn_borer",
+      "common_name": "Corn Borer",
+      "scientific_name": "Ostrinia furnacalis",
+      "pest_category": "Stem Borer",
+      "primary_crop": "Corn",
+      "plant_health": {
+        "affected_part": "Stalk & Whorl",
+        "primary_symptom": "Broken Tassels & Stalk Frass Galleries",
+        "severity_level": "Severe",
+        "visual_cues": "Shot-hole foliar perforations, broken tassels, stalk lodging, entry holes packed with moist frass."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole",
+        "formulation": "18.5% SC",
+        "application_rate": "150 ml/ha",
+        "bio_rational_alternative": "Release of Trichogramma cards (50 cards/ha); Bt sprays targeted into whorl",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Target whorls directly; do not apply during active field pollination hours."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 23,
+      "key": "army_worm",
+      "common_name": "Armyworm",
+      "scientific_name": "Mythimna separata",
+      "pest_category": "Defoliator",
+      "primary_crop": "Corn / Cereals",
+      "plant_health": {
+        "affected_part": "Foliage",
+        "primary_symptom": "Extensive Ragged Defoliation",
+        "severity_level": "High",
+        "visual_cues": "Aggressive leaf chewing leaving only thick midribs; abundant pellet frass in axils."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Emamectin benzoate",
+        "formulation": "5% SG",
+        "application_rate": "200 g/ha",
+        "bio_rational_alternative": "Bacillus thuringiensis subsp. kurstaki @ 1.5 kg/ha",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Toxic to bees; avoid spraying during active crop flowering periods."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 24,
+      "key": "aphids",
+      "common_name": "Aphids",
+      "scientific_name": "Rhopalosiphum maidis",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Corn",
+      "plant_health": {
+        "affected_part": "Tassels & Upper Foliage",
+        "primary_symptom": "Sooty Mold & Leaf Curl",
+        "severity_level": "Moderate",
+        "visual_cues": "Dense clusters of blue-green aphids; black sooty mold film on tassels and leaves."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Imidacloprid",
+        "formulation": "17.8% SL",
+        "application_rate": "0.3 ml/L water",
+        "bio_rational_alternative": "Neem oil (5 ml/L) with potassium soap emulsifier",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Do not apply when corn tassels are actively shedding pollen to protect bees."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 25,
+      "key": "potosiabre_vitarsis",
+      "common_name": "Potosiabre vitarsis",
+      "scientific_name": "Protaetia brevitarsis",
+      "pest_category": "Beetle / Flower & Shoot Pest",
+      "primary_crop": "Corn / Fruit",
+      "plant_health": {
+        "affected_part": "Silk, Tassels & Ripe Ears",
+        "primary_symptom": "Silk Chewing & Ear Tip Damage",
+        "severity_level": "Moderate",
+        "visual_cues": "Dark metallic green-bronze beetles feeding in clusters on corn silks and developing kernels."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Lambda-cyhalothrin",
+        "formulation": "5% EC",
+        "application_rate": "1.0 ml/L water",
+        "bio_rational_alternative": "Pheromone/food attractant bait traps; handpicking during early morning",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Avoid spraying when corn tassels are actively shedding pollen to safeguard honeybees."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 26,
+      "key": "peach_borer",
+      "common_name": "Peach Borer",
+      "scientific_name": "Synanthedon exitiosa",
+      "pest_category": "Wood & Trunk Borer",
+      "primary_crop": "Fruit Trees",
+      "plant_health": {
+        "affected_part": "Crown & Lower Trunk",
+        "primary_symptom": "Gummosis & Frass at Soil Line",
+        "severity_level": "Severe",
+        "visual_cues": "Copious amber jelly-like gum mixed with sawdust-like frass oozing from trunk bases."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorpyrifos",
+        "formulation": "48% EC",
+        "application_rate": "3.0 ml/L directed trunk drench",
+        "bio_rational_alternative": "Mating disruption dispensers; entomopathogenic nematodes (Steinernema carpocapsae)",
+        "pre_harvest_interval_days": 30,
+        "safety_precautions": "Directed bark application only; do not spray foliage or fruit."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 27,
+      "key": "english_grain_aphid",
+      "common_name": "English Grain Aphid",
+      "scientific_name": "Sitobion avenae",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Wheat / Barley",
+      "plant_health": {
+        "affected_part": "Wheat Heads & Flag Leaf",
+        "primary_symptom": "Kernel Shriveling & Honeydew Soot",
+        "severity_level": "Moderate",
+        "visual_cues": "Green to reddish aphids clustered directly on wheat heads between spikelets."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Dimethoate",
+        "formulation": "40% EC",
+        "application_rate": "0.8 L/ha",
+        "bio_rational_alternative": "Conserve Aphidius ervi parasitoid wasps and Coccinellid lady beetles",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Organophosphate insecticide. Wear respirator and chemical-resistant gloves."
+      },
+      "citation": "CIMMYT Wheat IPM Compendium / FAO International Plant Protection Convention"
+    },
+    {
+      "class_id": 28,
+      "key": "green_bug",
+      "common_name": "Green Bug",
+      "scientific_name": "Schizaphis graminum",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Wheat / Sorghum",
+      "plant_health": {
+        "affected_part": "Leaves & Tillers",
+        "primary_symptom": "Reddish-Brown Necrotic Spots & Yellowing",
+        "severity_level": "High",
+        "visual_cues": "Bright green aphids with a darker spinal stripe feeding on leaf undersides, injecting toxic saliva."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Imidacloprid",
+        "formulation": "17.8% SL",
+        "application_rate": "0.25 ml/L water",
+        "bio_rational_alternative": "Release Lysiphlebus testaceipes parasitic wasps; plant resistant wheat cultivars",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Do not treat during crop flowering to avoid honeybee exposure."
+      },
+      "citation": "CIMMYT Wheat IPM Compendium / FAO International Plant Protection Convention"
+    },
+    {
+      "class_id": 29,
+      "key": "bird_cherry_oataphid",
+      "common_name": "Bird Cherry-Oat Aphid",
+      "scientific_name": "Rhopalosiphum padi",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Wheat / Cereals",
+      "plant_health": {
+        "affected_part": "Lower Stems & Sheaths",
+        "primary_symptom": "BYDV Virus Transmission & Stunting",
+        "severity_level": "High",
+        "visual_cues": "Dark olive-green aphids with red-orange patch around siphunculi clustering near soil level."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Thiamethoxam",
+        "formulation": "25% WG",
+        "application_rate": "0.2 g/L water",
+        "bio_rational_alternative": "Seed treatment with systemic neonicotinoid; conserve Syrphid fly larvae",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Timely treatment prevents Barley Yellow Dwarf Virus (BYDV) spread."
+      },
+      "citation": "CIMMYT Wheat IPM Compendium / FAO International Plant Protection Convention"
+    },
+    {
+      "class_id": 30,
+      "key": "wheat_blossom_midge",
+      "common_name": "Wheat Blossom Midge",
+      "scientific_name": "Sitodiplosis mosellana",
+      "pest_category": "Grain / Head Pest",
+      "primary_crop": "Wheat",
+      "plant_health": {
+        "affected_part": "Spikelet & Developing Grain",
+        "primary_symptom": "Shriveled Kernels & Chaff Discoloration",
+        "severity_level": "High",
+        "visual_cues": "Small orange larvae inside wheat spikelets feeding on developing milk-stage kernels."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Deltamethrin",
+        "formulation": "2.5% EC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Plant resistant wheat cultivars; conserve ground-dwelling Carabid beetles",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Apply at dusk during peak adult flight at ear emergence."
+      },
+      "citation": "CIMMYT Wheat IPM Compendium / FAO International Plant Protection Convention"
+    },
+    {
+      "class_id": 31,
+      "key": "penthaleus_major",
+      "common_name": "Penthaleus major",
+      "scientific_name": "Penthaleus major",
+      "pest_category": "Mite / Sap Sucker",
+      "primary_crop": "Wheat",
+      "plant_health": {
+        "affected_part": "Foliage",
+        "primary_symptom": "Silvery-White Leaf Tips",
+        "severity_level": "Moderate",
+        "visual_cues": "Silvery-white bleached leaf tips and mottled foliage resembling winter frost damage."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Dimethoate",
+        "formulation": "40% EC",
+        "application_rate": "1.0 L/ha",
+        "bio_rational_alternative": "Timely field irrigation to suppress mite activity; wettable sulfur dusting",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Wear face mask and protective clothing; follow organophosphate handling protocols."
+      },
+      "citation": "CIMMYT Wheat IPM Compendium / FAO International Plant Protection Convention"
+    },
+    {
+      "class_id": 32,
+      "key": "longlegged_spider_mite",
+      "common_name": "Longlegged Spider Mite",
+      "scientific_name": "Petrobia latens",
+      "pest_category": "Mite / Sap Sucker",
+      "primary_crop": "Wheat",
+      "plant_health": {
+        "affected_part": "Foliage",
+        "primary_symptom": "Leaf Bronzing & Stunted Heads",
+        "severity_level": "Moderate",
+        "visual_cues": "Leaves turn pale yellow then bronze-brown, withering from tip downward under dry conditions."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Abamectin",
+        "formulation": "1.8% EC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Conserve Phytoseiid predatory mites; apply light sprinkler irrigation",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "High hazard to honeybees; avoid spraying blooming border weeds."
+      },
+      "citation": "CIMMYT Wheat IPM Compendium / FAO International Plant Protection Convention"
+    },
+    {
+      "class_id": 33,
+      "key": "wheat_phloeothrips",
+      "common_name": "Wheat Phloeothrips",
+      "scientific_name": "Haplothrips tritici",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Wheat / Rye",
+      "plant_health": {
+        "affected_part": "Ears & Developing Grains",
+        "primary_symptom": "Silvering of Spikes & Chaff Browning",
+        "severity_level": "Moderate",
+        "visual_cues": "Tiny black thrips inside spikelets causing white, sterile grain tips."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spinetoram",
+        "formulation": "11.7% SC",
+        "application_rate": "0.4 ml/L water",
+        "bio_rational_alternative": "Deep autumn tillage; conservation of predatory Aeolothripid thrips",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Do not spray during high temperatures; toxic to aquatic invertebrates."
+      },
+      "citation": "CIMMYT Wheat IPM Compendium / FAO International Plant Protection Convention"
+    },
+    {
+      "class_id": 34,
+      "key": "wheat_sawfly",
+      "common_name": "Wheat Sawfly",
+      "scientific_name": "Cephus cinctus",
+      "pest_category": "Stem Borer",
+      "primary_crop": "Wheat",
+      "plant_health": {
+        "affected_part": "Stalk Base",
+        "primary_symptom": "Stem Lodging & Severed Culms",
+        "severity_level": "Severe",
+        "visual_cues": "Interior stem tunneling packed with fine frass; stalks cleanly cut near soil line and lodged."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Indoxacarb",
+        "formulation": "14.5% SC",
+        "application_rate": "0.4 ml/L water",
+        "bio_rational_alternative": "Plant solid-stemmed cultivars; conserve Bracon cephi parasitic wasps",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Target flight window before oviposition; avoid water contamination."
+      },
+      "citation": "CIMMYT Wheat IPM Compendium / FAO International Plant Protection Convention"
+    },
+    {
+      "class_id": 35,
+      "key": "cerodonta_denticornis",
+      "common_name": "Cerodonta denticornis",
+      "scientific_name": "Cerodontha denticornis",
+      "pest_category": "Leaf Miner",
+      "primary_crop": "Wheat",
+      "plant_health": {
+        "affected_part": "Leaves",
+        "primary_symptom": "Linear Pale Leaf Mines",
+        "severity_level": "Low",
+        "visual_cues": "Narrow whitish-green serpentine mines running parallel to wheat leaf veins."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Cyromazine",
+        "formulation": "75% WP",
+        "application_rate": "0.2 g/L water",
+        "bio_rational_alternative": "Release Diglyphus isaea parasitoid wasps; conserve natural Eulophids",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Insect growth regulator; relatively safe for adult beneficial insects."
+      },
+      "citation": "CIMMYT Wheat IPM Compendium / FAO International Plant Protection Convention"
+    },
+    {
+      "class_id": 36,
+      "key": "beet_fly",
+      "common_name": "Beet Fly",
+      "scientific_name": "Pegomya hyoscyami",
+      "pest_category": "Leaf Miner",
+      "primary_crop": "Beet",
+      "plant_health": {
+        "affected_part": "Leaves",
+        "primary_symptom": "Blister Leaf Mines & Necrosis",
+        "severity_level": "Moderate",
+        "visual_cues": "Large translucent blister-like blotch mines on beet leaves, turning brown and brittle."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spinosad",
+        "formulation": "48% SC",
+        "application_rate": "0.3 ml/L water",
+        "bio_rational_alternative": "Yellow water pan traps for adult flies; conserve Opius nitidulator",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Spray early before larvae penetrate deep inside the mesophyll layer."
+      },
+      "citation": "FAO Sugarbeet IPM Guidelines / Sugar Industry Research Institute"
+    },
+    {
+      "class_id": 37,
+      "key": "flea_beetle",
+      "common_name": "Flea Beetle",
+      "scientific_name": "Chaetocnema concinna",
+      "pest_category": "Foliar Beetle",
+      "primary_crop": "Beet",
+      "plant_health": {
+        "affected_part": "Cotyledons & Leaves",
+        "primary_symptom": "Shot-hole Foliar Perforations",
+        "severity_level": "Moderate",
+        "visual_cues": "Numerous tiny rounded shot-holes on cotyledons and leaves, stunting seedling growth."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Thiamethoxam",
+        "formulation": "25% WG",
+        "application_rate": "0.25 g/L water",
+        "bio_rational_alternative": "Botanical pyrethrin spray; white floating row covers on seedlings",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Harmful to bees; do not apply when flowering weeds are present in the field."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 38,
+      "key": "cabbage_army_worm",
+      "common_name": "Cabbage Armyworm",
+      "scientific_name": "Mamestra brassicae",
+      "pest_category": "Defoliator",
+      "primary_crop": "Beet",
+      "plant_health": {
+        "affected_part": "Foliage & Crown",
+        "primary_symptom": "Extensive Skeletonization & Frass Piles",
+        "severity_level": "High",
+        "visual_cues": "Foliage extensively riddled with large holes; dense dark green frass in crown."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Emamectin benzoate",
+        "formulation": "5% SG",
+        "application_rate": "0.3 g/L water",
+        "bio_rational_alternative": "Mamestra brassicae nuclear polyhedrosis virus (MbNPV)",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Spray late evening when larvae actively feed on exposed foliage."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 39,
+      "key": "beet_army_worm",
+      "common_name": "Beet Armyworm",
+      "scientific_name": "Spodoptera exigua",
+      "pest_category": "Defoliator",
+      "primary_crop": "Vegetables / Corn / Beet",
+      "plant_health": {
+        "affected_part": "Foliage & Terminal Buds",
+        "primary_symptom": "Foliar Skeletonization & Webbed Clusters",
+        "severity_level": "High",
+        "visual_cues": "Young green larvae feeding gregariously under silken webs; older larvae strip leaves."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Emamectin benzoate",
+        "formulation": "5% SG",
+        "application_rate": "0.4 g/L water",
+        "bio_rational_alternative": "Spodoptera exigua nucleopolyhedrovirus (SeNPV) @ 1.5 L/ha; pheromone traps",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Rotate chemistry to prevent rapid resistance. Spray during evening hours."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 40,
+      "key": "beet_spot_flies",
+      "common_name": "Beet Spot Flies",
+      "scientific_name": "Psilopa leucostoma",
+      "pest_category": "Defoliator / Chewing Pest",
+      "primary_crop": "Beet",
+      "plant_health": {
+        "affected_part": "Foliage & Shoots",
+        "primary_symptom": "Tissue Chewing & Feeding Punctures",
+        "severity_level": "Moderate",
+        "visual_cues": "Visible feeding damage and Beet Spot Flies activity on plant surfaces."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole / Lambda-cyhalothrin",
+        "formulation": "18.5% SC / 5% EC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Botanical neem oil extract (5 ml/L); conserve native parasitic wasps",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Apply with calibrated low-drift nozzle; wear protective gear."
+      },
+      "citation": "FAO Sugarbeet IPM Guidelines / Sugar Industry Research Institute"
+    },
+    {
+      "class_id": 41,
+      "key": "meadow_moth",
+      "common_name": "Meadow Moth",
+      "scientific_name": "Loxostege sticticalis",
+      "pest_category": "Defoliator / Webworm",
+      "primary_crop": "Beet / Alfalfa",
+      "plant_health": {
+        "affected_part": "Leaves",
+        "primary_symptom": "Foliar Webbing & Total Defoliation",
+        "severity_level": "Severe",
+        "visual_cues": "Foliage enclosed in silken webs and rapidly stripped down to leaf veins."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole",
+        "formulation": "18.5% SC",
+        "application_rate": "150 ml/ha",
+        "bio_rational_alternative": "Bacillus thuringiensis subsp. kurstaki foliar dusting",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Apply during early instar larval stages before dense web formation."
+      },
+      "citation": "FAO Sugarbeet IPM Guidelines / Sugar Industry Research Institute"
+    },
+    {
+      "class_id": 42,
+      "key": "beet_weevil",
+      "common_name": "Beet Weevil",
+      "scientific_name": "Bothynoderes punctiventris",
+      "pest_category": "Foliar & Root Weevil",
+      "primary_crop": "Beet",
+      "plant_health": {
+        "affected_part": "Seedlings & Taproot",
+        "primary_symptom": "Severed Cotyledons & Root Cavities",
+        "severity_level": "High",
+        "visual_cues": "Adult weevils notch seedling stems; white grubs hollow out developing roots."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Fipronil",
+        "formulation": "5% SC",
+        "application_rate": "0.5 L/ha",
+        "bio_rational_alternative": "Deep autumn ploughing; Beauveria bassiana soil treatment",
+        "pre_harvest_interval_days": 30,
+        "safety_precautions": "Wear impervious protective suit; avoid drift near livestock pastures."
+      },
+      "citation": "FAO Sugarbeet IPM Guidelines / Sugar Industry Research Institute"
+    },
+    {
+      "class_id": 43,
+      "key": "sericaorient_alismots_chulsky",
+      "common_name": "Sericaorient alismots chulsky",
+      "scientific_name": "Maladera orientalis",
+      "pest_category": "Foliar & Root Pest",
+      "primary_crop": "Beet",
+      "plant_health": {
+        "affected_part": "Leaves & Roots",
+        "primary_symptom": "Irregular Foliar Serration & Root Pruning",
+        "severity_level": "Moderate",
+        "visual_cues": "Nocturnal adult beetles strip leaf margins; larvae chew feeder rootlets."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Lambda-cyhalothrin",
+        "formulation": "2.5% EC",
+        "application_rate": "1.0 ml/L water",
+        "bio_rational_alternative": "Blacklight traps for adult beetles; entomopathogenic nematodes",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Spray foliage at dusk; keep out of waterways and fish ponds."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 44,
+      "key": "alfalfa_weevil",
+      "common_name": "Alfalfa Weevil",
+      "scientific_name": "Hypera postica",
+      "pest_category": "Defoliator",
+      "primary_crop": "Alfalfa",
+      "plant_health": {
+        "affected_part": "Terminal Shoots & Leaves",
+        "primary_symptom": "Skeletonized Terminal Foliage",
+        "severity_level": "High",
+        "visual_cues": "Young terminal leaves skeletonized and bleached greyish-white; delayed regrowth."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Indoxacarb",
+        "formulation": "14.5% SC",
+        "application_rate": "350 ml/ha",
+        "bio_rational_alternative": "Bathyplectes curculionis parasitoid wasps; early harvest mowing",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Do not spray blooming alfalfa to safeguard pollinators."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 45,
+      "key": "flax_budworm",
+      "common_name": "Flax Budworm",
+      "scientific_name": "Heliothis ononis",
+      "pest_category": "Bud & Seed Pod Borer",
+      "primary_crop": "Alfalfa",
+      "plant_health": {
+        "affected_part": "Flower Buds & Seed Pods",
+        "primary_symptom": "Bored Buds & Seed Cavities",
+        "severity_level": "Moderate",
+        "visual_cues": "Round entrance holes in buds and seed capsules; chewed florets preventing seed set."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Indoxacarb",
+        "formulation": "14.5% SC",
+        "application_rate": "0.4 ml/L water",
+        "bio_rational_alternative": "Trichogramma releases; Bacillus thuringiensis foliar spray",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Avoid spraying when beneficial pollinators are visiting flowers."
+      },
+      "citation": "CABI Invasive Species Compendium (2024) / FAO Plant Protection Guidelines"
+    },
+    {
+      "class_id": 46,
+      "key": "alfalfa_plant_bug",
+      "common_name": "Alfalfa Plant Bug",
+      "scientific_name": "Adelphocoris lineolatus",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Alfalfa",
+      "plant_health": {
+        "affected_part": "Flower Buds & Shoots",
+        "primary_symptom": "Bud Blasting & Crinkled Leaves",
+        "severity_level": "Moderate",
+        "visual_cues": "Dry shriveled brown flower buds (bud blasting), crinkled leaves, and blossom drop."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Dimethoate",
+        "formulation": "40% EC",
+        "application_rate": "0.8 L/ha",
+        "bio_rational_alternative": "Timely early cutting of forage; Beauveria bassiana foliar drench",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "High hazard to pollinators; mow field borders before spraying."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 47,
+      "key": "tarnished_plant_bug",
+      "common_name": "Tarnished Plant Bug",
+      "scientific_name": "Lygus lineolaris",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Alfalfa",
+      "plant_health": {
+        "affected_part": "Growing Points & Florets",
+        "primary_symptom": "Apical Necrosis & Cat-facing",
+        "severity_level": "Moderate",
+        "visual_cues": "Distorted young growth, terminal bud death, blasted flower heads, cat-faced fruits."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Novaluron",
+        "formulation": "10% EC",
+        "application_rate": "0.75 ml/L water",
+        "bio_rational_alternative": "Alfalfa trap cropping; predatory Geocoris big-eyed bugs conservation",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Chitin synthesis inhibitor; apply when nymph thresholds exceed 2 per sweep."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 48,
+      "key": "locustoidea",
+      "common_name": "Locustoidea (Locust/Grasshopper)",
+      "scientific_name": "Locusta migratoria",
+      "pest_category": "Defoliator",
+      "primary_crop": "Alfalfa / Field Crops",
+      "plant_health": {
+        "affected_part": "Entire Foliage & Stems",
+        "primary_symptom": "Complete Plant Stripping",
+        "severity_level": "Severe",
+        "visual_cues": "Mass swarms stripping all green leaves, stems, and seed heads down to bare stalks."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Malathion",
+        "formulation": "50% EC",
+        "application_rate": "1.5 L/ha",
+        "bio_rational_alternative": "Metarhizium acridum fungal biopesticide (Green Muscle)",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Area-wide coordinated application; avoid contaminating open water catchments."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 49,
+      "key": "lytta_polita",
+      "common_name": "Lytta polita",
+      "scientific_name": "Lytta polita",
+      "pest_category": "Defoliator",
+      "primary_crop": "Legumes / Alfalfa",
+      "plant_health": {
+        "affected_part": "Flowers & Young Leaves",
+        "primary_symptom": "Blossom Destruction & Leaf Stripping",
+        "severity_level": "Moderate",
+        "visual_cues": "Slender metallic blister beetles swarming on blooming crops and devouring petals."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Cypermethrin",
+        "formulation": "5% EC",
+        "application_rate": "0.75 ml/L water",
+        "bio_rational_alternative": "Manual collection with protective gear; sweep-net perimeter borders",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Contains cantharidin blister toxin; hazardous to horses if trapped in hay."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 50,
+      "key": "legume_blister_beetle",
+      "common_name": "Legume Blister Beetle",
+      "scientific_name": "Epicauta subglabra",
+      "pest_category": "Defoliator",
+      "primary_crop": "Mungbean / Soybeans",
+      "plant_health": {
+        "affected_part": "Foliage & Floral Buds",
+        "primary_symptom": "Rapid Foliar Stripping in Patches",
+        "severity_level": "Moderate",
+        "visual_cues": "Aggregated clusters of greyish-black beetles consuming leaves and young pods."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Deltamethrin",
+        "formulation": "2.5% EC",
+        "application_rate": "0.6 ml/L water",
+        "bio_rational_alternative": "Conserve ground beetle predators; hand collect with gloves into soapy water",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Wear protective clothing; do not crush beetles against bare skin."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 51,
+      "key": "blister_beetle",
+      "common_name": "Blister Beetle",
+      "scientific_name": "Epicauta spp.",
+      "pest_category": "Defoliator",
+      "primary_crop": "Legumes / Alfalfa",
+      "plant_health": {
+        "affected_part": "Leaves & Blossoms",
+        "primary_symptom": "Defoliation & Flower Feeding",
+        "severity_level": "Moderate",
+        "visual_cues": "Elongated soft-bodied beetles feeding conspicuously on canopy tops."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Beta-cyfluthrin",
+        "formulation": "2.5% SC",
+        "application_rate": "1.0 ml/L water",
+        "bio_rational_alternative": "Flock poultry/chickens in field margins; entomopathogenic fungi",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "High bee hazard; apply strictly outside active foraging hours."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 52,
+      "key": "therioaphis_maculata_buckton",
+      "common_name": "Spotted Alfalfa Aphid",
+      "scientific_name": "Therioaphis maculata",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Alfalfa / Legumes",
+      "plant_health": {
+        "affected_part": "Lower Leaves & Stems",
+        "primary_symptom": "Vein Chlorosis & Premature Leaf Drop",
+        "severity_level": "High",
+        "visual_cues": "Pale yellow aphids with rows of distinct dark spots; honeydew covering lower stems."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Flonicamid",
+        "formulation": "50% WG",
+        "application_rate": "0.15 g/L water",
+        "bio_rational_alternative": "Conserve Trioxys complanatus parasitoids; plant aphid-resistant alfalfa cultivars",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Selective feeding blocker; highly safe for pollinators and predatory mites."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 53,
+      "key": "odontothrips_loti",
+      "common_name": "Odontothrips loti",
+      "scientific_name": "Odontothrips loti",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Legumes / Alfalfa",
+      "plant_health": {
+        "affected_part": "Flowers & Young Pods",
+        "primary_symptom": "Flower Blasting & Distorted Seed Pods",
+        "severity_level": "Moderate",
+        "visual_cues": "Dark brown thrips inside flowers causing premature petal drop and twisted pods."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spinetoram",
+        "formulation": "11.7% SC",
+        "application_rate": "0.4 ml/L water",
+        "bio_rational_alternative": "Blue sticky traps; release predatory Orius anthocorid bugs",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Do not apply during full bloom to safeguard native bumblebees."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 54,
+      "key": "thrips",
+      "common_name": "Thrips",
+      "scientific_name": "Stenchaetothrips biformis",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Rice",
+      "plant_health": {
+        "affected_part": "Seedling Leaves",
+        "primary_symptom": "Leaf Curl & Silvery Stippling",
+        "severity_level": "Low",
+        "visual_cues": "Upward leaf curling accompanied by translucent silvery longitudinal streaks."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spinetoram",
+        "formulation": "11.7% SC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Blue sticky cards (25/ha); botanical chili-garlic extract spray",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Limit to two sprays per crop season. Highly toxic to aquatic invertebrates."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 55,
+      "key": "alfalfa_seed_chalcid",
+      "common_name": "Alfalfa Seed Chalcid",
+      "scientific_name": "Bruchophagus roddi",
+      "pest_category": "Seed Borer",
+      "primary_crop": "Alfalfa / Legumes",
+      "plant_health": {
+        "affected_part": "Developing Seed Pods",
+        "primary_symptom": "Hollow Seeds & Pinhole Emergence Holes",
+        "severity_level": "High",
+        "visual_cues": "Seeds hollowed out inside pods; tiny circular exit holes in mature seed coats."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Indoxacarb",
+        "formulation": "14.5% SC",
+        "application_rate": "0.4 ml/L water",
+        "bio_rational_alternative": "Destroy chaff piles after harvest; plant early-maturing cultivars",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Chemical sprays ineffective once larvae enter seed pods; target adult flight."
+      },
+      "citation": "UC Davis Alfalfa & Forage IPM Guide / ICRISAT Grain Legumes Series"
+    },
+    {
+      "class_id": 56,
+      "key": "pieris_canidia",
+      "common_name": "Indian Cabbage White",
+      "scientific_name": "Pieris canidia",
+      "pest_category": "Defoliator",
+      "primary_crop": "Cruciferous Vegetables",
+      "plant_health": {
+        "affected_part": "Leaves & Head",
+        "primary_symptom": "Large Ragged Holes & Frass Deposits",
+        "severity_level": "High",
+        "visual_cues": "Velvety green caterpillars boring into head; leaves stripped to major veins."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole",
+        "formulation": "18.5% SC",
+        "application_rate": "0.3 ml/L water",
+        "bio_rational_alternative": "Bacillus thuringiensis subsp. kurstaki @ 1.5 kg/ha; Cotesia glomerata parasitoids",
+        "pre_harvest_interval_days": 3,
+        "safety_precautions": "High rainfastness; safe for non-target predatory beetles."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 57,
+      "key": "apolygus_lucorum",
+      "common_name": "Apolygus lucorum",
+      "scientific_name": "Apolygus lucorum",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Vitis (Grape)",
+      "plant_health": {
+        "affected_part": "Growing Tips & Flower Buds",
+        "primary_symptom": "Ragged Leaves & Blossom Drop",
+        "severity_level": "Moderate",
+        "visual_cues": "Leaves unraveling with ragged irregular holes; dried blackened flower clusters."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Thiamethoxam",
+        "formulation": "25% WG",
+        "application_rate": "0.2 g/L water",
+        "bio_rational_alternative": "Alfalfa trap crops around vineyard perimeter; spray before grape budburst",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Apply before full grape bloom to prevent flower drop."
+      },
+      "citation": "CABI Invasive Species Compendium (2024) / FAO Plant Protection Guidelines"
+    },
+    {
+      "class_id": 58,
+      "key": "limacodidae",
+      "common_name": "Limacodidae (Slug Caterpillar)",
+      "scientific_name": "Limacodidae",
+      "pest_category": "Defoliator (Stinging Caterpillar)",
+      "primary_crop": "Fruit Trees / Palms",
+      "plant_health": {
+        "affected_part": "Leaves",
+        "primary_symptom": "Windowpane Chewing & Complete Defoliation",
+        "severity_level": "Moderate",
+        "visual_cues": "Flattened slug-like caterpillars with bright warning colours and urticating stinging spines."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Emamectin benzoate",
+        "formulation": "5% SG",
+        "application_rate": "0.4 g/L water",
+        "bio_rational_alternative": "Bacillus thuringiensis spray; conserve parasitic Tachinid flies",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Wear thick protective gloves and face shield; stinging spines cause intense contact dermatitis."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 59,
+      "key": "viteus_vitifoliae",
+      "common_name": "Grape Phylloxera",
+      "scientific_name": "Viteus vitifoliae",
+      "pest_category": "Root & Foliar Gall Maker (Phylloxera)",
+      "primary_crop": "Grape (Vitis)",
+      "plant_health": {
+        "affected_part": "Roots & Foliage",
+        "primary_symptom": "Nodosities, Tuberosities & Stunted Vines",
+        "severity_level": "Severe",
+        "visual_cues": "Hook-shaped galls on rootlets (nodosities); leaf-galling pockets on canopy."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spirotetramat",
+        "formulation": "15.3% OD",
+        "application_rate": "0.6 ml/L water",
+        "bio_rational_alternative": "Graft onto resistant American rootstocks (e.g. 110R, SO4); flood irrigation",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Two-way systemic movement; apply during active shoot growth."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 60,
+      "key": "colomerus_vitis",
+      "common_name": "Grape Leaf Blister Mite",
+      "scientific_name": "Colomerus vitis",
+      "pest_category": "Gall / Rust Mite",
+      "primary_crop": "Vitis (Grape)",
+      "plant_health": {
+        "affected_part": "Foliage & Buds",
+        "primary_symptom": "Erinose Leaf Blisters & Felt Galls",
+        "severity_level": "Moderate",
+        "visual_cues": "Prominent convex blister galls on upper leaf surface with dense white felt on underside."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spirodiclofen",
+        "formulation": "24% SC",
+        "application_rate": "0.4 ml/L water",
+        "bio_rational_alternative": "Wettable sulfur @ 3 g/L; predatory mites (Typhlodromus pyri)",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Do not apply sulfur if ambient temperatures exceed 32°C."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 61,
+      "key": "brevipoalpus_lewisi_mcgregor",
+      "common_name": "Citrus Flat Mite",
+      "scientific_name": "Brevipalpus lewisi",
+      "pest_category": "False Spider Mite",
+      "primary_crop": "Vitis (Grape)",
+      "plant_health": {
+        "affected_part": "Bunch Stems & Berries",
+        "primary_symptom": "Stem Necrosis & Berry Russeting",
+        "severity_level": "Moderate",
+        "visual_cues": "Brown necrotic scarring on grape bunch stems causing berry drop; russeting on fruit."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Pyridaben",
+        "formulation": "20% WP",
+        "application_rate": "0.5 g/L water",
+        "bio_rational_alternative": "Mineral horticultural oil spray (1%); conserve Phytoseiid predatory mites",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Rotate with alternate miticides to suppress rapid acaricide resistance."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 62,
+      "key": "oides_decempunctata",
+      "common_name": "Oides decempunctata",
+      "scientific_name": "Oides decempunctata",
+      "pest_category": "Defoliator",
+      "primary_crop": "Grape (Vitis)",
+      "plant_health": {
+        "affected_part": "Leaves & Young Shoots",
+        "primary_symptom": "Skeletonized Foliage & Defoliated Canes",
+        "severity_level": "Moderate",
+        "visual_cues": "Yellow-orange chrysomelid beetles with black spots and black larvae stripping leaf blades."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Lambda-cyhalothrin",
+        "formulation": "5% EC",
+        "application_rate": "0.8 ml/L water",
+        "bio_rational_alternative": "Hand collection into soapy water; botanical azadirachtin neem spray",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Toxic to aquatic life; maintain 10-meter buffer strip near waterways."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 63,
+      "key": "polyphagotars_onemus_latus",
+      "common_name": "Broad Mite",
+      "scientific_name": "Polyphagotarsonemus latus",
+      "pest_category": "Broad Mite / Sap Sucker",
+      "primary_crop": "Eggplant / Chilli / Peppers",
+      "plant_health": {
+        "affected_part": "Young Leaves & Growing Tips",
+        "primary_symptom": "Downward Cupping & Leathery Bronzing",
+        "severity_level": "High",
+        "visual_cues": "Leaves curl downward tightly, turn dark glossy green and brittle/leathery; corky russeted fruit."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spiromesifen",
+        "formulation": "22.9% SC",
+        "application_rate": "0.8 ml/L water",
+        "bio_rational_alternative": "Wettable sulfur @ 3.0 g/L; predatory mites (Neoseiulus barkeri)",
+        "pre_harvest_interval_days": 5,
+        "safety_precautions": "Thorough coverage of shoot tips required; do not mix sulfur with oils."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 64,
+      "key": "pseudococcus_comstocki_kuwana",
+      "common_name": "Comstock Mealybug",
+      "scientific_name": "Pseudococcus comstocki",
+      "pest_category": "Mealybug / Sap Sucker",
+      "primary_crop": "Fruit Trees / Grapes",
+      "plant_health": {
+        "affected_part": "Fruit Calyx, Bark & Twigs",
+        "primary_symptom": "White Cottony Wax & Black Sooty Mold",
+        "severity_level": "High",
+        "visual_cues": "Dense clusters of white mealybugs in bark crevices and fruit stems; honeydew staining."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spirotetramat",
+        "formulation": "15.3% OD",
+        "application_rate": "0.75 ml/L water + penetrant",
+        "bio_rational_alternative": "Cryptolaemus montrouzieri ladybird predator release; dormant mineral oil (2%)",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Requires penetrant surfactant to break hydrophobic mealybug wax coating."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 65,
+      "key": "parathrene_regalis",
+      "common_name": "Parathrene regalis",
+      "scientific_name": "Parathrene regalis",
+      "pest_category": "Wood Borer (Clearwing Moth)",
+      "primary_crop": "Fruit Trees / Grape",
+      "plant_health": {
+        "affected_part": "Trunk & Major Limbs",
+        "primary_symptom": "Swollen Trunk Galls & Wood Frass",
+        "severity_level": "High",
+        "visual_cues": "Wasp-mimicking clearwing moth larvae boring deep galleries; weeping sawdust frass."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorpyrifos",
+        "formulation": "48% EC",
+        "application_rate": "4.0 ml/L directed trunk spray",
+        "bio_rational_alternative": "Pheromone delta traps for male monitoring; Steinernema carpocapsae nematodes",
+        "pre_harvest_interval_days": 30,
+        "safety_precautions": "Directed bark treatment; fatal if inhaled. Use vapor respirator."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 66,
+      "key": "ampelophaga",
+      "common_name": "Ampelophaga (Grape Sphinx)",
+      "scientific_name": "Ampelophaga rubiginosa",
+      "pest_category": "Defoliator",
+      "primary_crop": "Vitis (Grape)",
+      "plant_health": {
+        "affected_part": "Leaves & Young Shoots",
+        "primary_symptom": "Voracious Leaf Chewing",
+        "severity_level": "Moderate",
+        "visual_cues": "Large robust horned caterpillars devouring entire grape leaves, leaving only main veins."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole",
+        "formulation": "18.5% SC",
+        "application_rate": "0.2 ml/L water",
+        "bio_rational_alternative": "Handpick large larvae; Bacillus thuringiensis subsp. kurstaki foliar spray",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Target early larval instars for optimal biological control efficacy."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 67,
+      "key": "lycorma_delicatula",
+      "common_name": "Spotted Lanternfly",
+      "scientific_name": "Lycorma delicatula",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Vitis (Grape)",
+      "plant_health": {
+        "affected_part": "Canes & Trunk",
+        "primary_symptom": "Weeping Wounds & Sooty Mold Encrustation",
+        "severity_level": "High",
+        "visual_cues": "Copious honeydew coating leaves and fruit with black sooty mold; weeping trunk lesions."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Dinotefuran",
+        "formulation": "20% SG",
+        "application_rate": "0.5 g/L water",
+        "bio_rational_alternative": "Tree banding with sticky barrier bands; Beauveria bassiana applications",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Do not apply during bloom; toxic to pollinators."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 68,
+      "key": "xylotrechus",
+      "common_name": "Xylotrechus (Grape Borer)",
+      "scientific_name": "Xylotrechus pyrrhoderus",
+      "pest_category": "Wood Borer",
+      "primary_crop": "Vitis (Grape)",
+      "plant_health": {
+        "affected_part": "Canes & Trunk",
+        "primary_symptom": "Swollen Nodal Entry & Vine Breakage",
+        "severity_level": "High",
+        "visual_cues": "Nodal swellings on green shoots with frass exit holes; snapped vines under crop load."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorpyrifos",
+        "formulation": "48% EC",
+        "application_rate": "5.0 ml/L directed trunk paint",
+        "bio_rational_alternative": "Prune and burn infested canes during winter dormancy",
+        "pre_harvest_interval_days": 30,
+        "safety_precautions": "Directed trunk application only; never spray fruit clusters."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 69,
+      "key": "cicadella_viridis",
+      "common_name": "Green Leafhopper",
+      "scientific_name": "Cicadella viridis",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Vitis (Grape)",
+      "plant_health": {
+        "affected_part": "Leaves & Young Shoots",
+        "primary_symptom": "Foliar Stippling & Slit Wounds",
+        "severity_level": "Low",
+        "visual_cues": "Fine yellow chlorotic stippling on leaves; crescent-shaped slit scars on young twigs."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Acetamiprid",
+        "formulation": "20% SP",
+        "application_rate": "0.2 g/L water",
+        "bio_rational_alternative": "Weed management in vineyard rows; conserve Chrysoperla carnea green lacewings",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Avoid spraying near waterways; wear protective gloves during mixing."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 70,
+      "key": "miridae",
+      "common_name": "Miridae (Plant Bug)",
+      "scientific_name": "Apolygus lucorum",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Vitis (Grape)",
+      "plant_health": {
+        "affected_part": "Growing Tips & Flower Buds",
+        "primary_symptom": "Ragged Leaves & Blossom Drop",
+        "severity_level": "Moderate",
+        "visual_cues": "Leaves unraveling with ragged irregular holes; dried blackened flower clusters."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Thiamethoxam",
+        "formulation": "25% WG",
+        "application_rate": "0.2 g/L water",
+        "bio_rational_alternative": "Alfalfa trap crops around vineyard perimeter; spray before grape budburst",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Apply before full grape bloom to prevent flower drop."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 71,
+      "key": "trialeurodes_vaporariorum",
+      "common_name": "Greenhouse Whitefly",
+      "scientific_name": "Trialeurodes vaporariorum",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Vitis / Greenhouse Crops",
+      "plant_health": {
+        "affected_part": "Foliage Underside",
+        "primary_symptom": "Chlorotic Mottling & Sooty Mold",
+        "severity_level": "High",
+        "visual_cues": "Clouds of tiny white flies under leaves; dense honeydew and sooty mold film."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spiromesifen",
+        "formulation": "22.9% SC",
+        "application_rate": "0.8 ml/L water",
+        "bio_rational_alternative": "Encarsia formosa parasitic wasps; yellow sticky sheets (30 traps/ha)",
+        "pre_harvest_interval_days": 3,
+        "safety_precautions": "Thorough under-leaf spray coverage required; wear splash goggles."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 72,
+      "key": "erythroneura_apicalis",
+      "common_name": "Erythroneura apicalis",
+      "scientific_name": "Erythroneura apicalis",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Vitis (Grape)",
+      "plant_health": {
+        "affected_part": "Foliage",
+        "primary_symptom": "Dense Pale Stippling & Leaf Bronzing",
+        "severity_level": "Moderate",
+        "visual_cues": "Extensive pale yellow stippling across leaf veins, progressing to leaf bronzing."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Buprofezin",
+        "formulation": "25% SC",
+        "application_rate": "0.8 ml/L water",
+        "bio_rational_alternative": "Conserve Anagrus erythroneurae parasitoid wasps",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Chitin synthesis inhibitor targeting immature nymphs."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 73,
+      "key": "papilio_xuthus",
+      "common_name": "Asian Swallowtail",
+      "scientific_name": "Papilio xuthus",
+      "pest_category": "Defoliator",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Flush Shoots & Young Leaves",
+        "primary_symptom": "Voracious Flush Defoliation",
+        "severity_level": "Moderate",
+        "visual_cues": "Young larvae resemble bird droppings; mature larvae large green caterpillars with osmeteria horns."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole",
+        "formulation": "18.5% SC",
+        "application_rate": "0.25 ml/L water",
+        "bio_rational_alternative": "Bacillus thuringiensis subsp. kurstaki; hand-picking on young citrus trees",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Extremely safe for beneficial parasitoids; low toxicity to mammals."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 74,
+      "key": "panonchus_citri_mcgregor",
+      "common_name": "Citrus Red Mite",
+      "scientific_name": "Panonychus citri",
+      "pest_category": "Mite / Sap Sucker",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Foliage & Fruit",
+        "primary_symptom": "Silvery-Grey Speckling & Leaf Drop",
+        "severity_level": "High",
+        "visual_cues": "Tiny dark red mites; foliage turns pale silvery-grey, followed by severe leaf drop."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Hexythiazox",
+        "formulation": "10% EC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Release predatory mites (Neoseiulus californicus); mineral oil (1%)",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Ovicidal and nymphal action; does not kill adults immediately."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 75,
+      "key": "phyllocoptes_oleiverus_ashmead",
+      "common_name": "Citrus Rust Mite",
+      "scientific_name": "Phyllocoptruta oleivora",
+      "pest_category": "Rust Mite",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Fruit Rind & Foliage",
+        "primary_symptom": "Sharkskin Fruit Russeting & Bronzing",
+        "severity_level": "High",
+        "visual_cues": "Fruit rind develops dull sharkskin brown/black russeting, reducing fresh market value."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spiromesifen",
+        "formulation": "22.9% SC",
+        "application_rate": "0.6 ml/L water",
+        "bio_rational_alternative": "Wettable sulfur @ 2.5 g/L; Hirsutella thompsonii fungal pathogen",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Do not mix sulfur with horticultural oils; maintain 21-day safety gap."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 76,
+      "key": "icerya_purchasi_maskell",
+      "common_name": "Cottony Cushion Scale",
+      "scientific_name": "Icerya purchasi",
+      "pest_category": "Scale / Sap Sucker",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Twigs, Branches & Leaves",
+        "primary_symptom": "Fluted White Egg Sacs & Twig Dieback",
+        "severity_level": "High",
+        "visual_cues": "Conspicuous large ridged snow-white egg sacs attached to reddish-brown scales on branches."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Pyriproxyfen",
+        "formulation": "10% EC",
+        "application_rate": "0.75 ml/L water",
+        "bio_rational_alternative": "Vedalia beetle (Rodolia cardinalis) conservation/release; 1.5% narrow-range oil",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Do not spray broad-spectrum pyrethroids which decimate Vedalia ladybirds."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 77,
+      "key": "unaspis_yanonensis",
+      "common_name": "Arrowhead Scale",
+      "scientific_name": "Unaspis yanonensis",
+      "pest_category": "Armored Scale",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Leaves, Twigs & Fruit",
+        "primary_symptom": "Arrowhead Scale Crust & Leaf Chlorosis",
+        "severity_level": "Severe",
+        "visual_cues": "Brown oyster-shell-shaped female scales and white felt-like male colonies encrusting leaves and fruit."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Buprofezin",
+        "formulation": "25% SC",
+        "application_rate": "1.0 ml/L water",
+        "bio_rational_alternative": "Introduce Coccobius fulvus parasitoid wasps; summer mineral oil (1%) at crawler stage",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Target crawler emergence window; adult scales protected by impervious wax covers."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 78,
+      "key": "ceroplastes_rubens",
+      "common_name": "Red Wax Scale",
+      "scientific_name": "Ceroplastes rubens",
+      "pest_category": "Soft Scale",
+      "primary_crop": "Citrus / Mango",
+      "plant_health": {
+        "affected_part": "Leaves & Green Twigs",
+        "primary_symptom": "Pink Wax Scale Encrustation & Soot",
+        "severity_level": "Moderate",
+        "visual_cues": "Globular pink-red waxy scales with four distinct white waxy bands; heavy sooty mold."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Acetamiprid",
+        "formulation": "20% SP",
+        "application_rate": "0.3 g/L water",
+        "bio_rational_alternative": "Conserve Anicetus beneficus parasitoid wasps; apply summer mineral oil spray",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Ensure high spray pressure to penetrate dense citrus canopies."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 79,
+      "key": "chrysomphalus_aonidum",
+      "common_name": "Florida Red Scale",
+      "scientific_name": "Chrysomphalus aonidum",
+      "pest_category": "Armored Scale",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Fruit & Leaves",
+        "primary_symptom": "Dark Circular Pitted Scales on Rind",
+        "severity_level": "High",
+        "visual_cues": "Circular dark reddish-brown to black scales with a raised central nipple; pitted fruit peel."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spirotetramat",
+        "formulation": "15.3% OD",
+        "application_rate": "0.6 ml/L water",
+        "bio_rational_alternative": "Aphytis holoxanthus parasitic wasp releases; horticultural oil sprays",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Target active spring crawler migration for maximum control."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 80,
+      "key": "parlatoria_zizyphus_lucus",
+      "common_name": "Black Parlatoria Scale",
+      "scientific_name": "Parlatoria ziziphi",
+      "pest_category": "Defoliator / Chewing Pest",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Foliage & Shoots",
+        "primary_symptom": "Tissue Chewing & Feeding Punctures",
+        "severity_level": "Moderate",
+        "visual_cues": "Visible feeding damage and Black Parlatoria Scale activity on plant surfaces."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole / Lambda-cyhalothrin",
+        "formulation": "18.5% SC / 5% EC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Botanical neem oil extract (5 ml/L); conserve native parasitic wasps",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Apply with calibrated low-drift nozzle; wear protective gear."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 81,
+      "key": "nipaecoccus_vastalor",
+      "common_name": "Spherical Mealybug",
+      "scientific_name": "Nipaecoccus vastator",
+      "pest_category": "Mealybug",
+      "primary_crop": "Citrus / Fruit",
+      "plant_health": {
+        "affected_part": "Twigs, Leaves & Fruit Clusters",
+        "primary_symptom": "Globular Purplish Mealybug Clusters",
+        "severity_level": "High",
+        "visual_cues": "Spherical dark purple mealybugs covered in thick white or creamy wax; severe twig distortion."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Clothianidin",
+        "formulation": "50% WDG",
+        "application_rate": "0.2 g/L water",
+        "bio_rational_alternative": "Release Anagyrus dactylopii parasitoids; prune heavily infested shoots",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Systemic action; avoid applying during flowering to safeguard bees."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 82,
+      "key": "aleurocanthus_spiniferus",
+      "common_name": "Orange Spiny Whitefly",
+      "scientific_name": "Aleurocanthus spiniferus",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Underside Foliage",
+        "primary_symptom": "Spiny Black Nymphs & Sooty Mold",
+        "severity_level": "High",
+        "visual_cues": "Black shiny spiny nymphs ringed with white wax fringe; jet-black sooty mold encrustation."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Acetamiprid",
+        "formulation": "20% SP",
+        "application_rate": "0.3 g/L water",
+        "bio_rational_alternative": "Conserve Encarsia smithi parasitoid wasps; apply 1% summer horticultural oil",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Direct spray to undersides of leaves where nymphs reside."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 83,
+      "key": "tetradacus_c_bactrocera_minax",
+      "common_name": "Chinese Citrus Fly",
+      "scientific_name": "Bactrocera minax",
+      "pest_category": "Fruit Fly",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Fruit",
+        "primary_symptom": "Premature Yellowing & Fruit Drop",
+        "severity_level": "Severe",
+        "visual_cues": "Puncture oviposition mark turning brown; maggot-infested fruit drops before harvest."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spinosad",
+        "formulation": "0.02% Protein Bait",
+        "application_rate": "Spot spray 1.5 L/ha bait",
+        "bio_rational_alternative": "Protein hydrolysate bait stations; soil raking to expose pupae in winter",
+        "pre_harvest_interval_days": 1,
+        "safety_precautions": "Apply as coarse droplets to leaves; minimal chemical volume required."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 84,
+      "key": "dacus_dorsalis",
+      "common_name": "Oriental Fruit Fly",
+      "scientific_name": "Bactrocera dorsalis",
+      "pest_category": "Fruit Fly",
+      "primary_crop": "Mango / Citrus / Squash",
+      "plant_health": {
+        "affected_part": "Ripening Fruit",
+        "primary_symptom": "Oviposition Punctures & Internal Rot",
+        "severity_level": "Severe",
+        "visual_cues": "Dark pinpoint oviposition punctures leaking juice; interior fruit turns mushy and maggot-ridden."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Malathion + Protein Bait",
+        "formulation": "50% EC + Hydrolyzed Protein",
+        "application_rate": "2.0 ml + 10 ml/L water bait spray",
+        "bio_rational_alternative": "Methyl eugenol pheromone male-annihilation traps; fruit bagging",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Bait application only on outer foliage; never blanket spray entire crop."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 85,
+      "key": "bactrocera_tsuneonis",
+      "common_name": "Japanese Orange Fly",
+      "scientific_name": "Bactrocera tsuneonis",
+      "pest_category": "Fruit Fly",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Fruit Flesh",
+        "primary_symptom": "Pitted Rind & Premature Internal Rot",
+        "severity_level": "Severe",
+        "visual_cues": "Yellowing fruit with sunken brown oviposition scars; pulp decomposing internally."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spinosad",
+        "formulation": "0.02% GF-120 Fruit Fly Bait",
+        "application_rate": "1.0 - 1.5 L/ha spot spray",
+        "bio_rational_alternative": "Collect and destroy fallen fruits in sealed bags; protein bait sprays",
+        "pre_harvest_interval_days": 1,
+        "safety_precautions": "Coarse droplet application; organically certified and environmentally benign."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 86,
+      "key": "prodenia_litura",
+      "common_name": "Tobacco Cutworm / Cluster Caterpillar",
+      "scientific_name": "Spodoptera litura",
+      "pest_category": "Defoliator",
+      "primary_crop": "Citrus / Vegetables",
+      "plant_health": {
+        "affected_part": "Leaves & Tender Fruit Rinds",
+        "primary_symptom": "Aggressive Foliar Skeletonization",
+        "severity_level": "High",
+        "visual_cues": "Large irregular holes chewed through leaves; young fruit rind surface gnawed."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Indoxacarb",
+        "formulation": "14.5% SC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Spodoptera litura NPV (SlNPV); pheromone traps (5 traps/ha)",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Apply at dusk; highly effective against nocturnal larval stages."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 87,
+      "key": "adristyrannus",
+      "common_name": "Adristyrannus",
+      "scientific_name": "Adristyrannus",
+      "pest_category": "Bark / Wood Borer",
+      "primary_crop": "Citrus / Trees",
+      "plant_health": {
+        "affected_part": "Main Trunk & Scaffolds",
+        "primary_symptom": "Trunk Galleries & Structural Weakening",
+        "severity_level": "High",
+        "visual_cues": "Large boreholes in lower trunk with expelled wood shavings and localized sap leakage."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorpyrifos",
+        "formulation": "48% EC",
+        "application_rate": "5.0 ml/L injected into boreholes",
+        "bio_rational_alternative": "Probe boreholes with flexible wire to kill larvae; plug holes with mud/cotton",
+        "pre_harvest_interval_days": 30,
+        "safety_precautions": "Directed borehole injection; seal treated holes immediately."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 88,
+      "key": "phyllocnistis_citrella_stainton",
+      "common_name": "Citrus Leafminer",
+      "scientific_name": "Phyllocnistis citrella",
+      "pest_category": "Leaf Miner",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Young Flush Leaves",
+        "primary_symptom": "Silvery Serpentine Mines & Flush Curling",
+        "severity_level": "High",
+        "visual_cues": "Silvery glistening serpentine mines inside young leaf cuticle, causing severe leaf curling."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Abamectin",
+        "formulation": "1.8% EC",
+        "application_rate": "0.6 ml/L water + 0.5% mineral oil",
+        "bio_rational_alternative": "Pheromone mating disruption; conserve Ageniaspis citricola",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Apply strictly at 50% flush emergence before leaf tissue hardens."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 89,
+      "key": "toxoptera_citricidus",
+      "common_name": "Brown Citrus Aphid",
+      "scientific_name": "Toxoptera citricida",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Flush Shoots & Leaves",
+        "primary_symptom": "Severe Leaf Curl & CTV Virus Vectoring",
+        "severity_level": "High",
+        "visual_cues": "Dark brown/black aphid colonies tightly curled in new flushes; vectors Citrus Tristeza Virus."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Acetamiprid",
+        "formulation": "20% SP",
+        "application_rate": "0.3 g/L water",
+        "bio_rational_alternative": "Release Lysiphlebus testaceipes parasitic wasps; summer mineral oil (1%)",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Vector control is crucial; eradicate confirmed CTV-infected trees."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 90,
+      "key": "toxoptera_aurantii",
+      "common_name": "Black Citrus Aphid",
+      "scientific_name": "Toxoptera aurantii",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Young Shoots & Blossoms",
+        "primary_symptom": "Leaf Curling & Flower Distortion",
+        "severity_level": "Moderate",
+        "visual_cues": "Dense black aphid colonies on young flush shoots; crinkling leaves and honeydew."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Imidacloprid",
+        "formulation": "17.8% SL",
+        "application_rate": "0.3 ml/L water",
+        "bio_rational_alternative": "Neem seed oil (5 ml/L); conserve Chrysoperla carnea green lacewings",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Harmful to bees; spray strictly outside citrus blossom period."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 91,
+      "key": "aphis_citricola_vander_goot",
+      "common_name": "Spirea Aphid",
+      "scientific_name": "Aphis spiraecola",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Citrus",
+      "plant_health": {
+        "affected_part": "Terminal Flush Shoots",
+        "primary_symptom": "Downward Foliar Rolling & Stunting",
+        "severity_level": "Moderate",
+        "visual_cues": "Bright greenish-yellow aphids clustering tightly on undersides of new flush shoots."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Thiamethoxam",
+        "formulation": "25% WG",
+        "application_rate": "0.2 g/L water",
+        "bio_rational_alternative": "Spray horticultural mineral oil (1.0%); conserve Coccinellid beetles",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Do not spray on high-temperature dry afternoons; wear PPE."
+      },
+      "citation": "UC Davis Statewide IPM Program: Citrus Pest Management / USDA APHIS"
+    },
+    {
+      "class_id": 92,
+      "key": "scirtothrips_dorsalis_hood",
+      "common_name": "Chilli Thrips / Yellow Tea Thrips",
+      "scientific_name": "Scirtothrips dorsalis",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Citrus / Chilli",
+      "plant_health": {
+        "affected_part": "Young Leaves & Fruit Calyx",
+        "primary_symptom": "Ring Scarring & Boat-shaped Leaf Curl",
+        "severity_level": "High",
+        "visual_cues": "Greyish-brown ring scars around fruit button; upward boat-shaped leaf curl."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Spinetoram",
+        "formulation": "11.7% SC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Blue sticky traps; predatory mites (Amblyseius swirskii)",
+        "pre_harvest_interval_days": 7,
+        "safety_precautions": "Rotate active ingredients to mitigate severe insecticide resistance."
+      },
+      "citation": "AVRDC The World Vegetable Center IPM Guide / FAO Regional Plant Protection"
+    },
+    {
+      "class_id": 93,
+      "key": "dasineura_sp",
+      "common_name": "Dasineura Gall Midge",
+      "scientific_name": "Dasineura spp.",
+      "pest_category": "Gall Maker",
+      "primary_crop": "Citrus / Fruit Trees",
+      "plant_health": {
+        "affected_part": "Tender Leaves & Buds",
+        "primary_symptom": "Rolled Leaf Margins & Swollen Galls",
+        "severity_level": "Low",
+        "visual_cues": "Leaf margins rolled tightly inward into swollen tubular galls containing red/white maggots."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Abamectin",
+        "formulation": "1.8% EC",
+        "application_rate": "0.5 ml/L water",
+        "bio_rational_alternative": "Prune and destroy infested terminal galls; conserve predatory anthocorid bugs",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Spray at bud burst when adults emerge before gall closure."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 94,
+      "key": "lawana_imitata_melichar",
+      "common_name": "Lawana imitata Flatid Planthopper",
+      "scientific_name": "Lawana imitata",
+      "pest_category": "Flatid Planthopper",
+      "primary_crop": "Fruit Trees / Mango",
+      "plant_health": {
+        "affected_part": "Tender Shoots & Panicles",
+        "primary_symptom": "White Waxy Coating & Sap Depletion",
+        "severity_level": "Moderate",
+        "visual_cues": "Shoots covered in white filamentous wax; moth-like white planthoppers jumping when disturbed."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Clothianidin",
+        "formulation": "50% WDG",
+        "application_rate": "0.15 g/L water",
+        "bio_rational_alternative": "Horticultural insecticidal soap spray; prune densely shaded shoots",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "High volume spray required to penetrate waxy filaments."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 95,
+      "key": "salurnis_marginella_guerr",
+      "common_name": "Salurnis marginella Planthopper",
+      "scientific_name": "Salurnis marginella",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Citrus / Fruit Trees",
+      "plant_health": {
+        "affected_part": "Green Twigs & Foliage",
+        "primary_symptom": "Powdery Wax & Honeydew Soot",
+        "severity_level": "Low",
+        "visual_cues": "Broad-winged green planthoppers excreting white powdery waxy secretions along twigs."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Lambda-cyhalothrin",
+        "formulation": "2.5% EC",
+        "application_rate": "1.0 ml/L water",
+        "bio_rational_alternative": "Horticultural oil sprays; light traps for adult planthoppers",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Wash off heavy sooty mold with dilute soap rinse after treatment."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 96,
+      "key": "deporaus_marginatus_pascoe",
+      "common_name": "Mango Leaf-Cutting Weevil",
+      "scientific_name": "Deporaus marginatus",
+      "pest_category": "Leaf-Cutting Weevil",
+      "primary_crop": "Mango",
+      "plant_health": {
+        "affected_part": "Young Flush Leaves",
+        "primary_symptom": "Severed Leaf Blades & Floor Litter",
+        "severity_level": "High",
+        "visual_cues": "Tender new leaves cleanly severed as if cut with scissors; fallen leaf tips litter ground."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Lambda-cyhalothrin",
+        "formulation": "5% EC",
+        "application_rate": "0.8 ml/L water",
+        "bio_rational_alternative": "Collect and burn fallen severed leaf tips containing eggs; neem kernel extract",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Spray immediately upon flush emergence before oviposition cutting begins."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 97,
+      "key": "chlumetia_transversa",
+      "common_name": "Mango Shoot Borer",
+      "scientific_name": "Chlumetia transversa",
+      "pest_category": "Shoot Borer",
+      "primary_crop": "Mango",
+      "plant_health": {
+        "affected_part": "Terminal Growing Shoots",
+        "primary_symptom": "Wilted Shoot Tips & Dieback",
+        "severity_level": "Severe",
+        "visual_cues": "Young terminal shoots turn brown, blacken, and droop with entry holes and frass."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Chlorantraniliprole",
+        "formulation": "18.5% SC",
+        "application_rate": "0.3 ml/L water",
+        "bio_rational_alternative": "Prune and destroy wilted shoot tips 5 cm below boreholes; Bt sprays",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Target young flushes early; spray before larvae tunnel inside shoots."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 98,
+      "key": "mango_flat_beak_leafhopper",
+      "common_name": "Mango Flat Beak Leafhopper",
+      "scientific_name": "Idioscopus niveosparsus",
+      "pest_category": "Sucking Insect",
+      "primary_crop": "Mango",
+      "plant_health": {
+        "affected_part": "Inflorescence / Flower Panicles",
+        "primary_symptom": "Panicle Drying & Fruit Drop",
+        "severity_level": "Severe",
+        "visual_cues": "Wedge-shaped hoppers swarming on blossoms; flower panicles brown and wither; heavy honeydew."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Imidacloprid",
+        "formulation": "17.8% SL",
+        "application_rate": "0.3 ml/L water",
+        "bio_rational_alternative": "Metarhizium anisopliae @ 2.5 kg/ha; spray before floral buds open",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Never spray during open flower anthesis to protect honeybee pollinators."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    },
+    {
+      "class_id": 99,
+      "key": "rhytidodera_bowrinii_white",
+      "common_name": "Mango Branch Borer",
+      "scientific_name": "Rhytidodera bowringii",
+      "pest_category": "Stem & Branch Borer (Longhorn Beetle)",
+      "primary_crop": "Mango / Fruit",
+      "plant_health": {
+        "affected_part": "Branches & Main Trunk",
+        "primary_symptom": "Branch Dieback & Large Wood Cavities",
+        "severity_level": "Severe",
+        "visual_cues": "Large oval emergence holes on scaffold branches; branches dry up and break under fruit load."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Dichlorvos / Chlorpyrifos",
+        "formulation": "76% EC",
+        "application_rate": "5.0 ml/L into boreholes",
+        "bio_rational_alternative": "Inject petroleum kerosene or neem oil into tunnels and seal with clay/putty",
+        "pre_harvest_interval_days": 30,
+        "safety_precautions": "Wear organic vapor respirator; inject directly into tunnels only."
+      },
+      "citation": "CIMMYT Maize Doctor & Field Manual / USDA Agricultural Research Service (ARS)"
+    },
+    {
+      "class_id": 100,
+      "key": "sternochetus_frigidus",
+      "common_name": "Mango Pulp Weevil",
+      "scientific_name": "Sternochetus frigidus",
+      "pest_category": "Fruit Pulp Weevil",
+      "primary_crop": "Mango",
+      "plant_health": {
+        "affected_part": "Fruit Pulp & Seed",
+        "primary_symptom": "Internal Pulp Rot & Premature Drop",
+        "severity_level": "Severe",
+        "visual_cues": "Larvae tunneling through mango pulp leaving black rotting galleries; fruit skin often looks intact."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Thiamethoxam",
+        "formulation": "25% WG",
+        "application_rate": "0.3 g/L water",
+        "bio_rational_alternative": "Individual fruit bagging at marble stage; destroy fallen infested fruit",
+        "pre_harvest_interval_days": 21,
+        "safety_precautions": "Quarantine pest; strictly monitor export orchards."
+      },
+      "citation": "ICAR Central Institute for Subtropical Horticulture / CABI Crop Protection Compendium"
+    },
+    {
+      "class_id": 101,
+      "key": "cicadellidae",
+      "common_name": "Cicadellidae (Leafhopper Family)",
+      "scientific_name": "Cicadellidae",
+      "pest_category": "Leafhopper (Family General)",
+      "primary_crop": "Rice / Vegetables / Cereals",
+      "plant_health": {
+        "affected_part": "Foliage & Stems",
+        "primary_symptom": "Hopperburn, Chlorotic Stippling & Viral Vectoring",
+        "severity_level": "Moderate",
+        "visual_cues": "Active jumping leafhoppers on leaf undersides causing tip yellowing and viral stunt."
+      },
+      "pesticide_recommendation": {
+        "active_ingredient": "Clothianidin",
+        "formulation": "50% WDG",
+        "application_rate": "40 g/ha",
+        "bio_rational_alternative": "Yellow sticky cards (25/ha); conserve predatory mirid bugs and spiders",
+        "pre_harvest_interval_days": 14,
+        "safety_precautions": "Target lower canopy; avoid broad-spectrum pyrethroid resurgence."
+      },
+      "citation": "IRRI Rice Knowledge Bank / FAO Plant Production and Protection Paper 231"
+    }
+  ]
+}

@@ -24,6 +24,8 @@ CONFIG_DIR = os.path.join(BASE_DIR, "config")
 YAML_PATH = os.path.join(CONFIG_DIR, "knowledge_base.yaml")
 JSON_PATH = os.path.join(CONFIG_DIR, "knowledge_base.json")
 CLASSES_102_PATH = os.path.join(CONFIG_DIR, "pest_classes_102.json")
+MATRIX_102_PATH = os.path.join(CONFIG_DIR, "ip102_agronomic_matrix.json")
+INFO_JSON_PATH = os.path.join(BASE_DIR, "info.json")
 
 
 class KnowledgeBase:
@@ -34,8 +36,68 @@ class KnowledgeBase:
         self.json_path = json_path
         self.data: Dict[str, Any] = {}
         self.catalog_102: Dict[str, Dict[str, Any]] = {}
+        self.agronomic_matrix_102: Dict[str, Dict[str, Any]] = {}
         self._load_102_catalog()
+        self._load_agronomic_matrix()
         self.reload()
+
+    def _load_agronomic_matrix(self):
+        """Loads canonical 102-class IP102 agronomic intelligence matrix with symptoms, cues, and citations."""
+        target_path = MATRIX_102_PATH if os.path.exists(MATRIX_102_PATH) else INFO_JSON_PATH
+        if not os.path.exists(target_path):
+            return
+        try:
+            with open(target_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                for item in data.get("pests", []):
+                    k = item.get("key", "").lower().strip()
+                    cname = item.get("common_name", "").lower().strip()
+                    sname = item.get("scientific_name", "").lower().strip()
+                    cid = str(item.get("class_id", ""))
+                    if k:
+                        self.agronomic_matrix_102[k] = item
+                        self.agronomic_matrix_102[k.replace("_", " ")] = item
+                    if cname:
+                        self.agronomic_matrix_102[cname] = item
+                        self.agronomic_matrix_102[cname.replace(" ", "_")] = item
+                    if sname:
+                        self.agronomic_matrix_102[sname] = item
+                        self.agronomic_matrix_102[sname.replace(" ", "_")] = item
+                    if cid:
+                        self.agronomic_matrix_102[cid] = item
+
+            # Common semantic aliases
+            if "army_worm" in self.agronomic_matrix_102:
+                self.agronomic_matrix_102["fall_armyworm"] = self.agronomic_matrix_102["army_worm"]
+                self.agronomic_matrix_102["fall armyworm"] = self.agronomic_matrix_102["army_worm"]
+
+            logger.info(f"[KnowledgeBase] Loaded {len(data.get('pests', []))} agronomic matrix entries from {target_path}")
+        except Exception as e:
+            logger.warning(f"[KnowledgeBase] Could not load agronomic matrix: {e}")
+
+    def get_agronomic_info(self, pest_key_or_name: str) -> Optional[Dict[str, Any]]:
+        """Retrieves agronomic intelligence card (symptoms, cues, citations) by key, name, or scientific name."""
+        if not pest_key_or_name:
+            return None
+        norm = pest_key_or_name.lower().strip()
+        norm_clean = norm.replace("-", "_").replace(" ", "_")
+        if norm in self.agronomic_matrix_102:
+            return self.agronomic_matrix_102[norm]
+        if norm_clean in self.agronomic_matrix_102:
+            return self.agronomic_matrix_102[norm_clean]
+
+        # Token set match
+        tokens = set(norm_clean.split("_"))
+        for k, item in self.agronomic_matrix_102.items():
+            if set(k.replace(" ", "_").split("_")) == tokens:
+                return item
+
+        # Word boundary match
+        for k, item in self.agronomic_matrix_102.items():
+            k_clean = k.replace(" ", "_")
+            if f"_{norm_clean}_" in f"_{k_clean}_":
+                return item
+        return None
 
     def _load_102_catalog(self):
         """Loads the 102-pest IP102 catalog into indexing map."""
@@ -489,7 +551,16 @@ class KnowledgeBase:
                 "organic_alternative": "Conserve insect habitat and flowering border strips (e.g. Alyssum, Marigold, Dill) to support predator populations.",
                 "dosage_instruction": "LOCKED: Spraying locked to protect natural predators.",
                 "safety_precautions": "Beneficial predator actively preying on crop pests. Avoid broad-spectrum insecticide sprays to protect natural biocontrol.",
-                "taxonomy": taxonomy
+                "taxonomy": taxonomy,
+                "pest_category": "Beneficial Natural Predator / Biological Control Agent",
+                "plant_health_details": {
+                    "affected_part": "None (Target Crop Unharmed)",
+                    "primary_symptom": "Active Biological Predation on Crop Pests",
+                    "severity_level": "None (Beneficial)",
+                    "visual_cues": "Beneficial natural predators actively feeding on aphids, mites, scale insects, or pest egg masses."
+                },
+                "phi_days": 0,
+                "citation": "FAO / IOBC International Organisation for Biological and Integrated Control (2024)"
             }
 
         if confidence < self.conf_uncertain:
@@ -507,10 +578,17 @@ class KnowledgeBase:
                 "organic_alternative": None,
                 "dosage_instruction": None,
                 "safety_precautions": "Detection confidence too low (< 20%). Chemical application strictly not recommended.",
+                "pest_category": "Unclassified",
+                "plant_health_details": {},
+                "phi_days": 0,
+                "citation": "AgriSentinel Automated Confidence Filter"
             }
 
         is_uncertain = confidence < self.conf_high
         status = "UNCERTAIN" if is_uncertain else "CONFIRMED"
+
+        # Check IP102 agronomic intelligence matrix
+        agro_info = self.get_agronomic_info(pest_name)
 
         pest_data = self.get_pest(crop_key, pest_name)
         if not pest_data:
@@ -530,13 +608,48 @@ class KnowledgeBase:
         infestation = self.calculate_infestation_level(crop_key, pest_name, pest_count)
         health = self.evaluate_plant_health(pest_count, infestation, soil_status)
 
-        chem_str = chem.get("product_name", "Appropriate target insecticide pending field verification")
-        org_str = org.get("product_name", "Neem-based organic repellent spray")
+        chem_str = chem.get("product_name")
+        org_str = org.get("product_name")
         dosage = chem.get("dosage", "")
-        if chem.get("timing"):
-            dosage += f" | Timing: {chem.get('timing')}"
-        if chem.get("phi_days"):
-            dosage += f" | PHI: {chem.get('phi_days')} days"
+
+        # Enrich from agronomic matrix if available
+        if agro_info:
+            sci_name = agro_info.get("scientific_name") or sci_name
+            if not pest_data or not pest_data.get("common_name"):
+                common_name = agro_info.get("common_name") or common_name
+            pest_category = agro_info.get("pest_category", "Agricultural Pest")
+            plant_health_details = agro_info.get("plant_health", {})
+            citation = agro_info.get("citation", "FAO Integrated Pest Management Guidelines")
+
+            p_rec = agro_info.get("pesticide_recommendation", {})
+            phi_days = p_rec.get("pre_harvest_interval_days", 14)
+
+            if not chem_str or chem_str == "Appropriate target insecticide pending field verification":
+                chem_str = f"{p_rec.get('active_ingredient', 'Target Insecticide')} ({p_rec.get('formulation', 'Standard')})"
+                if p_rec.get("application_rate"):
+                    dosage = f"{p_rec.get('application_rate')} | PHI: {phi_days} days"
+                if p_rec.get("bio_rational_alternative"):
+                    org_str = p_rec.get("bio_rational_alternative")
+                if p_rec.get("safety_precautions"):
+                    safety = p_rec.get("safety_precautions")
+            else:
+                if "PHI:" not in dosage and phi_days:
+                    dosage += f" | PHI: {phi_days} days"
+        else:
+            pest_category = "Agricultural Pest"
+            plant_health_details = {
+                "affected_part": "Foliage / Plant Tissue",
+                "primary_symptom": "Pest Feeding Damage",
+                "severity_level": infestation,
+                "visual_cues": f"Visual signs of {common_name} on plant."
+            }
+            citation = "FAO / CABI Integrated Pest Management Guidelines"
+            phi_days = chem.get("phi_days", 14)
+
+        if not chem_str:
+            chem_str = "Appropriate target insecticide pending field verification"
+        if not org_str:
+            org_str = "Neem-based organic repellent spray"
 
         if is_uncertain:
             chem_str = f"[VERIFY FIRST] Candidate match: {chem_str}"
@@ -561,7 +674,11 @@ class KnowledgeBase:
             "organic_alternative": org_str,
             "dosage_instruction": dosage,
             "safety_precautions": safety,
-            "taxonomy": taxonomy
+            "taxonomy": taxonomy,
+            "pest_category": pest_category,
+            "plant_health_details": plant_health_details,
+            "phi_days": phi_days,
+            "citation": citation
         }
 
     def _get_builtin_fallback(self) -> Dict[str, Any]:

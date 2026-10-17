@@ -138,4 +138,34 @@ def test_beneficial_predator_protection_guard():
     assert "DO NOT SPRAY" not in rec_pest["recommended_pesticide"]
 
 
+def test_ip102_agronomic_matrix_and_citations():
+    """Verify full 102-class matrix loading, visual symptoms, and authoritative citations."""
+    # 1. Verify matrix loaded
+    assert len(knowledge_base.agronomic_matrix_102) >= 102
+
+    # 2. Rice pest recommendation & citation
+    rec_rice = knowledge_base.get_recommendation("rice", "rice_leaf_roller", confidence=0.85, pest_count=2)
+    assert rec_rice["status"] == "CONFIRMED"
+    assert "IRRI" in rec_rice["citation"]
+    assert "plant_health_details" in rec_rice
+    assert "visual_cues" in rec_rice["plant_health_details"]
+    assert rec_rice["phi_days"] == 14
+
+    # 3. Corn pest recommendation & citation
+    rec_corn = knowledge_base.get_recommendation("corn", "corn_borer", confidence=0.80, pest_count=1)
+    assert rec_corn["status"] == "CONFIRMED"
+    assert "CIMMYT" in rec_corn["citation"]
+    assert "Tassel" in rec_corn["plant_health_details"]["primary_symptom"] or "frass" in rec_corn["plant_health_details"]["visual_cues"].lower()
+
+    # 4. Citrus pest recommendation & citation
+    rec_citrus = knowledge_base.get_recommendation("citrus", "panonchus_citri_mcgregor", confidence=0.82, pest_count=1)
+    assert rec_citrus["status"] == "CONFIRMED"
+    assert "UC Davis" in rec_citrus["citation"]
+
+    # 5. Beneficial predator citation
+    rec_pred = knowledge_base.get_recommendation("corn", "ladybug", confidence=0.90, pest_count=1, is_beneficial=True)
+    assert "IOBC" in rec_pred["citation"]
+    assert rec_pred["phi_days"] == 0
+
+
 
