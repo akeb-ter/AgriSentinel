@@ -387,7 +387,7 @@ async def analyze_snapshot(req: Optional[AnalyzeRequest] = None):
     """Triggers immediate camera capture, pest detection, and pesticide recommendation."""
     crop = req.crop_type if req else None
     plot = req.farm_area if req else None
-    record = probe.analyze_now(crop_type=crop, farm_area=plot)
+    record = await asyncio.to_thread(probe.analyze_now, crop_type=crop, farm_area=plot)
     return {
         "status": "success",
         "record": record
@@ -419,9 +419,11 @@ async def detect_from_phone(
     if target_crop not in supported_keys:
         target_crop = probe.active_crop
 
-    # Run inference with optional custom confidence threshold
+    # Run inference with optional custom confidence threshold asynchronously to avoid event loop blocking
     parsed_conf = float(conf_threshold) if conf_threshold is not None else None
-    detections = probe.detector.detect(frame, target_crop, conf_threshold=parsed_conf)
+    detections = await asyncio.to_thread(
+        probe.detector.detect, frame, target_crop, conf_threshold=parsed_conf
+    )
 
     # Prepare metadata & recommendations
     crop_data = knowledge_base.get_crop(target_crop)

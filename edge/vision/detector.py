@@ -17,6 +17,7 @@ import random
 import logging
 import zipfile
 import io
+import threading
 from typing import List, Dict, Any, Optional, Tuple
 import cv2
 import numpy as np
@@ -196,6 +197,7 @@ class TfliteRunner(BasePestDetector):
         self.is_model_loaded = False
         self.model_error: Optional[str] = None
         self.runtime_name: str = "None"
+        self._lock = threading.Lock()
 
         # Resolve model path if not given
         if not self.model_path:
@@ -327,16 +329,17 @@ class TfliteRunner(BasePestDetector):
         class_filter_mode: Optional[str] = None
     ):
         """Updates runtime inference thresholds and class filter mode."""
-        if conf_threshold is not None:
-            self.conf_threshold = max(0.05, min(0.99, float(conf_threshold)))
-        if iou_threshold is not None:
-            self.iou_threshold = max(0.05, min(0.99, float(iou_threshold)))
-        if class_filter_mode in ["strict_12", "full_102"]:
-            self.class_filter_mode = class_filter_mode
-        logger.info(
-            f"[TfliteRunner] Updated params: conf={self.conf_threshold}, "
-            f"iou={self.iou_threshold}, mode={self.class_filter_mode}"
-        )
+        with self._lock:
+            if conf_threshold is not None:
+                self.conf_threshold = max(0.05, min(0.99, float(conf_threshold)))
+            if iou_threshold is not None:
+                self.iou_threshold = max(0.05, min(0.99, float(iou_threshold)))
+            if class_filter_mode in ["strict_12", "full_102"]:
+                self.class_filter_mode = class_filter_mode
+            logger.info(
+                f"[TfliteRunner] Updated params: conf={self.conf_threshold}, "
+                f"iou={self.iou_threshold}, mode={self.class_filter_mode}"
+            )
 
     def preprocess(self, frame_bgr: np.ndarray) -> np.ndarray:
         """Resizes, normalizes, and expands dimensions for model inference (supporting NCHW and NHWC)."""
@@ -365,143 +368,144 @@ class TfliteRunner(BasePestDetector):
 
         effective_conf = float(conf_threshold) if conf_threshold is not None else self.conf_threshold
 
-        try:
-            orig_h, orig_w = frame_bgr.shape[:2]
-            input_data = self.preprocess(frame_bgr)
+        with self._lock:
+            try:
+                orig_h, orig_w = frame_bgr.shape[:2]
+                input_data = self.preprocess(frame_bgr)
 
-            self.interpreter.set_tensor(self._input_details[0]["index"], input_data)
-            self.interpreter.invoke()
+                self.interpreter.set_tensor(self._input_details[0]["index"], input_data)
+                self.interpreter.invoke()
 
-            raw_output = self.interpreter.get_tensor(self._output_details[0]["index"])
+                raw_output = np.array(self.interpreter.get_tensor(self._output_details[0]["index"]), copy=True)
 
-            # 1. Check for YOLO output shape: [1, 4 + classes, anchors] or [1, anchors, 4 + classes]
-            if len(raw_output.shape) == 3:
-                squeezed = np.squeeze(raw_output)
-                # If shape is [channels, anchors] where channels < anchors, transpose to [anchors, channels]
-                if squeezed.shape[0] < squeezed.shape[1]:
-                    predictions = squeezed.T
-                else:
-                    predictions = squeezed
+                # 1. Check for YOLO output shape: [1, 4 + classes, anchors] or [1, anchors, 4 + classes]
+                if len(raw_output.shape) == 3:
+                    squeezed = np.squeeze(raw_output)
+                    # If shape is [channels, anchors] where channels < anchors, transpose to [anchors, channels]
+                    if squeezed.shape[0] < squeezed.shape[1]:
+                        predictions = squeezed.T
+                    else:
+                        predictions = squeezed
 
-                if predictions.shape[1] > 4:
-                    boxes = []
-                    scores = []
-                    class_ids = []
-                    labels_out = []
+                    if predictions.shape[1] > 4:
+                        boxes = []
+                        scores = []
+                        class_ids = []
+                        labels_out = []
 
-                    for pred in predictions:
-                        class_scores = pred[4:]
-                        max_idx = int(np.argmax(class_scores))
-                        confidence = float(class_scores[max_idx])
+                        for pred in predictions:
+                            class_scores = pred[4:]
+                            max_idx = int(np.argmax(class_scores))
+                            confidence = float(class_scores[max_idx])
 
-                        if confidence < effective_conf:
+                            if confidence < effective_conf:
+                                continue
+
+                            # Class filtering mode
+                            if self.class_filter_mode == "strict_12":
+                                if max_idx in ALLOWED_STRICT_12:
+                                    label_name = ALLOWED_STRICT_12[max_idx]
+                                elif max_idx in TARGET_PEST_ALIASES:
+                                    label_name = TARGET_PEST_ALIASES[max_idx]
+                                else:
+                                    continue
+                            else:
+                                # Full 102 mode (default)
+                                if 0 <= max_idx < len(self.labels):
+                                    label_name = self.labels[max_idx]
+                                elif max_idx in ALLOWED_STRICT_12:
+                                    label_name = ALLOWED_STRICT_12[max_idx]
+                                else:
+                                    label_name = f"Pest {max_idx}"
+
+                            cx, cy, w, h = pred[0:4]
+                            # Handle normalized (0..1) vs pixel-space (0..imgsz) coordinates
+                            if cx > 1.5 or cy > 1.5 or w > 1.5 or h > 1.5:
+                                cx /= self.input_width
+                                cy /= self.input_height
+                                w /= self.input_width
+                                h /= self.input_height
+
+                            x1 = int((cx - w / 2) * orig_w)
+                            y1 = int((cy - h / 2) * orig_h)
+                            box_w = int(w * orig_w)
+                            box_h = int(h * orig_h)
+
+                            # Clamp coordinates within frame boundaries
+                            x1 = max(0, min(orig_w - 5, x1))
+                            y1 = max(0, min(orig_h - 5, y1))
+                            box_w = max(5, min(orig_w - x1, box_w))
+                            box_h = max(5, min(orig_h - y1, box_h))
+
+                            boxes.append([x1, y1, box_w, box_h])
+                            scores.append(confidence)
+                            class_ids.append(max_idx)
+                            labels_out.append(label_name)
+
+                        if len(boxes) == 0:
+                            return []
+
+                        # Non-Maximum Suppression to remove redundant boxes
+                        indices = cv2.dnn.NMSBoxes(boxes, scores, effective_conf, self.iou_threshold)
+
+                        detected_pests: List[DetectionBox] = []
+                        if len(indices) > 0:
+                            for idx in np.array(indices).flatten():
+                                detected_pests.append(DetectionBox(
+                                    label=labels_out[idx].title(),
+                                    confidence=round(scores[idx], 4),
+                                    x=boxes[idx][0],
+                                    y=boxes[idx][1],
+                                    width=boxes[idx][2],
+                                    height=boxes[idx][3],
+                                    pest_key=labels_out[idx].lower().replace(" ", "_")
+                                ))
+                        return detected_pests
+
+                # 2. Check for SSD MobileNet format (boxes, classes, scores)
+                if len(self._output_details) >= 3:
+                    raw_boxes = np.array(self.interpreter.get_tensor(self._output_details[0]["index"])[0], copy=True)
+                    raw_classes = np.array(self.interpreter.get_tensor(self._output_details[1]["index"])[0], copy=True)
+                    raw_scores = np.array(self.interpreter.get_tensor(self._output_details[2]["index"])[0], copy=True)
+
+                    boxes_ssd = []
+                    for i in range(len(raw_scores)):
+                        score = float(raw_scores[i])
+                        if score < effective_conf:
                             continue
+                        class_idx = int(raw_classes[i])
 
-                        # Class filtering mode
                         if self.class_filter_mode == "strict_12":
-                            if max_idx in ALLOWED_STRICT_12:
-                                label_name = ALLOWED_STRICT_12[max_idx]
-                            elif max_idx in TARGET_PEST_ALIASES:
-                                label_name = TARGET_PEST_ALIASES[max_idx]
+                            if class_idx in ALLOWED_STRICT_12:
+                                label = ALLOWED_STRICT_12[class_idx]
+                            elif class_idx in TARGET_PEST_ALIASES:
+                                label = TARGET_PEST_ALIASES[class_idx]
                             else:
                                 continue
                         else:
-                            # Full 102 mode (default)
-                            if 0 <= max_idx < len(self.labels):
-                                label_name = self.labels[max_idx]
-                            elif max_idx in ALLOWED_STRICT_12:
-                                label_name = ALLOWED_STRICT_12[max_idx]
-                            else:
-                                label_name = f"Pest {max_idx}"
+                            label = self.labels[class_idx] if 0 <= class_idx < len(self.labels) else f"Pest {class_idx}"
 
-                        cx, cy, w, h = pred[0:4]
-                        # Handle normalized (0..1) vs pixel-space (0..imgsz) coordinates
-                        if cx > 1.5 or cy > 1.5 or w > 1.5 or h > 1.5:
-                            cx /= self.input_width
-                            cy /= self.input_height
-                            w /= self.input_width
-                            h /= self.input_height
+                        ymin, xmin, ymax, xmax = raw_boxes[i]
+                        bx = int(xmin * orig_w)
+                        by = int(ymin * orig_h)
+                        bw = int((xmax - xmin) * orig_w)
+                        bh = int((ymax - ymin) * orig_h)
 
-                        x1 = int((cx - w / 2) * orig_w)
-                        y1 = int((cy - h / 2) * orig_h)
-                        box_w = int(w * orig_w)
-                        box_h = int(h * orig_h)
+                        boxes_ssd.append(DetectionBox(
+                            label=label.title(),
+                            confidence=score,
+                            x=bx,
+                            y=by,
+                            width=bw,
+                            height=bh,
+                            pest_key=label.lower().replace(" ", "_")
+                        ))
+                    return boxes_ssd
 
-                        # Clamp coordinates within frame boundaries
-                        x1 = max(0, min(orig_w - 5, x1))
-                        y1 = max(0, min(orig_h - 5, y1))
-                        box_w = max(5, min(orig_w - x1, box_w))
-                        box_h = max(5, min(orig_h - y1, box_h))
+            except Exception as e:
+                logger.error(f"[TfliteRunner] Inference error: {e}")
 
-                        boxes.append([x1, y1, box_w, box_h])
-                        scores.append(confidence)
-                        class_ids.append(max_idx)
-                        labels_out.append(label_name)
-
-                    if len(boxes) == 0:
-                        return []
-
-                    # Non-Maximum Suppression to remove redundant boxes
-                    indices = cv2.dnn.NMSBoxes(boxes, scores, effective_conf, self.iou_threshold)
-
-                    detected_pests: List[DetectionBox] = []
-                    if len(indices) > 0:
-                        for idx in np.array(indices).flatten():
-                            detected_pests.append(DetectionBox(
-                                label=labels_out[idx].title(),
-                                confidence=round(scores[idx], 4),
-                                x=boxes[idx][0],
-                                y=boxes[idx][1],
-                                width=boxes[idx][2],
-                                height=boxes[idx][3],
-                                pest_key=labels_out[idx].lower().replace(" ", "_")
-                            ))
-                    return detected_pests
-
-            # 2. Check for SSD MobileNet format (boxes, classes, scores)
-            if len(self._output_details) >= 3:
-                raw_boxes = self.interpreter.get_tensor(self._output_details[0]["index"])[0]
-                raw_classes = self.interpreter.get_tensor(self._output_details[1]["index"])[0]
-                raw_scores = self.interpreter.get_tensor(self._output_details[2]["index"])[0]
-
-                boxes_ssd = []
-                for i in range(len(raw_scores)):
-                    score = float(raw_scores[i])
-                    if score < effective_conf:
-                        continue
-                    class_idx = int(raw_classes[i])
-
-                    if self.class_filter_mode == "strict_12":
-                        if class_idx in ALLOWED_STRICT_12:
-                            label = ALLOWED_STRICT_12[class_idx]
-                        elif class_idx in TARGET_PEST_ALIASES:
-                            label = TARGET_PEST_ALIASES[class_idx]
-                        else:
-                            continue
-                    else:
-                        label = self.labels[class_idx] if 0 <= class_idx < len(self.labels) else f"Pest {class_idx}"
-
-                    ymin, xmin, ymax, xmax = raw_boxes[i]
-                    bx = int(xmin * orig_w)
-                    by = int(ymin * orig_h)
-                    bw = int((xmax - xmin) * orig_w)
-                    bh = int((ymax - ymin) * orig_h)
-
-                    boxes_ssd.append(DetectionBox(
-                        label=label.title(),
-                        confidence=score,
-                        x=bx,
-                        y=by,
-                        width=bw,
-                        height=bh,
-                        pest_key=label.lower().replace(" ", "_")
-                    ))
-                return boxes_ssd
-
-        except Exception as e:
-            logger.error(f"[TfliteRunner] Inference error: {e}")
-
-        return []
+            return []
 
 
 # Direct alias for plan.md.txt naming compatibility

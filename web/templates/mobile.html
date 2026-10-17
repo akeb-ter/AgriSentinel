@@ -527,15 +527,18 @@
       }
     });
 
+    let isAnalyzing = false;
+
     // Manual trigger for AI analysis
     analyzePhotoBtn.addEventListener("click", async () => {
-      if (!lastCapturedBlob) return;
+      if (!lastCapturedBlob || isAnalyzing) return;
       await submitImageForDiagnosis(lastCapturedBlob);
     });
 
     // Centralized diagnosis submission with visual AI loading indicators
     async function submitImageForDiagnosis(blobOrFile) {
-      if (!blobOrFile) return;
+      if (!blobOrFile || isAnalyzing) return;
+      isAnalyzing = true;
 
       const cropKey = document.getElementById("mobileCropSelect").value;
       const sensitivityEl = document.getElementById("mobileSensitivity");
@@ -546,8 +549,11 @@
       formData.append("crop_type", cropKey);
       formData.append("conf_threshold", confThreshold);
 
-      // 1. Show visual loading indicators
+      // 1. Show visual loading indicators & lock controls
       analyzePhotoBtn.disabled = true;
+      snapNativeBtn.disabled = true;
+      uploadGalleryBtn.disabled = true;
+      viewfinderShutterBtn.disabled = true;
       analyzeBtnIcon.classList.add("hidden");
       analyzeBtnSpinner.classList.remove("hidden");
       analyzeBtnText.innerText = "Analyzing with AI...";
@@ -596,9 +602,13 @@
       } catch (e) {
         document.getElementById("pestFinding").innerText = "Analysis failed (Check connection)";
       } finally {
-        // 2. Hide loading overlay and restore button
+        // 2. Hide loading overlay and restore controls
+        isAnalyzing = false;
         aiScanOverlay.classList.add("hidden");
         analyzePhotoBtn.disabled = false;
+        snapNativeBtn.disabled = false;
+        uploadGalleryBtn.disabled = false;
+        viewfinderShutterBtn.disabled = false;
         analyzeBtnSpinner.classList.add("hidden");
         analyzeBtnIcon.classList.remove("hidden");
         analyzeBtnText.innerText = "Re-Analyze Photo";

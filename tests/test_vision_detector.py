@@ -147,3 +147,27 @@ def test_annotate_frame_overlay():
     assert isinstance(annotated, np.ndarray)
     assert annotated.shape == (480, 640, 3)
 
+
+def test_concurrent_detection_thread_safety():
+    """Verify that concurrent calls to detect() across multiple threads are thread-safe and do not crash or corrupt state."""
+    import threading
+    detector = get_detector()
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    errors = []
+
+    def worker():
+        for _ in range(5):
+            try:
+                res = detector.detect(frame, crop_type="corn")
+                assert isinstance(res, list)
+            except Exception as e:
+                errors.append(e)
+
+    threads = [threading.Thread(target=worker) for _ in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(errors) == 0
+

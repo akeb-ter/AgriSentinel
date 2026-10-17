@@ -49,6 +49,8 @@ class ProbeController:
         self.is_paused = False
         self._pause_lock = threading.Lock()
         self._last_auto_detection_time = 0.0
+        self._last_bg_detection_time = 0.0
+        self._bg_detection_interval = float(os.getenv("BG_DETECTION_INTERVAL", "0.6"))
         self.alert_callbacks: List[Callable[[Dict[str, Any]], None]] = []
 
         # Latest readings cache
@@ -156,10 +158,16 @@ class ProbeController:
             if frame is None:
                 frame = self._generate_synthetic_frame()
 
-            # Run detection inference
+            # Run detection inference periodically (prevents CPU choking and keeps model available for on-demand analysis)
+            now = time.time()
+            if (now - self._last_bg_detection_time) >= self._bg_detection_interval:
+                self._last_bg_detection_time = now
+                detections = self.detector.detect(frame, self.active_crop)
+                self.latest_detections = detections
+            else:
+                detections = self.latest_detections
+
             crop_name = knowledge_base.get_crop(self.active_crop).get("name", self.active_crop.capitalize())
-            detections = self.detector.detect(frame, self.active_crop)
-            self.latest_detections = detections
 
             # Derive metrics
             pest_count = len(detections)
