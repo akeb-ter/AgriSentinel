@@ -141,6 +141,20 @@
 
       <!-- Overlay Reticle for Diagnostics -->
       <div id="cameraReticle" class="absolute inset-0 border-2 border-dashed border-green-500/30 pointer-events-none rounded-lg m-4"></div>
+
+      <!-- 5. AI Scanning & Loading Overlay -->
+      <div id="aiScanOverlay" class="absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center space-y-3 hidden z-20 transition-all duration-200">
+        <div class="relative w-16 h-16 flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border-4 border-green-500/20 animate-ping"></div>
+          <div class="w-14 h-14 rounded-full border-4 border-slate-700 border-t-green-500 animate-spin"></div>
+          <i class="fas fa-brain text-green-400 text-lg absolute"></i>
+        </div>
+        <div>
+          <h4 class="text-xs font-bold text-white uppercase tracking-wider animate-pulse">Analyzing with AI...</h4>
+          <p class="text-[11px] text-green-400 font-mono mt-1">Running YOLOv8 Pest Detection</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">Please wait while the model evaluates foliage</p>
+        </div>
+      </div>
     </div>
 
     <!-- Stream Toggle & Controls -->
@@ -196,11 +210,23 @@
         </div>
 
         <!-- Live stream snapshot button (shown when live video stream is active) -->
-        <button id="capturePestBtn" type="button" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 active:scale-[0.98] transition font-bold rounded-xl text-xs flex items-center justify-center space-x-2 shadow-lg shadow-green-900/40 text-white hidden">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button id="capturePestBtn" type="button" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-[0.98] transition font-semibold rounded-xl text-xs flex items-center justify-center space-x-2 border border-slate-700 text-slate-200 hidden">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          </svg>
+          <span id="captureBtnText">Capture Live View</span>
+        </button>
+
+        <!-- Dedicated Analyze Button (Manual Trigger with Loading States) -->
+        <button id="analyzePhotoBtn" type="button" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 active:scale-[0.98] transition font-bold rounded-xl text-xs flex items-center justify-center space-x-2 shadow-lg shadow-green-900/40 text-white disabled:opacity-60 disabled:cursor-not-allowed hidden">
+          <svg id="analyzeBtnIcon" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span id="captureBtnText">Run Diagnosis on Current View</span>
+          <svg id="analyzeBtnSpinner" class="animate-spin h-4 w-4 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          <span id="analyzeBtnText">Analyze Photo with AI</span>
         </button>
       </div>
 
@@ -325,6 +351,11 @@
     const viewfinderShutterBtn = document.getElementById("viewfinderShutterBtn");
     const phoneCameraInput = document.getElementById("phoneCameraInput");
     const phoneGalleryInput = document.getElementById("phoneGalleryInput");
+    const analyzePhotoBtn = document.getElementById("analyzePhotoBtn");
+    const analyzeBtnIcon = document.getElementById("analyzeBtnIcon");
+    const analyzeBtnSpinner = document.getElementById("analyzeBtnSpinner");
+    const analyzeBtnText = document.getElementById("analyzeBtnText");
+    const aiScanOverlay = document.getElementById("aiScanOverlay");
 
     let phoneStream = null;
     let lastCapturedBlob = null;
@@ -373,9 +404,11 @@
         if (lastCapturedBlob) {
           phonePhotoPreview.classList.remove("hidden");
           httpCameraNotice.classList.add("hidden");
+          analyzePhotoBtn.classList.remove("hidden");
         } else {
           phonePhotoPreview.classList.add("hidden");
           httpCameraNotice.classList.remove("hidden");
+          analyzePhotoBtn.classList.add("hidden");
         }
 
         latencyTag.innerText = "Native Camera";
@@ -388,6 +421,8 @@
         httpCameraNotice.classList.add("hidden");
         phoneCaptureArea.classList.add("hidden");
         captureBtn.classList.add("hidden");
+        analyzePhotoBtn.classList.add("hidden");
+        aiScanOverlay.classList.add("hidden");
 
         robotFeed.classList.remove("hidden");
         robotFeed.src = "/video_feed?t=" + new Date().getTime();
@@ -432,31 +467,76 @@
       phoneVideo.classList.add("hidden");
 
       snapNativeBtnText.innerText = "Retake Photo";
-      submitImageForDiagnosis(file);
+
+      // Ready for manual analysis - reveal analyze button
+      analyzePhotoBtn.classList.remove("hidden");
+      analyzePhotoBtn.disabled = false;
+      analyzeBtnIcon.classList.remove("hidden");
+      analyzeBtnSpinner.classList.add("hidden");
+      analyzeBtnText.innerText = "Analyze Photo with AI";
+
+      document.getElementById("pestFinding").innerText = "Photo ready. Tap 'Analyze Photo with AI' below";
+      document.getElementById("confidenceFinding").innerText = "--";
+      document.getElementById("plantHealthFinding").innerText = "--";
+      document.getElementById("sourceBadgeRow").style.display = "flex";
+      document.getElementById("sourceBadgeText").innerText = "Photo Ready";
     }
 
     // Capture snapshot from phone live video stream (when live stream is supported)
-    captureBtn.addEventListener("click", async () => {
+    captureBtn.addEventListener("click", () => {
       if (!phoneStream) return;
-      const canvas = document.getElementById("snapshotCanvas");
-      canvas.width = phoneVideo.videoWidth || 640;
-      canvas.height = phoneVideo.videoHeight || 480;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(phoneVideo, 0, 0, canvas.width, canvas.height);
 
-      captureBtn.disabled = true;
-      captureBtnText.innerText = "Analyzing frame with AI...";
+      if (!phoneVideo.classList.contains("hidden")) {
+        // Freeze live frame to preview
+        const canvas = document.getElementById("snapshotCanvas");
+        canvas.width = phoneVideo.videoWidth || 640;
+        canvas.height = phoneVideo.videoHeight || 480;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(phoneVideo, 0, 0, canvas.width, canvas.height);
 
-      canvas.toBlob(async (blob) => {
-        lastCapturedBlob = blob;
-        await submitImageForDiagnosis(blob);
-        captureBtn.disabled = false;
-        captureBtnText.innerText = "Run Diagnosis on Current View";
-      }, "image/jpeg");
+        canvas.toBlob((blob) => {
+          lastCapturedBlob = blob;
+          phonePhotoPreview.src = URL.createObjectURL(blob);
+          phonePhotoPreview.classList.remove("hidden");
+          phoneVideo.classList.add("hidden");
+
+          captureBtnText.innerText = "Resume Live Video";
+          snapNativeBtnText.innerText = "Retake Photo";
+
+          // Ready for manual analysis
+          analyzePhotoBtn.classList.remove("hidden");
+          analyzePhotoBtn.disabled = false;
+          analyzeBtnIcon.classList.remove("hidden");
+          analyzeBtnSpinner.classList.add("hidden");
+          analyzeBtnText.innerText = "Analyze Photo with AI";
+
+          document.getElementById("pestFinding").innerText = "Frame captured. Tap 'Analyze Photo with AI' below";
+          document.getElementById("confidenceFinding").innerText = "--";
+          document.getElementById("plantHealthFinding").innerText = "--";
+          document.getElementById("sourceBadgeRow").style.display = "flex";
+          document.getElementById("sourceBadgeText").innerText = "Snapshot Ready";
+        }, "image/jpeg");
+      } else {
+        // Resume live stream
+        phonePhotoPreview.classList.add("hidden");
+        phoneVideo.classList.remove("hidden");
+        captureBtnText.innerText = "Capture Live View";
+        analyzePhotoBtn.classList.add("hidden");
+        aiScanOverlay.classList.add("hidden");
+        document.getElementById("pestFinding").innerText = "Live monitoring";
+      }
     });
 
-    // Centralized diagnosis submission for both live stream snapshot and native camera photos
+    // Manual trigger for AI analysis
+    analyzePhotoBtn.addEventListener("click", async () => {
+      if (!lastCapturedBlob) return;
+      await submitImageForDiagnosis(lastCapturedBlob);
+    });
+
+    // Centralized diagnosis submission with visual AI loading indicators
     async function submitImageForDiagnosis(blobOrFile) {
+      if (!blobOrFile) return;
+
       const cropKey = document.getElementById("mobileCropSelect").value;
       const sensitivityEl = document.getElementById("mobileSensitivity");
       const confThreshold = sensitivityEl ? sensitivityEl.value : "0.25";
@@ -465,6 +545,14 @@
       formData.append("file", blobOrFile, "phone_capture.jpg");
       formData.append("crop_type", cropKey);
       formData.append("conf_threshold", confThreshold);
+
+      // 1. Show visual loading indicators
+      analyzePhotoBtn.disabled = true;
+      analyzeBtnIcon.classList.add("hidden");
+      analyzeBtnSpinner.classList.remove("hidden");
+      analyzeBtnText.innerText = "Analyzing with AI...";
+
+      aiScanOverlay.classList.remove("hidden");
 
       document.getElementById("pestFinding").innerText = "Analyzing image with AI...";
       document.getElementById("confidenceFinding").innerText = "--";
@@ -493,6 +581,7 @@
 
           document.getElementById("plantHealthFinding").innerText = data.plant_health || "--";
           document.getElementById("sourceBadgeRow").style.display = "flex";
+          document.getElementById("sourceBadgeText").innerText = "Phone Camera";
 
           // Recommendations
           if (data.recommendation) {
@@ -506,6 +595,13 @@
         }
       } catch (e) {
         document.getElementById("pestFinding").innerText = "Analysis failed (Check connection)";
+      } finally {
+        // 2. Hide loading overlay and restore button
+        aiScanOverlay.classList.add("hidden");
+        analyzePhotoBtn.disabled = false;
+        analyzeBtnSpinner.classList.add("hidden");
+        analyzeBtnIcon.classList.remove("hidden");
+        analyzeBtnText.innerText = "Re-Analyze Photo";
       }
     }
 

@@ -63,6 +63,8 @@ def test_mobile_page_authenticated():
     assert "manifest.json" in res.text
     assert "cameraToggle" in res.text
     assert "capturePestBtn" in res.text
+    assert "analyzePhotoBtn" in res.text
+    assert "aiScanOverlay" in res.text
 
 
 def test_phone_detect_upload():
