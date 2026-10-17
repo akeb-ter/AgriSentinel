@@ -16,7 +16,8 @@ def test_api_status_endpoint():
     assert data["status"] == "success"
     assert "telemetry" in data
     assert "active_crop" in data["telemetry"]
-    assert "soil_moisture_percent" in data["telemetry"]
+    assert "plant_health_status" in data["telemetry"]
+    assert "model_loaded" in data["telemetry"]
 
 
 def test_api_crops_endpoint():
@@ -41,13 +42,14 @@ def test_api_select_crop():
     assert data["active_crop"] == "squash"
 
 
-def test_api_soil_moisture():
-    """Verify /api/soil-moisture returns sensor data."""
-    res = client.get("/api/soil-moisture")
+def test_api_stats():
+    """Verify /api/stats returns calculation statistics including avg_confidence."""
+    res = client.get("/api/stats")
     assert res.status_code == 200
     data = res.json()
-    assert "soil_moisture" in data
-    assert "moisture_percent" in data["soil_moisture"]
+    assert data["status"] == "success"
+    assert "stats" in data
+    assert "avg_confidence" in data["stats"]
 
 
 def test_api_recommendation_query():

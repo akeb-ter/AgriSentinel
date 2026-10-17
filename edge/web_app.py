@@ -210,8 +210,7 @@ async def dashboard_page(request: Request):
         crop_key=active_crop,
         pest_name=latest_pest,
         confidence=0.88,
-        pest_count=telemetry["latest_pest_count"],
-        soil_status=telemetry["soil_status"]
+        pest_count=telemetry["latest_pest_count"]
     )
 
     return templates.TemplateResponse(
@@ -273,20 +272,10 @@ def get_snapshot():
 
 @router.get("/api/status")
 async def get_status():
-    """Returns current probe telemetry (crop, soil moisture, pest status, health)."""
+    """Returns current probe telemetry (crop, pest status, health, model)."""
     return {
         "status": "success",
         "telemetry": probe.get_telemetry()
-    }
-
-
-@router.get("/api/soil-moisture")
-async def get_soil_moisture():
-    """Returns latest soil moisture reading and status classification."""
-    reading = probe.soil_sensor.read_moisture()
-    return {
-        "status": "success",
-        "soil_moisture": reading
     }
 
 
@@ -388,7 +377,7 @@ async def query_recommendation(
     pest: str,
     confidence: float = 0.85,
     count: int = 1,
-    soil_status: str = "Optimal"
+    soil_status: Optional[str] = None
 ):
     """Queries agricultural knowledge base directly for a crop and pest combination."""
     rec = knowledge_base.get_recommendation(
@@ -467,7 +456,7 @@ async def dev_settings_page(request: Request):
 
 @router.get("/api/dev/status")
 async def dev_get_status():
-    """Returns system status, network IP, camera diagnostics, and soil sensor status."""
+    """Returns system status, network IP, camera diagnostics, and model status."""
     ip_addr = "127.0.0.1"
     net_mode = "Wi-Fi"
 
@@ -479,8 +468,6 @@ async def dev_get_status():
                 ip_addr = res.stdout.strip().split()[0]
     except Exception:
         pass
-
-    soil_data = probe.soil_sensor.read_moisture()
 
     return {
         "status": "success",
@@ -499,13 +486,6 @@ async def dev_get_status():
             "path": getattr(probe.detector, "model_path", ""),
             "runtime": getattr(probe.detector, "runtime_name", "None"),
             "error": getattr(probe.detector, "model_error", None)
-        },
-        "soil": {
-            "moisture_percent": soil_data["moisture_percent"],
-            "status": soil_data["status"],
-            "voltage": soil_data["voltage"],
-            "raw_adc": soil_data["raw_adc"],
-            "hardware_type": probe.soil_sensor.adc_type
         },
         "server_time": time.strftime("%Y-%m-%d %H:%M:%S"),
         "platform": sys.platform
@@ -589,7 +569,6 @@ async def dev_get_system_logs(lines: int = 80):
     sim_logs = (
         f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] AgriSentinel Smart Crop Probe online\n"
         f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Active crop: {probe.active_crop}\n"
-        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Soil moisture: {probe.latest_soil['moisture_percent']}%\n"
         f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] [INFO] Camera capture stream active (640x480)\n"
     )
     return {"status": "success", "logs": sim_logs}

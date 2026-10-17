@@ -49,22 +49,26 @@ def test_two_tier_confidence_and_uncertainty():
 
 
 def test_integrated_plant_health_derivation():
-    """Verify plant health derivation combining pest pressure and soil moisture."""
-    # 0 pests, Optimal soil -> Healthy
-    h1 = knowledge_base.evaluate_plant_health(0, "None", "Optimal")
-    assert "Healthy" in h1
+    """Verify plant health derivation based on pest pressure and infestation severity."""
+    # 0 pests -> Healthy / Pest-Free
+    h1 = knowledge_base.evaluate_plant_health(0, "None")
+    assert h1 == "Healthy / Pest-Free"
 
-    # 0 pests, Dry soil -> Moisture stress (drought risk)
-    h2 = knowledge_base.evaluate_plant_health(0, "None", "Dry")
-    assert "Drought Risk" in h2 or "Moisture Stress" in h2
+    # Low infestation -> Mild Pest Stress
+    h2 = knowledge_base.evaluate_plant_health(2, "Low")
+    assert h2 == "Mild Pest Stress"
 
-    # 0 pests, Waterlogged soil -> Excess moisture (fungal risk)
-    h3 = knowledge_base.evaluate_plant_health(0, "None", "Waterlogged")
-    assert "Fungal" in h3 or "Excess Moisture" in h3
+    # Moderate infestation -> Under Moderate Pest Pressure
+    h3 = knowledge_base.evaluate_plant_health(4, "Moderate")
+    assert h3 == "Under Moderate Pest Pressure"
 
-    # Severe pests -> Severe infestation
-    h4 = knowledge_base.evaluate_plant_health(8, "Severe", "Optimal")
+    # Severe infestation -> Severe Infestation (Critical Damage Risk)
+    h4 = knowledge_base.evaluate_plant_health(8, "Severe")
     assert "Severe Infestation" in h4
+
+    # Backwards compatibility test: soil_status parameter still accepted without error
+    h5 = knowledge_base.evaluate_plant_health(0, "None", soil_status="Optimal")
+    assert h5 == "Healthy / Pest-Free"
 
 
 def test_rice_crop_support_and_pests():

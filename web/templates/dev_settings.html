@@ -443,41 +443,7 @@
             </div>
         </div>
 
-        <!-- CARD 4: SOIL MOISTURE SENSOR -->
-        <div class="dev-card">
-            <div>
-                <div class="card-header">
-                    <div class="card-title">
-                        <i class="fas fa-tint"></i>
-                        <span>Soil Moisture Sensor</span>
-                    </div>
-                    <span id="soilBadge" class="status-pill green">
-                        <span class="pulse-dot"></span> <span id="soilBadgeText">Active</span>
-                    </span>
-                </div>
-
-                <div class="info-list" style="margin-bottom: 12px;">
-                    <div class="info-row">
-                        <span class="info-label">Moisture Reading:</span>
-                        <span id="soilMoistVal" class="info-val">--%</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Status Classification:</span>
-                        <span id="soilStatusVal" class="info-val">Optimal</span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Interface / ADC:</span>
-                        <span id="soilHwVal" class="info-val">ADC / Mock</span>
-                    </div>
-                </div>
-            </div>
-
-            <button id="soilReadBtn" class="btn btn-secondary" onclick="fetchSoilReading()">
-                <i class="fas fa-sync-alt"></i> Refresh Sensor Reading
-            </button>
-        </div>
-
-        <!-- CARD 5: AI VISION & TFLITE INFERENCE ENGINE -->
+        <!-- CARD 4: AI VISION & TFLITE INFERENCE ENGINE -->
         <div class="dev-card" style="grid-column: 1 / -1;">
             <div>
                 <div class="card-header">
@@ -659,42 +625,12 @@
                 camBadgeText.textContent = 'Stopped';
             }
 
-            // Soil Sensor
-            if (data.soil) {
-                document.getElementById('soilMoistVal').textContent = `${data.soil.moisture_percent}%`;
-                document.getElementById('soilStatusVal').textContent = data.soil.status;
-                document.getElementById('soilHwVal').textContent = `${data.soil.hardware_type.toUpperCase()} (${data.soil.voltage}V)`;
-            }
-
             // System info
             document.getElementById('sysPlatform').textContent = data.platform;
             document.getElementById('sysTime').textContent = data.server_time;
 
         } catch (err) {
             console.error('Error fetching dev status:', err);
-        }
-    }
-
-    // Fetch Soil Sensor Reading
-    async function fetchSoilReading() {
-        const btn = document.getElementById('soilReadBtn');
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Reading sensor...`;
-
-        try {
-            const res = await fetch('/api/soil-moisture');
-            if (res.ok) {
-                const data = await res.json();
-                const s = data.soil_moisture;
-                document.getElementById('soilMoistVal').textContent = `${s.moisture_percent}%`;
-                document.getElementById('soilStatusVal').textContent = s.status;
-                showToast(`Soil Moisture: ${s.moisture_percent}% (${s.status})`);
-            }
-        } catch (err) {
-            showToast(`Sensor read error: ${err.message}`, true);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fas fa-sync-alt"></i> Refresh Sensor Reading`;
         }
     }
 

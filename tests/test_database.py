@@ -56,3 +56,25 @@ def test_database_crud_operations():
     assert del_ok is True
     assert get_detection_by_id(rec_id) is None
 
+
+def test_database_insert_without_soil_fields():
+    """Verify insert_detection functions smoothly without soil moisture fields."""
+    init_db()
+    payload = {
+        "crop_type": "rice",
+        "farm_area": "Paddy 3",
+        "detected_pest": "Brown Plant Hopper",
+        "pest_count": 2,
+        "infestation_level": "Low",
+        "plant_health_status": "Mild Pest Stress",
+        "confidence": 0.92,
+        "recommended_pesticide": "Triflemezopyrim 10% SC",
+        "status": "CONFIRMED"
+    }
+    rec_id = insert_detection(payload)
+    assert rec_id > 0
+    rec = get_detection_by_id(rec_id)
+    assert rec["soil_moisture_percent"] == 0.0
+    assert rec["soil_status"] == "N/A"
+    delete_detection(rec_id)
+

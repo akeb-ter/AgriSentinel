@@ -5,7 +5,7 @@ Loads multi-crop pesticide and infestation data from config/knowledge_base.yaml 
 Provides:
 - Supported crops catalog & metadata
 - Infestation level calculation based on pest count thresholds
-- Integrated Plant Health evaluation (combining pest pressure & soil moisture status)
+- Integrated Plant Health evaluation (based on pest pressure & infestation severity)
 - Two-Tier Confidence & Uncertainty filter:
     * High Confidence (>= 70%): Full chemical & organic recommendations, dosage, and safety precautions
     * Borderline / Uncertain (40% - 69%): Amber caution flag with recommended visual verification before spraying
@@ -420,28 +420,19 @@ class KnowledgeBase:
         self,
         pest_count: int,
         infestation_level: str,
-        soil_status: str
+        soil_status: Optional[str] = None
     ) -> str:
         """
-        Derives integrated plant health condition combining pest pressure and soil hydration.
+        Derives plant health condition based on pest pressure and infestation severity.
+        (soil_status parameter preserved as optional for backwards compatibility).
         """
-        soil_status_clean = soil_status.capitalize()
-
-        if pest_count == 0 or infestation_level == "None":
-            if soil_status_clean == "Dry":
-                return "Moisture Stress (Drought Risk)"
-            elif soil_status_clean == "Waterlogged":
-                return "Excess Moisture (Fungal / Root Rot Risk)"
+        if pest_count == 0 or infestation_level in ("None", "none"):
             return "Healthy / Pest-Free"
 
         if infestation_level == "Low":
-            if soil_status_clean in ("Dry", "Waterlogged"):
-                return f"Dual Stress (Low Infestation + {soil_status_clean} Soil)"
-            return "Mild Pest Stress (Early Stage)"
+            return "Mild Pest Stress"
 
         if infestation_level == "Moderate":
-            if soil_status_clean in ("Dry", "Waterlogged"):
-                return f"Elevated Stress (Moderate Pests + {soil_status_clean} Soil)"
             return "Under Moderate Pest Pressure"
 
         # Severe
@@ -453,7 +444,7 @@ class KnowledgeBase:
         pest_name: str,
         confidence: float,
         pest_count: int = 1,
-        soil_status: str = "Optimal"
+        soil_status: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Queries recommendation with Two-Tier Confidence & Uncertainty enforcement:

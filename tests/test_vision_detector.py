@@ -128,3 +128,22 @@ def test_tflite_set_parameters():
     assert runner.conf_threshold == 0.60
     assert runner.iou_threshold == 0.45
     assert runner.class_filter_mode == "strict_12"
+
+
+def test_annotate_frame_overlay():
+    """Verify annotate_frame creates a valid annotated frame with Health and Model status."""
+    from edge.vision.detector import annotate_frame
+    frame = np.zeros((480, 640, 3), dtype=np.uint8)
+    boxes = [
+        DetectionBox(label="Fall Armyworm", confidence=0.88, x=10, y=20, width=50, height=50)
+    ]
+    annotated = annotate_frame(
+        frame,
+        boxes,
+        crop_name="Corn",
+        health_status="Mild Pest Stress",
+        model_status="Online"
+    )
+    assert isinstance(annotated, np.ndarray)
+    assert annotated.shape == (480, 640, 3)
+

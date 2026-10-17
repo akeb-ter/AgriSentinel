@@ -2,7 +2,7 @@
 AgriSentinel Database Management Module
 
 Manages SQLite storage for:
-- detections: rich inspection logs (pest count, plant health, soil moisture %, pesticide advice, snapshot image)
+- detections: rich inspection logs (pest count, plant health, pesticide advice, snapshot image)
 - users_tbl: administrative credentials and authentication
 """
 
@@ -106,9 +106,9 @@ def insert_detection(data: Dict[str, Any]) -> int:
         data.get("detected_pest", "Pest-Free"),
         int(data.get("pest_count", 0)),
         data.get("infestation_level", "None"),
-        float(data.get("soil_moisture_percent", 0.0)),
-        data.get("soil_status", "Optimal"),
-        data.get("plant_health_status", "Healthy"),
+        float(data.get("soil_moisture_percent", 0.0) or 0.0),
+        str(data.get("soil_status", "N/A") or "N/A"),
+        data.get("plant_health_status", "Healthy / Pest-Free"),
         float(data.get("confidence", 1.0)),
         data.get("recommended_pesticide", ""),
         data.get("organic_alternative", ""),
@@ -205,8 +205,8 @@ def get_detection_stats() -> Dict[str, Any]:
         ORDER BY count DESC
     """).fetchall()
 
-    avg_moisture = conn.execute(
-        "SELECT AVG(soil_moisture_percent) FROM detections WHERE soil_moisture_percent > 0"
+    avg_conf = conn.execute(
+        "SELECT AVG(confidence) FROM detections WHERE confidence > 0"
     ).fetchone()[0]
 
     conn.close()
@@ -216,7 +216,8 @@ def get_detection_stats() -> Dict[str, Any]:
         "severe_alerts": severe_count,
         "top_pests": [dict(r) for r in pest_summary],
         "crop_distribution": [dict(r) for r in crop_summary],
-        "avg_soil_moisture": round(avg_moisture or 0.0, 1),
+        "avg_confidence": round((avg_conf or 0.0) * 100, 1),
+        "avg_soil_moisture": 0.0,
     }
 
 

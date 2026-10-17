@@ -726,11 +726,11 @@
                     </div>
                     <div class="card-body">
                         <div class="metrics-grid">
-                            <!-- Soil Moisture Metric -->
+                            <!-- Model & Inference Status Metric -->
                             <div class="metric-card">
-                                <span class="metric-label"><i class="fas fa-tint" style="color:var(--info);"></i> Soil Moisture</span>
-                                <span class="metric-value" id="dispSoilPercent">{{ telemetry.soil_moisture_percent }}%</span>
-                                <span class="metric-status status-optimal" id="dispSoilStatus">{{ telemetry.soil_status }}</span>
+                                <span class="metric-label"><i class="fas fa-brain" style="color:var(--info);"></i> AI Model Status</span>
+                                <span class="metric-value" style="font-size:18px;" id="dispModelStatus">{% if telemetry.model_loaded %}Online{% else %}Offline{% endif %}</span>
+                                <span class="metric-status {% if telemetry.model_loaded %}status-optimal{% else %}status-severe{% endif %}" id="dispModelTaxonomy">{{ 'Strict 12' if telemetry.class_filter_mode == 'strict_12' else 'Full 102' }}</span>
                             </div>
 
                             <!-- Pest Count Metric -->
@@ -833,7 +833,7 @@
                                 <th>Pest</th>
                                 <th>Count</th>
                                 <th>Infestation</th>
-                                <th>Soil Moisture</th>
+                                <th>Confidence</th>
                                 <th>Plant Health</th>
                                 <th>Status</th>
                                 <th>Action</th>
@@ -858,7 +858,7 @@
                                         {{ d.infestation_level }}
                                     </span>
                                 </td>
-                                <td>{{ d.soil_moisture_percent }}% ({{ d.soil_status }})</td>
+                                <td><span style="font-weight:600; font-family:'JetBrains Mono', monospace;">{{ (d.confidence * 100)|round|int }}%</span></td>
                                 <td>{{ d.plant_health_status }}</td>
                                 <td>
                                     {% if d.status == 'CONFIRMED' %}
@@ -901,8 +901,8 @@
                 <span class="metric-value" style="color:var(--danger);" id="statSevere">{{ stats.severe_alerts }}</span>
             </div>
             <div class="card" style="padding:20px;">
-                <span class="metric-label"><i class="fas fa-tint" style="color:var(--info);"></i> Avg Soil Moisture</span>
-                <span class="metric-value" id="statAvgMoisture">{{ stats.avg_soil_moisture }}%</span>
+                <span class="metric-label"><i class="fas fa-bullseye" style="color:var(--info);"></i> Avg AI Confidence</span>
+                <span class="metric-value" id="statAvgConfidence">{{ stats.avg_confidence }}%</span>
             </div>
         </div>
     </section>
@@ -1078,9 +1078,15 @@
     }
 
     function updateTelemetryUI(tel) {
-        document.getElementById('dispSoilPercent').textContent = tel.soil_moisture_percent + '%';
-        document.getElementById('dispSoilStatus').textContent = tel.soil_status;
-        document.getElementById('dispSoilStatus').className = 'metric-status status-' + tel.soil_status.toLowerCase();
+        const modelEl = document.getElementById('dispModelStatus');
+        const taxEl = document.getElementById('dispModelTaxonomy');
+        if (modelEl) {
+            modelEl.textContent = tel.model_loaded ? 'Online' : 'Offline';
+        }
+        if (taxEl) {
+            taxEl.textContent = tel.class_filter_mode === 'strict_12' ? 'Strict 12' : 'Full 102';
+            taxEl.className = 'metric-status ' + (tel.model_loaded ? 'status-optimal' : 'status-severe');
+        }
 
         document.getElementById('dispPestCount').textContent = tel.latest_pest_count;
         document.getElementById('dispInfestation').textContent = tel.infestation_level;
@@ -1105,10 +1111,6 @@
     }
 
     function updateUIWithRecord(rec) {
-        document.getElementById('dispSoilPercent').textContent = rec.soil_moisture_percent + '%';
-        document.getElementById('dispSoilStatus').textContent = rec.soil_status;
-        document.getElementById('dispSoilStatus').className = 'metric-status status-' + rec.soil_status.toLowerCase();
-
         document.getElementById('dispPestCount').textContent = rec.pest_count;
         document.getElementById('dispInfestation').textContent = rec.infestation_level;
         document.getElementById('dispInfestation').className = 'metric-status status-' + rec.infestation_level.toLowerCase();

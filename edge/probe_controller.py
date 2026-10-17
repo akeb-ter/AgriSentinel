@@ -2,12 +2,11 @@
 AgriSentinel - Smart Crop Probe Controller
 
 Coordinates the smart probe stick hardware and software subsystems:
-1. Soil Moisture Sensor monitoring
-2. Camera video streaming and frame capture
-3. AI Pest Detection & Bounding Box Annotation
-4. Agricultural Knowledge Base & Pesticide Recommendations
-5. Auto-Pause & Confirmation Capture Loop
-6. SQLite DBMS persistence & WebSocket alert notifications
+1. Camera video streaming and frame capture
+2. AI Pest Detection & Bounding Box Annotation
+3. Agricultural Knowledge Base & Pesticide Recommendations
+4. Auto-Pause & Confirmation Capture Loop
+5. SQLite DBMS persistence & WebSocket alert notifications
 """
 
 import os
@@ -22,7 +21,6 @@ from typing import Dict, Any, Optional, List, Callable
 import cv2
 import numpy as np
 
-from edge.drivers.soil_moisture import SoilMoistureSensor
 from edge.knowledge_base import knowledge_base
 from edge.vision.detector import get_detector, annotate_frame, DetectionBox
 from edge.database import insert_detection, get_recent_detections, DETECTIONS_DIR
@@ -45,7 +43,6 @@ class ProbeController:
         self.farm_area = "Plot 1 - North Field"
 
         # Subsystems
-        self.soil_sensor = SoilMoistureSensor()
         self.detector = get_detector()
 
         # Operational state
@@ -55,9 +52,8 @@ class ProbeController:
         self.alert_callbacks: List[Callable[[Dict[str, Any]], None]] = []
 
         # Latest readings cache
-        self.latest_soil = self.soil_sensor.read_moisture()
         self.latest_detections: List[DetectionBox] = []
-        self.latest_health = "Healthy"
+        self.latest_health = "Healthy / Pest-Free"
         self.latest_infestation = "None"
         self.latest_annotated_frame: Optional[np.ndarray] = None
 
@@ -67,10 +63,6 @@ class ProbeController:
         self._running = True
         self._camera_thread = threading.Thread(target=self._camera_loop, daemon=True)
         self._camera_thread.start()
-
-        # Periodic Soil Monitoring Thread
-        self._soil_thread = threading.Thread(target=self._soil_loop, daemon=True)
-        self._soil_thread.start()
 
         logger.info(f"[ProbeController] Initialized probe {self.probe_id} for crop '{self.active_crop}'.")
 
@@ -179,8 +171,7 @@ class ProbeController:
             self.latest_infestation = infestation
             self.latest_health = knowledge_base.evaluate_plant_health(
                 pest_count,
-                infestation,
-                self.latest_soil.get("status", "Optimal")
+                infestation
             )
 
             # Annotate frame
@@ -189,7 +180,6 @@ class ProbeController:
                 frame,
                 detections,
                 crop_name=crop_name,
-                soil_status=self.latest_soil.get("status", "Optimal"),
                 health_status=self.latest_health,
                 model_status=model_status
             )
@@ -210,15 +200,6 @@ class ProbeController:
                 self._trigger_auto_confirmation(frame, detections)
 
             time.sleep(0.03)
-
-    def _soil_loop(self):
-        """Periodic soil moisture reading loop."""
-        while self._running:
-            try:
-                self.latest_soil = self.soil_sensor.read_moisture()
-            except Exception as e:
-                logger.error(f"[ProbeController] Soil read error: {e}")
-            time.sleep(2.0)
 
     def _trigger_auto_confirmation(self, raw_frame: np.ndarray, detections: List[DetectionBox]):
         """
@@ -283,13 +264,11 @@ class ProbeController:
         confidence = primary_pest.confidence if primary_pest else 1.0
 
         # Query recommendation & plant health
-        soil_stat = self.latest_soil.get("status", "Optimal")
         rec = knowledge_base.get_recommendation(
             crop_key=crop_clean,
             pest_name=pest_name,
             confidence=confidence,
-            pest_count=pest_count,
-            soil_status=soil_stat
+            pest_count=pest_count
         )
 
         # Annotate snapshot
@@ -297,7 +276,6 @@ class ProbeController:
             frame,
             detections,
             crop_name=crop_name,
-            soil_status=soil_stat,
             health_status=rec["plant_health_status"]
         )
 
@@ -315,8 +293,8 @@ class ProbeController:
             "detected_pest": rec["detected_pest"],
             "pest_count": pest_count,
             "infestation_level": rec["infestation_level"],
-            "soil_moisture_percent": self.latest_soil.get("moisture_percent", 50.0),
-            "soil_status": soil_stat,
+            "soil_moisture_percent": 0.0,
+            "soil_status": "N/A",
             "plant_health_status": rec["plant_health_status"],
             "confidence": confidence,
             "recommended_pesticide": rec.get("recommended_pesticide", ""),
@@ -377,8 +355,6 @@ class ProbeController:
             "farm_area": self.farm_area,
             "camera_active": True,
             "is_paused": self.is_paused,
-            "soil_moisture_percent": self.latest_soil.get("moisture_percent", 50.0),
-            "soil_status": self.latest_soil.get("status", "Optimal"),
             "latest_pest": self.latest_detections[0].label if self.latest_detections else "Pest-Free",
             "latest_pest_count": len(self.latest_detections),
             "infestation_level": self.latest_infestation,

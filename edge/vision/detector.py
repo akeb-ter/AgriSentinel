@@ -648,9 +648,9 @@ def annotate_frame(
     frame_bgr: np.ndarray,
     detections: List[DetectionBox],
     crop_name: str = "Corn",
-    soil_status: str = "Optimal",
-    health_status: str = "Healthy",
-    model_status: str = "Online"
+    health_status: str = "Healthy / Pest-Free",
+    model_status: str = "Online",
+    soil_status: Optional[str] = None
 ) -> np.ndarray:
     """
     Renders high-contrast bounding boxes, pest badges, and telemetry overlays on frame.
@@ -693,7 +693,7 @@ def annotate_frame(
     cv2.rectangle(overlay, (0, 0), (w, bar_height), (20, 20, 20), -1)
     cv2.addWeighted(overlay, 0.75, annotated, 0.25, 0, annotated)
 
-    status_str = f"Crop: {crop_name} | Pests: {len(detections)} | Soil: {soil_status} | Model: {model_status}"
+    status_str = f"Crop: {crop_name} | Pests: {len(detections)} | Health: {health_status} | Model: {model_status}"
     cv2.putText(
         annotated,
         status_str,
