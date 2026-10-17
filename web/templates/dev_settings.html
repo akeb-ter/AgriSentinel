@@ -484,11 +484,11 @@
                                 Pest Taxonomy Filtering Mode:
                             </label>
                             <select id="visionFilterMode" onchange="onFilterModeChange()" style="width:100%; padding:9px 12px; border-radius:8px; border:1px solid #cbd5e1; font-size:13px; font-weight:600; background:white; color:#1e293b;">
-                                <option value="strict_12" {% if telemetry.class_filter_mode == 'strict_12' %}selected{% endif %}>Strict 12 Target Pests (Default)</option>
-                                <option value="full_102" {% if telemetry.class_filter_mode == 'full_102' %}selected{% endif %}>Full 102 IP102 Catalog (Beta Feature)</option>
+                                <option value="full_102" {% if telemetry.class_filter_mode != 'strict_12' %}selected{% endif %}>Full 102 IP102 Catalog (Recommended)</option>
+                                <option value="strict_12" {% if telemetry.class_filter_mode == 'strict_12' %}selected{% endif %}>Strict 12 Target Pests</option>
                             </select>
                             <span style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
-                                Strict 12 isolates Rice, Corn, Eggplant, Squash, and Mungbean pests. Beta allows all 102 taxonomy classes.
+                                Full 102 mode enables detection for all trained IP102 pest species. Strict 12 isolates major target crops.
                             </span>
                         </div>
 
@@ -496,11 +496,11 @@
                         <div>
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                                 <label style="font-size:12.5px; font-weight:600; color:#2e5033;">Confidence Threshold:</label>
-                                <span id="confValDisplay" style="font-family:'Fira Code', monospace; font-size:13px; font-weight:700; color:#18381c;">{{ "%.2f"|format(telemetry.conf_threshold or 0.60) }}</span>
+                                <span id="confValDisplay" style="font-family:'Fira Code', monospace; font-size:13px; font-weight:700; color:#18381c;">{{ "%.2f"|format(telemetry.conf_threshold or 0.25) }}</span>
                             </div>
-                            <input type="range" id="visionConfSlider" min="0.30" max="0.95" step="0.05" value="{{ telemetry.conf_threshold or 0.60 }}" oninput="document.getElementById('confValDisplay').textContent = parseFloat(this.value).toFixed(2)" style="width:100%; accent-color:#2b6e3c;">
+                            <input type="range" id="visionConfSlider" min="0.10" max="0.90" step="0.05" value="{{ telemetry.conf_threshold or 0.25 }}" oninput="document.getElementById('confValDisplay').textContent = parseFloat(this.value).toFixed(2)" style="width:100%; accent-color:#2b6e3c;">
                             <span style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
-                                Default: 0.60 (filters false positives in dense agricultural foliage).
+                                Default: 0.25 (recommended for sensitive pest identification).
                             </span>
                         </div>
 

@@ -397,7 +397,8 @@ async def analyze_snapshot(req: Optional[AnalyzeRequest] = None):
 @router.post("/api/detect/upload")
 async def detect_from_phone(
     file: UploadFile = File(...),
-    crop_type: Optional[str] = Form(None)
+    crop_type: Optional[str] = Form(None),
+    conf_threshold: Optional[float] = Form(None)
 ):
     """
     Receives an image snapshot uploaded from the smartphone camera,
@@ -418,8 +419,9 @@ async def detect_from_phone(
     if target_crop not in supported_keys:
         target_crop = probe.active_crop
 
-    # Run inference
-    detections = probe.detector.detect(frame, target_crop)
+    # Run inference with optional custom confidence threshold
+    parsed_conf = float(conf_threshold) if conf_threshold is not None else None
+    detections = probe.detector.detect(frame, target_crop, conf_threshold=parsed_conf)
 
     # Prepare metadata & recommendations
     crop_data = knowledge_base.get_crop(target_crop)
@@ -439,6 +441,20 @@ async def detect_from_phone(
         confidence=confidence if detections else 1.0,
         pest_count=pest_count
     )
+
+    # Ensure detected pests receive informative IPM recommendations even if borderline
+    if detections and rec.get("status") == "IGNORED_LOW_CONFIDENCE":
+        pest_meta = knowledge_base.get_pest(target_crop, pest_name) or {}
+        recs_meta = pest_meta.get("recommendations", {})
+        chem_meta = recs_meta.get("chemical", {})
+        org_meta = recs_meta.get("organic_biocontrol", {})
+        rec["detected_pest"] = primary_pest.label
+        rec["pest_count"] = pest_count
+        rec["infestation_level"] = "Low"
+        rec["plant_health_status"] = "Mild Pest Stress"
+        rec["recommended_pesticide"] = f"[VERIFY FIRST] Candidate match ({confidence*100:.0f}%): " + chem_meta.get("product_name", "Broad-spectrum contact insecticide")
+        rec["organic_alternative"] = org_meta.get("product_name", "Cold-pressed Neem Oil spray")
+        rec["safety_precautions"] = "Visual confirmation recommended before chemical application."
 
     # Annotate snapshot
     model_status = "Online" if getattr(probe.detector, "is_model_loaded", False) else "Offline (Missing)"
@@ -765,7 +781,7 @@ async def dev_get_vision_settings():
     """Returns AI vision engine parameters, model status, and active taxonomy mode."""
     detector = probe.detector
     labels = getattr(detector, "labels", [])
-    mode = getattr(detector, "class_filter_mode", "strict_12")
+    mode = getattr(detector, "class_filter_mode", "full_102")
 
     from edge.vision.detector import ALLOWED_STRICT_12
     if mode == "strict_12":
@@ -780,7 +796,7 @@ async def dev_get_vision_settings():
         "model_error": getattr(detector, "model_error", None),
         "runtime_name": getattr(detector, "runtime_name", "None"),
         "class_filter_mode": mode,
-        "conf_threshold": getattr(detector, "conf_threshold", 0.60),
+        "conf_threshold": getattr(detector, "conf_threshold", 0.25),
         "iou_threshold": getattr(detector, "iou_threshold", 0.45),
         "total_classes": len(labels),
         "active_classes_count": len(active_list),
@@ -802,8 +818,8 @@ async def dev_update_vision_settings(req: VisionSettingsRequest):
         "status": "success",
         "message": "Vision parameters updated successfully.",
         "settings": {
-            "class_filter_mode": getattr(detector, "class_filter_mode", "strict_12"),
-            "conf_threshold": getattr(detector, "conf_threshold", 0.60),
+            "class_filter_mode": getattr(detector, "class_filter_mode", "full_102"),
+            "conf_threshold": getattr(detector, "conf_threshold", 0.25),
             "iou_threshold": getattr(detector, "iou_threshold", 0.45),
             "model_loaded": getattr(detector, "is_model_loaded", False)
         }

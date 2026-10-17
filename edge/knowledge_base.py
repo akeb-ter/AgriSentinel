@@ -88,8 +88,8 @@ class KnowledgeBase:
 
         # Cache crops
         self.crops = self.data.get("crops", {})
-        self.conf_high = float(self.data.get("system", {}).get("confidence_threshold_high", 0.70))
-        self.conf_uncertain = float(self.data.get("system", {}).get("confidence_threshold_uncertain", 0.40))
+        self.conf_high = float(self.data.get("system", {}).get("confidence_threshold_high", 0.50))
+        self.conf_uncertain = float(self.data.get("system", {}).get("confidence_threshold_uncertain", 0.20))
 
     def get_supported_crops(self) -> List[Dict[str, Any]]:
         """Returns list of supported crops with key, display name, and pest keys."""
@@ -448,9 +448,9 @@ class KnowledgeBase:
     ) -> Dict[str, Any]:
         """
         Queries recommendation with Two-Tier Confidence & Uncertainty enforcement:
-        - confidence >= 0.70: Full Confirmed Recommendation
-        - 0.40 <= confidence < 0.70: Uncertain Borderline Recommendation with Amber Warning
-        - confidence < 0.40: Low Confidence Ignored / Rejected
+        - confidence >= 0.50: Full Confirmed Recommendation
+        - 0.20 <= confidence < 0.50: Uncertain Borderline Recommendation with Amber Warning
+        - confidence < 0.20: Low Confidence Ignored / Rejected
         """
         crop_data = self.get_crop(crop_key)
         crop_display = crop_data.get("name", crop_key.capitalize()) if crop_data else crop_key.capitalize()
@@ -468,7 +468,7 @@ class KnowledgeBase:
                 "recommended_pesticide": None,
                 "organic_alternative": None,
                 "dosage_instruction": None,
-                "safety_precautions": "Detection confidence too low (< 40%). Chemical application strictly not recommended.",
+                "safety_precautions": "Detection confidence too low (< 20%). Chemical application strictly not recommended.",
             }
 
         is_uncertain = confidence < self.conf_high

@@ -54,6 +54,22 @@ ALLOWED_STRICT_12 = {
     78: "Whitefly"
 }
 
+# Target taxonomic aliases to map actual YOLO11 IP102 model class indices
+TARGET_PEST_ALIASES = {
+    22: "Corn borer",
+    23: "Army worm",
+    24: "Aphids",
+    27: "English grain aphid",
+    28: "Green bug",
+    38: "Cabbage army worm",
+    39: "Beet army worm",
+    54: "Thrips",
+    71: "Whitefly",
+    21: "Red spider",
+    37: "Flea beetle",
+    15: "Mole cricket"
+}
+
 
 def load_102_labels() -> List[str]:
     """Loads 102 pest class labels from config file, with fallback."""
@@ -159,9 +175,9 @@ class TfliteRunner(BasePestDetector):
     def __init__(
         self,
         model_path: Optional[str] = None,
-        conf_threshold: float = 0.60,
+        conf_threshold: float = float(os.getenv("TFLITE_CONF_THRESHOLD", "0.25")),
         iou_threshold: float = 0.45,
-        class_filter_mode: str = "strict_12",
+        class_filter_mode: str = os.getenv("TFLITE_FILTER_MODE", "full_102"),
         labels: Optional[List[str]] = None
     ):
         self.conf_threshold = conf_threshold
@@ -337,10 +353,17 @@ class TfliteRunner(BasePestDetector):
         else:
             return np.expand_dims(normalized, axis=0)
 
-    def detect(self, frame_bgr: np.ndarray, crop_type: str = "corn") -> List[DetectionBox]:
+    def detect(
+        self,
+        frame_bgr: np.ndarray,
+        crop_type: str = "corn",
+        conf_threshold: Optional[float] = None
+    ) -> List[DetectionBox]:
         """Runs inference, filters target crop pests, and applies NMS."""
         if not self.is_model_loaded or not self.interpreter:
             return []
+
+        effective_conf = float(conf_threshold) if conf_threshold is not None else self.conf_threshold
 
         try:
             orig_h, orig_w = frame_bgr.shape[:2]
@@ -371,16 +394,19 @@ class TfliteRunner(BasePestDetector):
                         max_idx = int(np.argmax(class_scores))
                         confidence = float(class_scores[max_idx])
 
-                        if confidence < self.conf_threshold:
+                        if confidence < effective_conf:
                             continue
 
                         # Class filtering mode
                         if self.class_filter_mode == "strict_12":
-                            if max_idx not in ALLOWED_STRICT_12:
+                            if max_idx in ALLOWED_STRICT_12:
+                                label_name = ALLOWED_STRICT_12[max_idx]
+                            elif max_idx in TARGET_PEST_ALIASES:
+                                label_name = TARGET_PEST_ALIASES[max_idx]
+                            else:
                                 continue
-                            label_name = ALLOWED_STRICT_12[max_idx]
                         else:
-                            # Full 102 mode (beta)
+                            # Full 102 mode (default)
                             if 0 <= max_idx < len(self.labels):
                                 label_name = self.labels[max_idx]
                             elif max_idx in ALLOWED_STRICT_12:
@@ -389,6 +415,13 @@ class TfliteRunner(BasePestDetector):
                                 label_name = f"Pest {max_idx}"
 
                         cx, cy, w, h = pred[0:4]
+                        # Handle normalized (0..1) vs pixel-space (0..imgsz) coordinates
+                        if cx > 1.5 or cy > 1.5 or w > 1.5 or h > 1.5:
+                            cx /= self.input_width
+                            cy /= self.input_height
+                            w /= self.input_width
+                            h /= self.input_height
+
                         x1 = int((cx - w / 2) * orig_w)
                         y1 = int((cy - h / 2) * orig_h)
                         box_w = int(w * orig_w)
@@ -409,7 +442,7 @@ class TfliteRunner(BasePestDetector):
                         return []
 
                     # Non-Maximum Suppression to remove redundant boxes
-                    indices = cv2.dnn.NMSBoxes(boxes, scores, self.conf_threshold, self.iou_threshold)
+                    indices = cv2.dnn.NMSBoxes(boxes, scores, effective_conf, self.iou_threshold)
 
                     detected_pests: List[DetectionBox] = []
                     if len(indices) > 0:
@@ -434,14 +467,17 @@ class TfliteRunner(BasePestDetector):
                 boxes_ssd = []
                 for i in range(len(raw_scores)):
                     score = float(raw_scores[i])
-                    if score < self.conf_threshold:
+                    if score < effective_conf:
                         continue
                     class_idx = int(raw_classes[i])
 
                     if self.class_filter_mode == "strict_12":
-                        if class_idx not in ALLOWED_STRICT_12:
+                        if class_idx in ALLOWED_STRICT_12:
+                            label = ALLOWED_STRICT_12[class_idx]
+                        elif class_idx in TARGET_PEST_ALIASES:
+                            label = TARGET_PEST_ALIASES[class_idx]
+                        else:
                             continue
-                        label = ALLOWED_STRICT_12[class_idx]
                     else:
                         label = self.labels[class_idx] if 0 <= class_idx < len(self.labels) else f"Pest {class_idx}"
 

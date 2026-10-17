@@ -30,20 +30,20 @@ def test_infestation_level_calculation():
 
 def test_two_tier_confidence_and_uncertainty():
     """Verify two-tier confidence enforcement and amber caution flags."""
-    # High confidence (>= 0.70)
+    # High confidence (>= 0.50)
     rec_high = knowledge_base.get_recommendation("corn", "fall_armyworm", confidence=0.88, pest_count=2)
     assert rec_high["status"] == "CONFIRMED"
     assert rec_high["is_uncertain"] is False
     assert "[VERIFY FIRST]" not in rec_high["recommended_pesticide"]
 
-    # Borderline confidence (0.40 <= conf < 0.70) -> Uncertain caution
-    rec_border = knowledge_base.get_recommendation("corn", "fall_armyworm", confidence=0.55, pest_count=2)
+    # Borderline confidence (0.20 <= conf < 0.50) -> Uncertain caution
+    rec_border = knowledge_base.get_recommendation("corn", "fall_armyworm", confidence=0.35, pest_count=2)
     assert rec_border["status"] == "UNCERTAIN"
     assert rec_border["is_uncertain"] is True
     assert "[VERIFY FIRST]" in rec_border["recommended_pesticide"]
 
-    # Low confidence (< 0.40) -> Ignored / noise
-    rec_low = knowledge_base.get_recommendation("corn", "fall_armyworm", confidence=0.25, pest_count=2)
+    # Low confidence (< 0.20) -> Ignored / noise
+    rec_low = knowledge_base.get_recommendation("corn", "fall_armyworm", confidence=0.15, pest_count=2)
     assert rec_low["status"] == "IGNORED_LOW_CONFIDENCE"
     assert rec_low["recommended_pesticide"] is None
 

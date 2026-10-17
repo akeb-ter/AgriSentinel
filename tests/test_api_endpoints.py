@@ -110,8 +110,8 @@ def test_api_vision_settings():
 
     # Reset back to default
     client.post("/api/dev/vision_settings", json={
-        "class_filter_mode": "strict_12",
-        "conf_threshold": 0.60,
+        "class_filter_mode": "full_102",
+        "conf_threshold": 0.25,
         "iou_threshold": 0.45
     })
 

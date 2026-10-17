@@ -1,8 +1,8 @@
 {
   "system": {
     "version": "2.1",
-    "confidence_threshold_high": 0.7,
-    "confidence_threshold_uncertain": 0.4
+    "confidence_threshold_high": 0.5,
+    "confidence_threshold_uncertain": 0.2
   },
   "moisture_thresholds": {
     "dry_percent": 25.0,

@@ -162,6 +162,21 @@
       <input type="file" id="phoneCameraInput" accept="image/*" capture="environment" class="hidden" />
       <input type="file" id="phoneGalleryInput" accept="image/*" class="hidden" />
 
+      <!-- Detection Sensitivity Selector -->
+      <div class="flex items-center justify-between bg-slate-900/60 px-3 py-2 rounded-xl border border-slate-700/60 text-[11px]">
+        <span class="text-slate-300 flex items-center gap-1.5 font-medium">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+          AI Detection Sensitivity:
+        </span>
+        <select id="mobileSensitivity" class="bg-slate-800 text-slate-200 text-xs px-2 py-1 rounded-lg border border-slate-700 outline-none">
+          <option value="0.25" selected>Standard (25%)</option>
+          <option value="0.15">High Sensitivity (15%)</option>
+          <option value="0.40">Strict (40%)</option>
+        </select>
+      </div>
+
       <!-- Action Buttons for Mobile Camera Snapshot Detection -->
       <div id="phoneCaptureArea" class="hidden space-y-2">
         <div class="grid grid-cols-2 gap-2">
@@ -443,9 +458,13 @@
     // Centralized diagnosis submission for both live stream snapshot and native camera photos
     async function submitImageForDiagnosis(blobOrFile) {
       const cropKey = document.getElementById("mobileCropSelect").value;
+      const sensitivityEl = document.getElementById("mobileSensitivity");
+      const confThreshold = sensitivityEl ? sensitivityEl.value : "0.25";
+
       const formData = new FormData();
       formData.append("file", blobOrFile, "phone_capture.jpg");
       formData.append("crop_type", cropKey);
+      formData.append("conf_threshold", confThreshold);
 
       document.getElementById("pestFinding").innerText = "Analyzing image with AI...";
       document.getElementById("confidenceFinding").innerText = "--";
@@ -459,11 +478,17 @@
           const hasPests = data.findings && data.findings.length > 0;
           if (hasPests) {
             const top = data.findings[0];
-            document.getElementById("pestFinding").innerText = `${top.name} (${data.pest_count} found)`;
+            const pestName = top.label || top.name || (data.recommendation && data.recommendation.detected_pest) || "Pest Detected";
+            document.getElementById("pestFinding").innerText = `${pestName} (${data.pest_count} found)`;
             document.getElementById("confidenceFinding").innerText = `${(top.confidence * 100).toFixed(1)}%`;
+
+            // If annotated image path returned, display annotated boxes on preview
+            if (data.image_url) {
+              phonePhotoPreview.src = data.image_url + "?t=" + Date.now();
+            }
           } else {
             document.getElementById("pestFinding").innerText = "Pest-Free (No pests detected)";
-            document.getElementById("confidenceFinding").innerText = "100%";
+            document.getElementById("confidenceFinding").innerText = "--";
           }
 
           document.getElementById("plantHealthFinding").innerText = data.plant_health || "--";

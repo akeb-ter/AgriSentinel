@@ -4,8 +4,8 @@
 
 system:
   version: "2.1"
-  confidence_threshold_high: 0.70
-  confidence_threshold_uncertain: 0.40
+  confidence_threshold_high: 0.50
+  confidence_threshold_uncertain: 0.20
 
 moisture_thresholds:
   dry_percent: 25.0

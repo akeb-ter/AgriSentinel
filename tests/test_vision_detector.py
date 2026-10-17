@@ -96,8 +96,8 @@ def test_get_detector_loads_model():
     assert detector.is_model_loaded is True
     assert detector.model_error is None
     assert detector.input_shape == (416, 416)
-    assert detector.class_filter_mode == "strict_12"
-    assert detector.conf_threshold == 0.60
+    assert detector.class_filter_mode == "full_102"
+    assert detector.conf_threshold == 0.25
     assert detector.iou_threshold == 0.45
 
     # Plain blank frame should return no detections
@@ -118,16 +118,16 @@ def test_pest_detector_alias():
 def test_tflite_set_parameters():
     """Verify live parameter updates on TfliteRunner."""
     runner = get_detector()
-    runner.set_parameters(conf_threshold=0.70, iou_threshold=0.50, class_filter_mode="full_102")
+    runner.set_parameters(conf_threshold=0.70, iou_threshold=0.50, class_filter_mode="strict_12")
     assert runner.conf_threshold == 0.70
     assert runner.iou_threshold == 0.50
-    assert runner.class_filter_mode == "full_102"
-
-    # Reset back to strict_12 default
-    runner.set_parameters(conf_threshold=0.60, iou_threshold=0.45, class_filter_mode="strict_12")
-    assert runner.conf_threshold == 0.60
-    assert runner.iou_threshold == 0.45
     assert runner.class_filter_mode == "strict_12"
+
+    # Reset back to full_102 default
+    runner.set_parameters(conf_threshold=0.25, iou_threshold=0.45, class_filter_mode="full_102")
+    assert runner.conf_threshold == 0.25
+    assert runner.iou_threshold == 0.45
+    assert runner.class_filter_mode == "full_102"
 
 
 def test_annotate_frame_overlay():

@@ -189,7 +189,7 @@ class ProbeController:
 
             # Check Auto-Pause & Confirmation Trigger (only active when model is loaded)
             now = time.time()
-            min_conf = getattr(self.detector, "conf_threshold", 0.60)
+            min_conf = getattr(self.detector, "conf_threshold", 0.25)
             is_loaded = getattr(self.detector, "is_model_loaded", False)
             if (
                 is_loaded
@@ -363,8 +363,8 @@ class ProbeController:
             "model_path": getattr(self.detector, "model_path", ""),
             "model_error": getattr(self.detector, "model_error", None),
             "model_runtime": getattr(self.detector, "runtime_name", "None"),
-            "class_filter_mode": getattr(self.detector, "class_filter_mode", "strict_12"),
-            "conf_threshold": getattr(self.detector, "conf_threshold", 0.60),
+            "class_filter_mode": getattr(self.detector, "class_filter_mode", "full_102"),
+            "conf_threshold": getattr(self.detector, "conf_threshold", 0.25),
             "iou_threshold": getattr(self.detector, "iou_threshold", 0.45),
             "timestamp": time.time(),
         }
