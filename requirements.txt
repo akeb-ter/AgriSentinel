@@ -7,8 +7,10 @@ websockets>=11.0
 jinja2>=3.0
 python-multipart>=0.0.6
 pydantic>=2.0.0
-# Lightweight Edge TFLite Runtime (Use tflite-runtime on Raspberry Pi / Linux; ai-edge-litert on Windows)
-tflite-runtime>=2.14.0
+# Lightweight Edge TFLite / LiteRT Runtime
+# Use tflite-runtime on Linux/Raspberry Pi; ai-edge-litert on Windows or as modern LiteRT engine
+tflite-runtime>=2.14.0; platform_system != "Windows"
+ai-edge-litert>=2.3.0
 # Optional for Raspberry Pi GPIO / ADC:
 # gpiozero>=2.0
 # adafruit-circuitpython-ads1x15
