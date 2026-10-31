@@ -1588,27 +1588,40 @@
     }
 
     function updateTelemetryUI(tel) {
+        if (!tel) return;
         const modelEl = document.getElementById('dispModelStatus');
         const taxEl = document.getElementById('dispModelTaxonomy');
-        if (modelEl) {
-            modelEl.textContent = tel.model_loaded ? 'Online' : 'Offline';
+        if (modelEl && typeof tel.model_loaded === 'boolean') {
+            if (!tel.model_loaded) {
+                modelEl.textContent = 'Offline';
+            } else {
+                const isLive = typeof tel.live_ai_enabled === 'boolean' ? tel.live_ai_enabled : liveAIEnabled;
+                modelEl.textContent = isLive ? 'Online' : 'Manual AI Ready';
+            }
         }
-        if (taxEl) {
+        if (taxEl && tel.class_filter_mode !== undefined) {
             taxEl.textContent = tel.class_filter_mode === 'strict_12' ? 'Strict 12' : 'Full 102';
             taxEl.className = 'metric-status ' + (tel.model_loaded ? 'status-optimal' : 'status-severe');
         }
 
-        document.getElementById('dispPestCount').textContent = tel.latest_pest_count;
-        document.getElementById('dispInfestation').textContent = tel.infestation_level;
-        document.getElementById('dispInfestation').className = 'metric-status status-' + tel.infestation_level.toLowerCase();
-
-        document.getElementById('dispPlantHealth').textContent = tel.plant_health_status;
-        document.getElementById('dispPestName').textContent = tel.latest_pest;
+        if (tel.latest_pest_count !== undefined) {
+            document.getElementById('dispPestCount').textContent = tel.latest_pest_count;
+        }
+        if (tel.infestation_level) {
+            document.getElementById('dispInfestation').textContent = tel.infestation_level;
+            document.getElementById('dispInfestation').className = 'metric-status status-' + tel.infestation_level.toLowerCase();
+        }
+        if (tel.plant_health_status) {
+            document.getElementById('dispPlantHealth').textContent = tel.plant_health_status;
+        }
+        if (tel.latest_pest) {
+            document.getElementById('dispPestName').textContent = tel.latest_pest;
+        }
 
         // Auto host crop badge
         const autoBadge = document.getElementById('dispAutoCrop');
         const autoText = document.getElementById('dispAutoCropText');
-        if (autoBadge && autoText) {
+        if (autoBadge && autoText && (tel.crop_name !== undefined || tel.crop_mode !== undefined)) {
             if (tel.crop_name && tel.active_crop && tel.active_crop !== 'auto') {
                 autoBadge.style.display = 'inline-block';
                 autoText.textContent = 'Host: ' + tel.crop_name;
@@ -1622,7 +1635,7 @@
 
         // Model offline banner toggle
         const banner = document.getElementById('modelOfflineBanner');
-        if (banner) {
+        if (banner && typeof tel.model_loaded === 'boolean') {
             if (tel.model_loaded === false) {
                 banner.style.display = 'flex';
                 if (tel.model_path) {
@@ -1826,7 +1839,6 @@
         } catch (e) {
             console.error('Auto zoom toggle error:', e);
         }
-    }
     }
 
     function updateUIWithRecord(rec) {
@@ -2070,9 +2082,9 @@
         const panel = document.getElementById('histAdvPanel');
         const btn = document.getElementById('histAdvToggleBtn');
         if (panel) {
-            panel.classList.toggle('open');
+            panel.classList.toggle('active');
             if (btn) {
-                btn.style.borderColor = panel.classList.contains('open') ? 'var(--primary)' : 'var(--border)';
+                btn.style.borderColor = panel.classList.contains('active') ? 'var(--primary)' : 'var(--border)';
             }
         }
     }

@@ -403,6 +403,47 @@ def test_api_vision_live_toggle_and_manual_analyze():
     assert res_ping2.json()["live_ai_enabled"] is True
 
 
+def test_rendered_templates_javascript_syntax_and_handlers():
+    """Verify /dashboard, /mobile, and /dev_settings have valid JS syntax and defined inline handlers."""
+    import re
+    import shutil
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    node_bin = shutil.which("node")
+    builtins = {"event", "window", "document", "alert", "confirm", "console"}
+
+    for route in ["/dashboard", "/mobile", "/dev_settings"]:
+        res = client.get(route, cookies={"user_id": "1"})
+        assert res.status_code == 200, f"{route} returned {res.status_code}"
+        html = res.text
+
+        scripts = re.findall(r"<script[^>]*>(.*?)</script>", html, re.DOTALL)
+        combined_scripts = "\n".join(scripts)
+        assert len(combined_scripts.strip()) > 0, f"No script found in {route}"
+
+        # If node is installed, verify strict JS syntax
+        if node_bin:
+            for idx, script_code in enumerate(scripts):
+                if not script_code.strip():
+                    continue
+                tmp_file = Path(tempfile.gettempdir()) / f"test_js_{route.strip('/')}_{idx}.js"
+                tmp_file.write_text(script_code, encoding="utf-8")
+                proc = subprocess.run([node_bin, "--check", str(tmp_file)], capture_output=True, text=True)
+                assert proc.returncode == 0, f"JS SyntaxError in {route} script #{idx}:\n{proc.stderr}"
+
+        # Verify all inline event handlers (onclick, onchange, oninput) are defined in the page scripts
+        handlers = re.findall(r'on(?:click|change|input|submit)="([a-zA-Z0-9_]+)\(', html)
+        missing = [
+            h for h in set(handlers)
+            if h not in builtins
+            and not re.search(rf"function\s+{h}\b|(?:const|let|var)\s+{h}\s*=", combined_scripts)
+        ]
+        assert not missing, f"Undefined JS handler functions in {route}: {missing}"
+
+
+
 
 
 

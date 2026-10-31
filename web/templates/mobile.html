@@ -507,10 +507,6 @@
 
         latencyTag.innerText = "Native Camera";
         activeSourceText.innerText = "Smartphone Native Camera (LAN HTTP Mode)";
-        const ptzBar = document.getElementById("mobilePtzBar");
-        if (ptzBar) ptzBar.classList.add("hidden");
-        const rBar = document.getElementById("robotControlsBar");
-        if (rBar) rBar.classList.add("hidden");
       } else {
         // Switch to ROBOT CAMERA
         stopPhoneStream();
