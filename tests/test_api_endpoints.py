@@ -368,6 +368,42 @@ def test_api_dev_camera_config():
     assert res_reset.json()["telemetry"]["resolution_profile"] == "1080p_adaptive"
 
 
+def test_api_vision_live_toggle_and_manual_analyze():
+    """Verify Live AI toggle disables background inference while manual analyze continues to work."""
+    # 1. Turn Live AI OFF
+    res_off = client.post("/api/vision/live_toggle", json={"enabled": False})
+    assert res_off.status_code == 200
+    data_off = res_off.json()
+    assert data_off["status"] == "success"
+    assert data_off["live_ai_enabled"] is False
+
+    # 2. Check /api/ping reflects live_ai_enabled == False
+    res_ping = client.get("/api/ping")
+    assert res_ping.status_code == 200
+    assert res_ping.json()["live_ai_enabled"] is False
+
+    # 3. Manual analyze MUST still execute successfully
+    res_analyze = client.post("/api/analyze", json={"crop_type": "rice", "farm_area": "North Paddy"})
+    assert res_analyze.status_code == 200
+    data_analyze = res_analyze.json()
+    assert data_analyze["status"] == "success"
+    assert "record" in data_analyze
+    assert data_analyze["record"]["crop_type"] == "rice"
+
+    # 4. Turn Live AI back ON
+    res_on = client.post("/api/vision/live_toggle", json={"enabled": True})
+    assert res_on.status_code == 200
+    data_on = res_on.json()
+    assert data_on["status"] == "success"
+    assert data_on["live_ai_enabled"] is True
+
+    # 5. Check /api/ping reflects live_ai_enabled == True
+    res_ping2 = client.get("/api/ping")
+    assert res_ping2.status_code == 200
+    assert res_ping2.json()["live_ai_enabled"] is True
+
+
+
 
 
 

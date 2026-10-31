@@ -293,7 +293,7 @@ def gen_probe_stream():
                 frame_bytes +
                 b"\r\n"
             )
-        time.sleep(0.04)
+        time.sleep(0.033)
 
 
 @router.get("/video_feed")
@@ -328,6 +328,7 @@ async def ping():
         "status": "ok",
         "device": "agrisentinel_probe",
         "active_crop": probe.active_crop,
+        "live_ai_enabled": probe.live_ai_enabled,
         "timestamp": time.time()
     }
 
@@ -935,6 +936,21 @@ async def dev_update_vision_settings(req: VisionSettingsRequest):
             "iou_threshold": getattr(detector, "iou_threshold", 0.45),
             "model_loaded": getattr(detector, "is_model_loaded", False)
         }
+    }
+
+
+class LiveAIToggleRequest(BaseModel):
+    enabled: bool
+
+
+@router.post("/api/vision/live_toggle")
+async def api_vision_live_toggle(req: LiveAIToggleRequest):
+    """Enables or disables continuous background AI pest detection to optimize stream frame rate."""
+    probe.set_live_ai_enabled(req.enabled)
+    return {
+        "status": "success",
+        "live_ai_enabled": probe.live_ai_enabled,
+        "message": f"Live AI Detection {'enabled' if probe.live_ai_enabled else 'disabled'}"
     }
 
 

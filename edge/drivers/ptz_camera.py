@@ -11,7 +11,7 @@ Hardware Specifications:
 - Mechanical Pan: ±125°
 - Mechanical Tilt: ±30°
 - Transports Supported:
-  1. USB 3.0 UVC (plug-and-play V4L2 on Linux, DirectShow on Windows)
+  1. USB 3.0 UVC (plug-and-play V4L2 on Linux with dynamic control discovery)
   2. LAN IP / PoE (RTSP low-latency video stream)
   3. VISCA-over-IP (UDP port 52381 / 1259)
   4. Virtual Viewport Fallback (smooth digital PTZ simulation for offline tests)
@@ -19,11 +19,13 @@ Hardware Specifications:
 
 import os
 import sys
+import re
 import time
 import math
 import socket
 import logging
 import threading
+import subprocess
 from typing import Dict, Any, Optional, Tuple, List
 import cv2
 import numpy as np
@@ -130,9 +132,14 @@ class PTZCameraDriver:
         self.auto_zoom_on_detect: bool = True
         self._pre_auto_zoom_state: Optional[Dict[str, float]] = None
 
-        # Hardware capabilities detected
+        # V4L2 Hardware Controls Map (Discovered dynamically via v4l2-ctl on Linux)
+        self.v4l2_controls: Dict[str, Dict[str, Any]] = {}
         self.is_hardware_ptz_available: bool = False
+        self._cap: Optional[cv2.VideoCapture] = None
+
         self._init_network_socket()
+        if sys.platform.startswith("linux"):
+            self.probe_v4l2_controls(self.camera_index)
 
         logger.info(
             f"[PTZCameraDriver] Initialized {self.model_name} in mode '{self.connection_mode}' "
@@ -147,6 +154,59 @@ class PTZCameraDriver:
             self._visca_sock.settimeout(0.2)
         except Exception as e:
             logger.debug(f"[PTZCameraDriver] UDP socket init error: {e}")
+
+    def bind_capture(self, cap: cv2.VideoCapture, camera_index: Optional[int] = None):
+        """Binds the active OpenCV VideoCapture handle and triggers hardware control discovery."""
+        with self._lock:
+            self._cap = cap
+            if camera_index is not None:
+                self.camera_index = camera_index
+        if sys.platform.startswith("linux"):
+            self.probe_v4l2_controls(self.camera_index)
+
+    def probe_v4l2_controls(self, dev_idx: Optional[int] = None) -> Dict[str, Dict[str, Any]]:
+        """Queries and parses v4l2-ctl hardware controls on Raspberry Pi."""
+        idx = dev_idx if dev_idx is not None else self.camera_index
+        dev_path = f"/dev/video{idx}"
+        controls: Dict[str, Dict[str, Any]] = {}
+
+        try:
+            res = subprocess.run(
+                ["v4l2-ctl", "-d", dev_path, "--list-ctrls"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    line = line.strip()
+                    # e.g.: pan_absolute 0x009a0908 (int)    : min=-180000 max=180000 step=3600 default=0 value=0
+                    m = re.match(r"^([a-zA-Z0-9_]+)\s+0x[0-9a-fA-F]+\s+\(([a-zA-Z]+)\)\s*:\s*(.*)$", line)
+                    if m:
+                        ctrl_name = m.group(1)
+                        ctrl_type = m.group(2)
+                        params_str = m.group(3)
+
+                        ctrl_data: Dict[str, Any] = {"type": ctrl_type, "raw": params_str}
+                        for kv in re.finditer(r"([a-zA-Z_]+)=(-?\d+)", params_str):
+                            ctrl_data[kv.group(1)] = int(kv.group(2))
+
+                        controls[ctrl_name] = ctrl_data
+
+            with self._lock:
+                self.v4l2_controls = controls
+                ptz_keys = {"pan_absolute", "tilt_absolute", "zoom_absolute", "pan_speed", "tilt_speed", "zoom_continuous"}
+                self.is_hardware_ptz_available = bool(ptz_keys.intersection(controls.keys()))
+
+            if self.is_hardware_ptz_available:
+                logger.info(f"[PTZCameraDriver] Discovered hardware UVC PTZ controls on {dev_path}: {list(controls.keys())}")
+            else:
+                logger.info(f"[PTZCameraDriver] Hardware UVC controls not detected on {dev_path}; using Digital PTZ Viewport assist.")
+
+        except Exception as e:
+            logger.debug(f"[PTZCameraDriver] v4l2-ctl probe exception: {e}")
+
+        return controls
 
     # ── State Accessors ──────────────────────────────────────────
 
@@ -176,6 +236,8 @@ class PTZCameraDriver:
                 "preview_size": list(self.profile["preview_size"]),
                 "aspect_ratio": self.profile["aspect_ratio"],
                 "available_profiles": list(RESOLUTION_PROFILES.values()),
+                "is_hardware_ptz_available": self.is_hardware_ptz_available,
+                "v4l2_controls": list(self.v4l2_controls.keys()),
                 "limits": {
                     "min_pan": MIN_PAN,
                     "max_pan": MAX_PAN,
@@ -400,10 +462,8 @@ class PTZCameraDriver:
             # If bounding box is provided (normalized x1, y1, x2, y2), center camera on it
             if box is not None:
                 try:
-                    # Bounding box centers in 0.0 - 1.0 range
                     bx = getattr(box, "x1", 0.0) + (getattr(box, "x2", 1.0) - getattr(box, "x1", 0.0)) / 2.0
                     by = getattr(box, "y1", 0.0) + (getattr(box, "y2", 1.0) - getattr(box, "y1", 0.0)) / 2.0
-                    # Shift pan/tilt proportionally (FOV is ~67.5° wide)
                     pan_offset = (bx - 0.5) * 45.0
                     tilt_offset = -(by - 0.5) * 20.0
                     target_pan = float(np.clip(self.pan + pan_offset, MIN_PAN, MAX_PAN))
@@ -475,13 +535,14 @@ class PTZCameraDriver:
         logger.info(f"[PTZCameraDriver] Updated connection config: mode={self.connection_mode}, profile={self.profile_key}")
         return self.get_status()
 
-    # ── Virtual Viewport Transform (Synthetic & Digital Fallback) ──
+    # ── Virtual Viewport Transform (Synthetic & Digital Assist) ──
 
     def apply_virtual_viewport(self, frame: np.ndarray) -> np.ndarray:
         """
-        Applies smooth digital pan/tilt/zoom viewport crop and transform.
-        Ensures that testing on synthetic feeds or fixed webcams provides full
-        visual feedback for PTZ movement, zoom changes, and auto-zoom verifications.
+        Applies responsive pan/tilt/zoom viewport crop and transform.
+        Ensures that whether the camera hardware moves its motor or operates
+        in digital assist/synthetic mode, user pan/tilt/zoom actions are always
+        visually apparent on screen.
         """
         if frame is None:
             return frame
@@ -492,16 +553,19 @@ class PTZCameraDriver:
             p = self.pan
             t = self.tilt
 
-        # If neutral at 1.0x with 0 pan and 0 tilt, return original frame
+        # Neutral at 1.0x with 0 pan and 0 tilt returns original frame
         if abs(z - 1.0) < 0.05 and abs(p) < 0.5 and abs(t) < 0.5:
             return frame
 
-        # Crop width and height based on zoom factor
-        crop_w = int(w / z)
-        crop_h = int(h / z)
+        # If pan/tilt is requested at 1.0x zoom, provide a slight digital headroom (1.25x)
+        # so panning left/right or tilting up/down is visibly shifted on screen:
+        effective_z = max(z, 1.25 if (abs(p) >= 0.5 or abs(t) >= 0.5) else 1.0)
 
-        # Center offsets based on pan (-125° to +125°) and tilt (-30° to +30°)
-        # Pan shifts center horizontally, tilt shifts center vertically
+        # Crop width and height based on effective zoom factor
+        crop_w = int(w / effective_z)
+        crop_h = int(h / effective_z)
+
+        # Shift center based on pan (-125° to +125°) and tilt (-30° to +30°)
         max_x_shift = (w - crop_w) / 2.0
         max_y_shift = (h - crop_h) / 2.0
 
@@ -513,11 +577,10 @@ class PTZCameraDriver:
 
         x1 = int(np.clip(center_x - crop_w / 2.0, 0, w - crop_w))
         y1 = int(np.clip(center_y - crop_h / 2.0, 0, h - crop_h))
-        x2 = x1 + crop_w
-        y2 = y1 + crop_h
+        x2 = min(x1 + crop_w, w)
+        y2 = min(y1 + crop_h, h)
 
         cropped = frame[y1:y2, x1:x2]
-        # Resize cropped viewport back to standard resolution
         transformed = cv2.resize(cropped, (w, h), interpolation=cv2.INTER_LINEAR)
         return transformed
 
@@ -527,8 +590,62 @@ class PTZCameraDriver:
         """Sends commands over VISCA-over-IP or Linux V4L2 UVC controls."""
         if self.connection_mode == "ip_rtsp" or self.visca_ip:
             self._send_visca_absolute_position()
-        if self.connection_mode == "usb_uvc" and sys.platform.startswith("linux"):
-            self._apply_v4l2_uvc_controls()
+        if self.connection_mode == "usb_uvc":
+            if sys.platform.startswith("linux"):
+                self._apply_v4l2_uvc_controls()
+            self._apply_opencv_uvc_controls()
+
+    def _apply_v4l2_uvc_controls(self):
+        """
+        Dispatches individual scaled UVC controls via v4l2-ctl on Linux/Raspberry Pi.
+        Controls are dispatched individually to prevent one unsupported parameter
+        from invalidating the rest of the command.
+        """
+        dev = f"/dev/video{self.camera_index}"
+        ctrls = self.v4l2_controls
+
+        # 1. Pan Absolute
+        if "pan_absolute" in ctrls:
+            c = ctrls["pan_absolute"]
+            c_min, c_max, step = c.get("min", -180000), c.get("max", 180000), max(1, c.get("step", 3600))
+            pan_val = int(c_min + ((self.pan - MIN_PAN) / (MAX_PAN - MIN_PAN)) * (c_max - c_min))
+            pan_val = round(pan_val / step) * step
+            subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"pan_absolute={pan_val}"], capture_output=True, check=False)
+        elif "pan_speed" in ctrls and abs(self.pan) > 1.0:
+            c = ctrls["pan_speed"]
+            spd = int(np.clip(self.pan / 10.0, c.get("min", -24), c.get("max", 24)))
+            subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"pan_speed={spd}"], capture_output=True, check=False)
+
+        # 2. Tilt Absolute
+        if "tilt_absolute" in ctrls:
+            c = ctrls["tilt_absolute"]
+            c_min, c_max, step = c.get("min", -180000), c.get("max", 180000), max(1, c.get("step", 3600))
+            tilt_val = int(c_min + ((self.tilt - MIN_TILT) / (MAX_TILT - MIN_TILT)) * (c_max - c_min))
+            tilt_val = round(tilt_val / step) * step
+            subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"tilt_absolute={tilt_val}"], capture_output=True, check=False)
+        elif "tilt_speed" in ctrls and abs(self.tilt) > 1.0:
+            c = ctrls["tilt_speed"]
+            spd = int(np.clip(self.tilt / 5.0, c.get("min", -24), c.get("max", 24)))
+            subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"tilt_speed={spd}"], capture_output=True, check=False)
+
+        # 3. Zoom Absolute
+        if "zoom_absolute" in ctrls:
+            c = ctrls["zoom_absolute"]
+            c_min, c_max, step = c.get("min", 100), c.get("max", 400), max(1, c.get("step", 1))
+            zoom_val = int(c_min + ((self.zoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)) * (c_max - c_min))
+            zoom_val = round(zoom_val / step) * step
+            subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"zoom_absolute={zoom_val}"], capture_output=True, check=False)
+
+    def _apply_opencv_uvc_controls(self):
+        """Attempts setting standard OpenCV UVC camera properties on open capture handle."""
+        if not self._cap or not self._cap.isOpened():
+            return
+        try:
+            self._cap.set(cv2.CAP_PROP_PAN, float(self.pan))
+            self._cap.set(cv2.CAP_PROP_TILT, float(self.tilt))
+            self._cap.set(cv2.CAP_PROP_ZOOM, float(self.zoom))
+        except Exception:
+            pass
 
     def _send_visca_packet(self, packet: bytes):
         """Sends a binary VISCA command packet via UDP to the camera."""
@@ -541,12 +658,10 @@ class PTZCameraDriver:
 
     def _send_visca_absolute_position(self):
         """Constructs VISCA pan/tilt & zoom command packets."""
-        # Pan range conversion: -125..+125 mapped to VISCA coordinates
         pan_raw = int((self.pan / MAX_PAN) * 0x0800) & 0xFFFF
         tilt_raw = int((self.tilt / MAX_TILT) * 0x0400) & 0xFFFF
         zoom_raw = int(((self.zoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)) * 0x4000) & 0xFFFF
 
-        # VISCA Absolute Pan/Tilt command: 81 01 06 02 VV WW 0Y 0Y 0Y 0Y 0Z 0Z 0Z 0Z FF
         p_bytes = [
             (pan_raw >> 12) & 0x0F,
             (pan_raw >> 8) & 0x0F,
@@ -568,7 +683,6 @@ class PTZCameraDriver:
         ])
         self._send_visca_packet(packet_pt)
 
-        # VISCA Direct Zoom command: 81 01 04 47 0p 0q 0r 0s FF
         z_bytes = [
             (zoom_raw >> 12) & 0x0F,
             (zoom_raw >> 8) & 0x0F,
@@ -594,24 +708,6 @@ class PTZCameraDriver:
         packet = bytes([0x81, 0x01, 0x04, 0x3F, 0x01, preset_byte, 0xFF])
         self._send_visca_packet(packet)
 
-    def _apply_v4l2_uvc_controls(self):
-        """Attempts to set pan/tilt/zoom via v4l2-ctl for USB UVC cameras on Linux."""
-        try:
-            import subprocess
-            dev = f"/dev/video{self.camera_index}"
-            # Pan/tilt absolute (if supported by UVC driver)
-            pan_int = int(self.pan * 3600)
-            tilt_int = int(self.tilt * 3600)
-            zoom_int = int(self.zoom)
-            subprocess.run(
-                ["v4l2-ctl", "-d", dev, "--set-ctrl", f"pan_absolute={pan_int},tilt_absolute={tilt_int},zoom_absolute={zoom_int}"],
-                capture_output=True,
-                check=False
-            )
-        except Exception:
-            pass
-
 
 # Global singleton instance for application wide access
 ptz_driver = PTZCameraDriver()
-

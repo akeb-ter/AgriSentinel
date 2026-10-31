@@ -953,6 +953,9 @@
                         <div class="video-overlay-badge" id="autoPauseIndicator" style="display:none;">
                             <i class="fas fa-pause-circle" style="color:var(--warning);"></i> Auto-Confirming...
                         </div>
+                        <div class="video-overlay-badge" id="liveAIModeBadge" style="top:44px; left:12px; {% if not telemetry.live_ai_enabled %}display:flex; background:rgba(30,41,59,0.85);{% else %}display:none;{% endif %}">
+                            <i class="fas fa-bolt" style="color:#38bdf8;"></i> 30 FPS Stream · Manual AI Ready
+                        </div>
                         <div class="video-overlay-badge" style="right:12px; left:auto;" id="ptzOverlayBadge">
                             <i class="fas fa-video"></i> <span id="ptzBadgeModel">FEELWORLD 4K10X</span> · <span id="ptzBadgeZoom">1.0x</span>
                         </div>
@@ -960,6 +963,10 @@
                     <div class="video-controls">
                         <button class="btn-capture" id="btnAnalyze" onclick="triggerAnalyze()">
                             <i class="fas fa-crosshairs"></i> Capture &amp; Inspect Now
+                        </button>
+                        <button class="btn-action" id="btnLiveAIToggle" onclick="toggleLiveAI()" title="Toggle live continuous AI detection (Turn OFF for smooth 30 FPS video streaming)">
+                            <i id="liveAIIcon" class="fas fa-brain" style="color:{% if telemetry.live_ai_enabled %}var(--primary){% else %}#64748b{% endif %};"></i>
+                            Live AI: <b id="liveAIStatusText">{% if telemetry.live_ai_enabled %}ON{% else %}OFF (30 FPS){% endif %}</b>
                         </button>
                         <button class="btn-action" onclick="refreshStream()">
                             <i class="fas fa-sync-alt"></i> Refresh
@@ -1655,6 +1662,57 @@
 
             const autoZoomChk = document.getElementById('ptzAutoZoomCheck');
             if (autoZoomChk && document.activeElement !== autoZoomChk) autoZoomChk.checked = ptz.auto_zoom_on_detect !== false;
+        }
+
+        // Live AI Detection Toggle update
+        if (typeof tel.live_ai_enabled === 'boolean' && tel.live_ai_enabled !== liveAIEnabled) {
+            updateLiveAIUI(tel.live_ai_enabled);
+        }
+    }
+
+    // --- Live AI Inference Toggle ---
+    let liveAIEnabled = {{ 'true' if telemetry.live_ai_enabled else 'false' }};
+
+    async function toggleLiveAI() {
+        const nextState = !liveAIEnabled;
+        const btn = document.getElementById('btnLiveAIToggle');
+        if (btn) btn.disabled = true;
+
+        try {
+            const res = await fetch('/api/vision/live_toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: nextState })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                liveAIEnabled = data.live_ai_enabled;
+                updateLiveAIUI(liveAIEnabled);
+                showToast(
+                    'Live AI Detection',
+                    liveAIEnabled ? 'Live AI Enabled (Continuous scanning)' : 'Live AI Disabled (Maximum 30 FPS stream. Click Capture & Inspect to analyze manually.)'
+                );
+            }
+        } catch (e) {
+            console.error('Failed to toggle Live AI:', e);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
+    function updateLiveAIUI(enabled) {
+        liveAIEnabled = enabled;
+        const textEl = document.getElementById('liveAIStatusText');
+        const iconEl = document.getElementById('liveAIIcon');
+        const modeBadge = document.getElementById('liveAIModeBadge');
+
+        if (textEl) textEl.textContent = enabled ? 'ON' : 'OFF (30 FPS)';
+        if (iconEl) iconEl.style.color = enabled ? 'var(--primary)' : '#64748b';
+        if (modeBadge) modeBadge.style.display = enabled ? 'none' : 'flex';
+
+        const dispModelStatus = document.getElementById('dispModelStatus');
+        if (dispModelStatus) {
+            dispModelStatus.textContent = enabled ? 'Live AI (Active)' : 'Manual AI Ready';
         }
     }
 

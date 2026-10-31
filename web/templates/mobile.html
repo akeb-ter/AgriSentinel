@@ -257,6 +257,18 @@
         </div>
       </div>
 
+      <!-- Robot Stream Controls (Live AI Background Toggle & Instant Analysis) -->
+      <div id="robotControlsBar" class="grid grid-cols-2 gap-2">
+        <button type="button" id="btnMobileLiveAI" onclick="toggleMobileLiveAI()" class="py-2.5 px-3 bg-emerald-600/30 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-600/50 active:scale-[0.98] transition font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 shadow-sm" title="Toggle background live AI pest detection">
+          <i class="fas fa-microchip"></i>
+          <span id="lblMobileLiveAI">Live AI: ON</span>
+        </button>
+        <button type="button" id="btnMobileRobotInspect" onclick="triggerMobileRobotInspect()" class="py-2.5 px-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 active:scale-[0.98] transition font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 shadow-md shadow-green-900/30 text-white" title="Capture and inspect current robot frame">
+          <i class="fas fa-camera"></i>
+          <span id="lblMobileRobotInspect">Capture &amp; Inspect</span>
+        </button>
+      </div>
+
       <!-- Action Buttons for Mobile Camera Snapshot Detection -->
       <div id="phoneCaptureArea" class="hidden space-y-2">
         <div class="grid grid-cols-2 gap-2">
@@ -452,6 +464,10 @@
         robotFeed.classList.add("hidden");
         phoneCaptureArea.classList.remove("hidden");
         streamLabel.innerText = "Phone Camera";
+        const ptzBar = document.getElementById("mobilePtzBar");
+        if (ptzBar) ptzBar.classList.add("hidden");
+        const rBar = document.getElementById("robotControlsBar");
+        if (rBar) rBar.classList.add("hidden");
 
         if (canUseGetUserMedia()) {
           try {
@@ -493,6 +509,8 @@
         activeSourceText.innerText = "Smartphone Native Camera (LAN HTTP Mode)";
         const ptzBar = document.getElementById("mobilePtzBar");
         if (ptzBar) ptzBar.classList.add("hidden");
+        const rBar = document.getElementById("robotControlsBar");
+        if (rBar) rBar.classList.add("hidden");
       } else {
         // Switch to ROBOT CAMERA
         stopPhoneStream();
@@ -513,6 +531,8 @@
         document.getElementById("sourceBadgeRow").style.display = "none";
         const ptzBar = document.getElementById("mobilePtzBar");
         if (ptzBar) ptzBar.classList.remove("hidden");
+        const rBar = document.getElementById("robotControlsBar");
+        if (rBar) rBar.classList.remove("hidden");
       }
     });
 
@@ -553,6 +573,129 @@
       const el = document.getElementById("mobilePtzCoords");
       if (el) {
         el.innerText = `Pan: ${ptz.pan > 0 ? '+' : ''}${ptz.pan}° · Tilt: ${ptz.tilt > 0 ? '+' : ''}${ptz.tilt}° · ${ptz.zoom_display}`;
+      }
+    }
+
+    // Live AI Toggle & On-Demand Inspection for Robot Camera
+    let mobileLiveAIEnabled = true;
+
+    async function toggleMobileLiveAI() {
+      const nextState = !mobileLiveAIEnabled;
+      try {
+        const res = await fetch('/api/vision/live_toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: nextState })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          updateMobileLiveAIUI(data.live_ai_enabled);
+        }
+      } catch (e) {
+        console.error('Failed to toggle live AI:', e);
+      }
+    }
+
+    function updateMobileLiveAIUI(enabled) {
+      mobileLiveAIEnabled = enabled;
+      const btn = document.getElementById("btnMobileLiveAI");
+      const lbl = document.getElementById("lblMobileLiveAI");
+      const latencyTag = document.getElementById("latencyTag");
+      if (!btn || !lbl) return;
+
+      if (enabled) {
+        btn.className = "py-2.5 px-3 bg-emerald-600/30 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-600/50 active:scale-[0.98] transition font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 shadow-sm";
+        lbl.innerText = "Live AI: ON";
+        if (latencyTag && !toggle.checked) {
+          latencyTag.innerText = "Live AI ~5 FPS";
+          latencyTag.className = "text-[10px] bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 px-2 py-0.5 rounded-full font-mono";
+        }
+      } else {
+        btn.className = "py-2.5 px-3 bg-amber-600/20 text-amber-300 border border-amber-500/40 hover:bg-amber-600/30 active:scale-[0.98] transition font-bold rounded-xl text-xs flex items-center justify-center space-x-1.5 shadow-sm";
+        lbl.innerText = "Live AI: OFF (30 FPS)";
+        if (latencyTag && !toggle.checked) {
+          latencyTag.innerText = "Smooth 30 FPS";
+          latencyTag.className = "text-[10px] bg-amber-950/80 text-amber-300 border border-amber-700/60 px-2 py-0.5 rounded-full font-mono";
+        }
+      }
+    }
+
+    async function triggerMobileRobotInspect() {
+      const btn = document.getElementById("btnMobileRobotInspect");
+      const lbl = document.getElementById("lblMobileRobotInspect");
+      const originalText = lbl ? lbl.innerText : "Capture & Inspect";
+      if (btn) btn.disabled = true;
+      if (lbl) lbl.innerText = "Analyzing...";
+
+      try {
+        const res = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.record) {
+            applyInspectionToMobileUI(data.record);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to trigger robot inspection:', e);
+      } finally {
+        if (btn) btn.disabled = false;
+        if (lbl) lbl.innerText = originalText;
+      }
+    }
+
+    function applyInspectionToMobileUI(record) {
+      const pestFinding = document.getElementById("pestFinding");
+      const confidenceFinding = document.getElementById("confidenceFinding");
+      const plantHealthFinding = document.getElementById("plantHealthFinding");
+      const sourceBadgeRow = document.getElementById("sourceBadgeRow");
+      const sourceBadgeText = document.getElementById("sourceBadgeText");
+      const recCard = document.getElementById("recCard");
+
+      if (pestFinding) {
+        if (record.detected_pest && record.detected_pest !== "None" && record.detected_pest !== "Pest-Free") {
+          pestFinding.innerText = `${record.detected_pest} (${record.pest_count || 1} found)`;
+        } else {
+          pestFinding.innerText = "Pest-Free (No pests detected)";
+        }
+      }
+
+      if (confidenceFinding) {
+        const conf = typeof record.confidence === "number" ? (record.confidence * 100).toFixed(1) + "%" : "--";
+        confidenceFinding.innerText = conf;
+      }
+
+      if (plantHealthFinding) {
+        plantHealthFinding.innerText = record.plant_health_status || "--";
+      }
+
+      if (sourceBadgeRow && sourceBadgeText) {
+        sourceBadgeRow.style.display = "flex";
+        sourceBadgeText.innerText = "Robot Camera (On-Demand)";
+      }
+
+      if (record.crop_type) {
+        const cropBadgeRow = document.getElementById("mobileCropBadgeRow");
+        const cropBadgeText = document.getElementById("mobileCropBadgeText");
+        if (cropBadgeRow && cropBadgeText) {
+          cropBadgeRow.style.display = "flex";
+          cropBadgeText.innerText = record.crop_type.toUpperCase();
+        }
+      }
+
+      if (recCard && (record.recommended_pesticide || record.organic_alternative)) {
+        recCard.classList.remove("hidden");
+        const isBeneficial = record.status === "BENEFICIAL_PRESENT";
+        const recPesticideText = document.getElementById("recPesticideText");
+        const recOrganicText = document.getElementById("recOrganicText");
+        const recSafetyText = document.getElementById("recSafetyText");
+
+        if (recPesticideText) recPesticideText.innerText = record.recommended_pesticide || "None needed";
+        if (recOrganicText) recOrganicText.innerText = record.organic_alternative || "Maintain monitoring";
+        if (recSafetyText) recSafetyText.innerText = record.safety_precautions || "Standard field precautions";
       }
     }
 
@@ -822,6 +965,9 @@
             if (cropSel && cropSel.value !== pingData.active_crop && !document.activeElement.isSameNode(cropSel)) {
               cropSel.value = pingData.active_crop;
             }
+          }
+          if (typeof pingData.live_ai_enabled === "boolean") {
+            updateMobileLiveAIUI(pingData.live_ai_enabled);
           }
         } else {
           setConnectionState(false);

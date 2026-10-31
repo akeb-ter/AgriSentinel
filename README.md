@@ -92,6 +92,13 @@ AgriSentinel integrates the **FEELWORLD 4K10X 4K PTZ Camera** (1/2.8" 8.29MP CMO
 > [!NOTE]
 > When running on a non-Pi development machine (Windows, macOS, or x86_64 Linux) or without the physical PTZ camera attached, the driver automatically engages the **Virtual PTZ Viewport Engine**, allowing real-time simulated pan, tilt, zoom, presets, and auto-zoom verifications directly in your browser.
 
+> [!TIP]
+> **Raspberry Pi USB Performance & Live AI Toggle:**
+> The FEELWORLD 4K10X camera connects via USB 3.0 UVC. To deliver a smooth, fluid 25–30 FPS MJPEG video stream on the Raspberry Pi:
+> - Video capture and encoding run in a dedicated high-speed loop decoupled from AI inference.
+> - A **Live AI Toggle** (`Live AI: ON` / `Live AI: OFF`) is available directly on both the Dashboard and Mobile PWA.
+> - When `Live AI: OFF` is selected, background inference is paused to eliminate CPU contention and maintain zero-latency 30 FPS video streaming. Farmers can click **"Capture & Inspect Now"** at any time to run instant on-demand AI detection on the current frame.
+
 ---
 
 ## 3. Environment Setup & Installation
@@ -102,7 +109,7 @@ Update system packages and install the required video, build, and network librar
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3-pip python3-venv python3-dev libgl1-mesa-glx libglib2.0-0 network-manager git
+sudo apt install -y python3-pip python3-venv python3-dev libgl1-mesa-glx libglib2.0-0 network-manager git v4l-utils
 ```
 
 ### 3.2 Clone Repository
@@ -448,6 +455,7 @@ AgriSentinel provides a comprehensive OpenAPI-compliant REST API:
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `GET` | `/api/dev/status` | System metrics (CPU, RAM, disk, temperature, Wi-Fi status, camera status) |
+| `POST` | `/api/vision/live_toggle` | Toggle continuous background AI pest detection (`{"enabled": false}` for smooth 25–30 FPS streaming on Pi; manual inspection remains always available) |
 | `POST` | `/api/dev/wifi/connect` | Configure Wi-Fi credentials via NetworkManager (`{"ssid": "...", "password": "..."}`) |
 | `POST` | `/api/dev/camera/restart` | Restart camera capture loop without restarting the whole server |
 | `POST` | `/api/dev/system/power` | Power management action (`{"action": "reboot"}` or `{"action": "shutdown"}`) |
