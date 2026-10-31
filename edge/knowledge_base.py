@@ -37,6 +37,7 @@ class KnowledgeBase:
         self.data: Dict[str, Any] = {}
         self.catalog_102: Dict[str, Dict[str, Any]] = {}
         self.agronomic_matrix_102: Dict[str, Dict[str, Any]] = {}
+        self.pest_to_crop_map: Dict[str, str] = {}
         self._load_102_catalog()
         self._load_agronomic_matrix()
         self.reload()
@@ -152,6 +153,92 @@ class KnowledgeBase:
         self.crops = self.data.get("crops", {})
         self.conf_high = float(self.data.get("system", {}).get("confidence_threshold_high", 0.50))
         self.conf_uncertain = float(self.data.get("system", {}).get("confidence_threshold_uncertain", 0.20))
+        self._build_pest_to_crop_map()
+
+    def _build_pest_to_crop_map(self):
+        """Constructs reverse index mapping all pest keys, common names, and scientific names to primary crops."""
+        self.pest_to_crop_map = {}
+        for c_key, c_data in self.crops.items():
+            for p_key, p_data in c_data.get("pests", {}).items():
+                k_clean = p_key.lower().strip()
+                self.pest_to_crop_map[k_clean] = c_key
+                self.pest_to_crop_map[k_clean.replace("_", " ")] = c_key
+                cname = p_data.get("common_name", "").lower().strip()
+                sname = p_data.get("scientific_name", "").lower().strip()
+                if cname:
+                    self.pest_to_crop_map[cname] = c_key
+                    self.pest_to_crop_map[cname.replace(" ", "_")] = c_key
+                if sname:
+                    self.pest_to_crop_map[sname] = c_key
+                    self.pest_to_crop_map[sname.replace(" ", "_")] = c_key
+
+        # Load from catalog_102
+        for item in self.catalog_102.values():
+            aff = item.get("crop_affinity")
+            if aff and aff in self.crops:
+                k = item.get("key", "").lower().strip()
+                n = item.get("name", "").lower().strip()
+                s = item.get("scientific_name", "").lower().strip()
+                cid = str(item.get("id", ""))
+                if k:
+                    self.pest_to_crop_map[k] = aff
+                    self.pest_to_crop_map[k.replace("_", " ")] = aff
+                if n:
+                    self.pest_to_crop_map[n] = aff
+                    self.pest_to_crop_map[n.replace(" ", "_")] = aff
+                if s:
+                    self.pest_to_crop_map[s] = aff
+                if cid:
+                    self.pest_to_crop_map[cid] = aff
+
+        # Explicit aliases
+        self.pest_to_crop_map["fall_armyworm"] = "corn"
+        self.pest_to_crop_map["fall armyworm"] = "corn"
+        self.pest_to_crop_map["mango_flat_beak_leafhopper"] = "squash"
+        self.pest_to_crop_map["rhytidodera_bowrinii_white"] = "squash"
+
+    def infer_crop_from_pest(self, pest_key_or_name: str, fallback_crop: str = "rice") -> str:
+        """
+        Infers the host crop (rice, corn, mungbean, squash, eggplant) from the detected pest identity.
+        """
+        clean_fallback = fallback_crop if (fallback_crop and fallback_crop not in ("auto", "auto_detect", "autodetect")) else "rice"
+        if not pest_key_or_name:
+            return clean_fallback
+
+        norm = pest_key_or_name.lower().strip()
+        if norm in ("none", "pest-free", "pest_free", "healthy", "healthy / pest-free", "uncertain / noise"):
+            return clean_fallback
+
+        norm_clean = norm.replace("-", "_").replace(" ", "_")
+        if norm in self.pest_to_crop_map:
+            return self.pest_to_crop_map[norm]
+        if norm_clean in self.pest_to_crop_map:
+            return self.pest_to_crop_map[norm_clean]
+
+        # Check agronomic matrix entry
+        agro = self.get_agronomic_info(pest_key_or_name)
+        if agro:
+            k = agro.get("key", "").lower().strip()
+            if k in self.pest_to_crop_map:
+                return self.pest_to_crop_map[k]
+            pc = agro.get("primary_crop", "").lower().strip()
+            for c_key in self.crops:
+                if c_key in pc:
+                    return c_key
+
+        # Token set match
+        tokens = set(norm_clean.split("_"))
+        for k, c_key in self.pest_to_crop_map.items():
+            if set(k.replace(" ", "_").split("_")) == tokens:
+                return c_key
+
+        # Word boundary match
+        for k, c_key in self.pest_to_crop_map.items():
+            k_clean = k.replace(" ", "_")
+            if f"_{norm_clean}_" in f"_{k_clean}_":
+                return c_key
+
+        return clean_fallback
 
     def get_supported_crops(self) -> List[Dict[str, Any]]:
         """Returns list of supported crops with key, display name, and pest keys."""
@@ -177,7 +264,15 @@ class KnowledgeBase:
         """Returns crop details by key."""
         if not crop_key:
             return None
-        return self.crops.get(crop_key.lower().strip())
+        norm = crop_key.lower().strip()
+        if norm in ("auto", "auto_detect", "autodetect"):
+            return {
+                "name": "Auto-Detect (Recommended)",
+                "scientific_name": "Multi-Crop Intelligence",
+                "description": "Automatically resolves host crop from identified pest taxonomy across all 100 cataloged IP102 species.",
+                "pests": {}
+            }
+        return self.crops.get(norm)
 
     def _generate_taxonomic_recommendations(self, common_name: str, scientific_name: str = "") -> Dict[str, Any]:
         """
@@ -426,11 +521,15 @@ class KnowledgeBase:
         norm = pest_key.lower().strip().replace(" ", "_").replace("-", "_")
 
         # 1. Search specified crop
-        crop = self.get_crop(crop_key) if crop_key else None
+        crop = self.get_crop(crop_key) if (crop_key and crop_key not in ("auto", "auto_detect", "autodetect")) else None
         if crop:
             pests = crop.get("pests", {})
             if norm in pests:
                 return pests[norm]
+            if norm in ("fall_armyworm", "fall armyworm") and "army_worm" in pests:
+                alias_item = dict(pests["army_worm"])
+                alias_item["common_name"] = "Fall Armyworm"
+                return alias_item
             for k, v in pests.items():
                 if norm in k or k in norm or norm in v.get("common_name", "").lower():
                     return v
@@ -442,6 +541,10 @@ class KnowledgeBase:
             pests = c_data.get("pests", {})
             if norm in pests:
                 return pests[norm]
+            if norm in ("fall_armyworm", "fall armyworm") and "army_worm" in pests:
+                alias_item = dict(pests["army_worm"])
+                alias_item["common_name"] = "Fall Armyworm"
+                return alias_item
             for k, v in pests.items():
                 if norm in k or k in norm or norm in v.get("common_name", "").lower():
                     return v
@@ -482,23 +585,49 @@ class KnowledgeBase:
         self,
         pest_count: int,
         infestation_level: str,
-        soil_status: Optional[str] = None
+        soil_status: Optional[str] = None,
+        pest_name: Optional[str] = None
     ) -> str:
         """
-        Derives plant health condition based on pest pressure and infestation severity.
+        Derives plant health condition based on pest pressure, infestation severity,
+        and specific physiological symptoms from the IP102 Agronomic Matrix.
         (soil_status parameter preserved as optional for backwards compatibility).
         """
         if pest_count == 0 or infestation_level in ("None", "none"):
             return "Healthy / Pest-Free"
 
-        if infestation_level == "Low":
-            return "Mild Pest Stress"
+        # Check for specific pest symptoms in the agronomic matrix
+        symptom_suffix = ""
+        severity_risk = None
+        if pest_name:
+            agro = self.get_agronomic_info(pest_name)
+            if agro:
+                ph = agro.get("plant_health", {})
+                symptom = ph.get("primary_symptom", "").strip()
+                severity_risk = ph.get("severity_level")
+                if symptom:
+                    symptom_suffix = f" - {symptom}"
 
-        if infestation_level == "Moderate":
+        # If severe infestation or critical risk pest
+        if infestation_level in ("Severe", "severe") or severity_risk == "Critical":
+            if symptom_suffix:
+                return f"Critical Damage Risk{symptom_suffix}"
+            return "Severe Infestation (Critical Damage Risk)"
+
+        if infestation_level in ("High", "high") or severity_risk == "High":
+            if symptom_suffix:
+                return f"High Pest Pressure{symptom_suffix}"
+            return "High Pest Pressure (Defoliation & Stress)"
+
+        if infestation_level in ("Moderate", "moderate"):
+            if symptom_suffix:
+                return f"Under Moderate Pest Pressure{symptom_suffix}"
             return "Under Moderate Pest Pressure"
 
-        # Severe
-        return "Severe Infestation (Critical Damage Risk)"
+        # Low
+        if symptom_suffix:
+            return f"Mild Pest Stress{symptom_suffix}"
+        return "Mild Pest Stress"
 
     def get_recommendation(
         self,
@@ -511,18 +640,27 @@ class KnowledgeBase:
         taxonomy: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Queries recommendation with Two-Tier Confidence & Uncertainty enforcement
-        and Beneficial Natural Predator Protection:
+        Queries recommendation with Two-Tier Confidence & Uncertainty enforcement,
+        Beneficial Natural Predator Protection, and Automatic Crop Identification:
         - is_beneficial: Locked non-spray biological conservation recommendation
         - confidence >= 0.50: Full Confirmed Recommendation
         - 0.20 <= confidence < 0.50: Uncertain Borderline Recommendation with Amber Warning
         - confidence < 0.20: Low Confidence Ignored / Rejected
         """
-        crop_data = self.get_crop(crop_key)
-        crop_display = crop_data.get("name", crop_key.capitalize()) if crop_data else crop_key.capitalize()
+        # Automatic Crop Resolution from detected pest
+        norm_pest = pest_name.lower().strip().replace("-", "_").replace(" ", "_")
+        effective_crop = crop_key
+        auto_detected = False
+        if pest_name and norm_pest not in ("none", "pest_free", "healthy", "uncertain_/_noise"):
+            inferred = self.infer_crop_from_pest(pest_name, fallback_crop=crop_key)
+            if inferred and (crop_key in ("auto", "auto_detect", "autodetect") or crop_key != inferred):
+                effective_crop = inferred
+                auto_detected = True
+
+        crop_data = self.get_crop(effective_crop)
+        crop_display = crop_data.get("name", effective_crop.capitalize()) if crop_data else effective_crop.capitalize()
 
         # 0. Beneficial Natural Predator Protection Guard
-        norm_pest = pest_name.lower().strip().replace("-", "_").replace(" ", "_")
         tax_str = (taxonomy or "").lower()
         is_predator = is_beneficial or (
             any(k in norm_pest for k in ["beneficial", "predator", "ladybug", "ladybird", "lacewing", "hoverfly", "mantis", "spider"])
@@ -540,8 +678,9 @@ class KnowledgeBase:
                 "is_uncertain": False,
                 "is_beneficial": True,
                 "confidence": round(confidence, 3),
-                "crop_type": crop_key,
+                "crop_type": effective_crop,
                 "crop_name": crop_display,
+                "auto_detected_crop": auto_detected,
                 "detected_pest": display_name,
                 "scientific_name": taxonomy or "Predatory Biocontrol Agent",
                 "pest_count": pest_count,
@@ -569,7 +708,9 @@ class KnowledgeBase:
                 "is_uncertain": True,
                 "is_beneficial": False,
                 "confidence": confidence,
-                "crop_type": crop_key,
+                "crop_type": effective_crop,
+                "crop_name": crop_display,
+                "auto_detected_crop": auto_detected,
                 "detected_pest": "Uncertain / Noise",
                 "pest_count": 0,
                 "infestation_level": "None",
@@ -590,7 +731,7 @@ class KnowledgeBase:
         # Check IP102 agronomic intelligence matrix
         agro_info = self.get_agronomic_info(pest_name)
 
-        pest_data = self.get_pest(crop_key, pest_name)
+        pest_data = self.get_pest(effective_crop, pest_name)
         if not pest_data:
             common_name = pest_name.replace("_", " ").capitalize()
             sci_name = ""
@@ -605,8 +746,8 @@ class KnowledgeBase:
         chem = recs.get("chemical", {})
         org = recs.get("organic_biocontrol", {})
 
-        infestation = self.calculate_infestation_level(crop_key, pest_name, pest_count)
-        health = self.evaluate_plant_health(pest_count, infestation, soil_status)
+        infestation = self.calculate_infestation_level(effective_crop, pest_name, pest_count)
+        health = self.evaluate_plant_health(pest_count, infestation, soil_status, pest_name=pest_name)
 
         chem_str = chem.get("product_name")
         org_str = org.get("product_name")
@@ -617,6 +758,8 @@ class KnowledgeBase:
             sci_name = agro_info.get("scientific_name") or sci_name
             if not pest_data or not pest_data.get("common_name"):
                 common_name = agro_info.get("common_name") or common_name
+            if norm_pest in ("fall_armyworm", "fall armyworm"):
+                common_name = "Fall Armyworm"
             pest_category = agro_info.get("pest_category", "Agricultural Pest")
             plant_health_details = agro_info.get("plant_health", {})
             citation = agro_info.get("citation", "FAO Integrated Pest Management Guidelines")
@@ -663,8 +806,9 @@ class KnowledgeBase:
             "is_uncertain": is_uncertain,
             "is_beneficial": False,
             "confidence": round(confidence, 3),
-            "crop_type": crop_key,
+            "crop_type": effective_crop,
             "crop_name": crop_display,
+            "auto_detected_crop": auto_detected,
             "detected_pest": common_name,
             "scientific_name": sci_name,
             "pest_count": pest_count,

@@ -168,4 +168,78 @@ def test_ip102_agronomic_matrix_and_citations():
     assert rec_pred["phi_days"] == 0
 
 
+def test_uniform_20_pests_per_crop():
+    """Verify that all 5 crops have strictly 20 unique IP102 pests each (100 total, 0 overlap)."""
+    crops = knowledge_base.get_supported_crops()
+    assert len(crops) == 5
+
+    seen_pests = {}
+    total_pest_count = 0
+
+    for crop in crops:
+        pests = crop.get("pests", [])
+        assert len(pests) == 20, f"Crop {crop['key']} has {len(pests)} pests, expected exactly 20"
+        total_pest_count += len(pests)
+
+        for p in pests:
+            pkey = p["key"]
+            assert pkey not in seen_pests, f"Duplicate pest '{pkey}' found in both {seen_pests[pkey]} and {crop['key']}"
+            seen_pests[pkey] = crop["key"]
+
+    assert total_pest_count == 100
+    assert len(seen_pests) == 100
+
+
+def test_auto_crop_inference():
+    """Verify automatic host crop resolution from detected pest taxonomy."""
+    # 1. Direct inference tests
+    assert knowledge_base.infer_crop_from_pest("rice_leaf_roller") == "rice"
+    assert knowledge_base.infer_crop_from_pest("corn_borer") == "corn"
+    assert knowledge_base.infer_crop_from_pest("alfalfa_weevil") == "mungbean"
+    assert knowledge_base.infer_crop_from_pest("dacus_dorsalis") == "squash"
+    assert knowledge_base.infer_crop_from_pest("flea_beetle") == "eggplant"
+
+    # 2. Recommendation query with "auto" as crop
+    rec_auto = knowledge_base.get_recommendation("auto", "yellow_rice_borer", confidence=0.85)
+    assert rec_auto["crop_type"] == "rice"
+    assert rec_auto["auto_detected_crop"] is True
+
+    # 3. Recommendation query with mismatched crop overrides to true host crop
+    rec_override = knowledge_base.get_recommendation("rice", "corn_borer", confidence=0.88)
+    assert rec_override["crop_type"] == "corn"
+    assert rec_override["auto_detected_crop"] is True
+    assert rec_override["detected_pest"] == "Corn Borer"
+
+
+def test_multi_tier_symptom_aware_plant_health():
+    """Verify 6-tier plant health assessment with intrinsic physiological symptoms from IP102 matrix."""
+    # Tier 0: Healthy / Pest-Free
+    h_healthy = knowledge_base.evaluate_plant_health(0, "None")
+    assert h_healthy == "Healthy / Pest-Free"
+
+    # Tier 1: Beneficial Biological Control Active
+    rec_beneficial = knowledge_base.get_recommendation("corn", "ladybug", confidence=0.90, pest_count=1, is_beneficial=True)
+    assert rec_beneficial["plant_health_status"] == "Beneficial Biological Control Active"
+
+    # Tier 2: Mild Pest Stress with symptom
+    h_mild = knowledge_base.evaluate_plant_health(1, "Low", pest_name="rice_leaf_roller")
+    assert "Mild Pest Stress" in h_mild
+    assert "Folding" in h_mild or "Skeletonization" in h_mild
+
+    # Tier 3: Moderate Foliar / Sap Damage with symptom
+    h_mod = knowledge_base.evaluate_plant_health(3, "Moderate", pest_name="aphids")
+    assert "Under Moderate Pest Pressure" in h_mod
+
+    # Tier 4: High Pest Pressure with symptom
+    h_high = knowledge_base.evaluate_plant_health(4, "High", pest_name="brown_plant_hopper")
+    assert "High Pest Pressure" in h_high or "Critical" in h_high
+    assert "Hopperburn" in h_high or "Stunt" in h_high
+
+    # Tier 5: Critical Damage Risk (Internal Stem Borer)
+    h_crit = knowledge_base.evaluate_plant_health(1, "Low", pest_name="asiatic_rice_borer")
+    assert "Damage Risk" in h_crit or "High" in h_crit
+    assert "Deadheart" in h_crit or "Whitehead" in h_crit
+
+
+
 

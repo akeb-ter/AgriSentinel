@@ -85,6 +85,9 @@
       <span class="text-slate-300 font-semibold">Active Crop:</span>
     </div>
     <select id="mobileCropSelect" onchange="onMobileCropChange(this.value)" class="bg-slate-900 text-green-400 text-xs font-bold py-1 px-3 rounded-lg border border-slate-700 focus:outline-none focus:border-green-500">
+      <option value="auto" {% if active_crop == 'auto' %}selected{% endif %}>
+        ✨ Auto-Detect (Recommended)
+      </option>
       {% for c in crops %}
       <option value="{{ c.key }}" {% if c.key == active_crop %}selected{% endif %}>
         {{ c.name }}
@@ -250,6 +253,10 @@
         <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
           <span class="text-slate-400 font-medium">Diagnostic Status:</span>
           <span id="pestFinding" class="font-bold text-slate-100">Live monitoring</span>
+        </div>
+        <div class="flex justify-between items-center border-b border-slate-800 pb-1.5" id="mobileCropBadgeRow" style="display:none;">
+          <span class="text-slate-400 font-medium">Host Crop:</span>
+          <span id="mobileCropBadgeText" class="font-bold text-emerald-400">--</span>
         </div>
         <div class="flex justify-between items-center">
           <span class="text-slate-400">AI Confidence:</span>
@@ -621,6 +628,15 @@
           document.getElementById("plantHealthFinding").innerText = data.plant_health || "--";
           document.getElementById("sourceBadgeRow").style.display = "flex";
           document.getElementById("sourceBadgeText").innerText = "Phone Camera";
+
+          if (data.crop_name) {
+            const cropBadgeRow = document.getElementById("mobileCropBadgeRow");
+            const cropBadgeText = document.getElementById("mobileCropBadgeText");
+            if (cropBadgeRow && cropBadgeText) {
+              cropBadgeRow.style.display = "flex";
+              cropBadgeText.innerText = data.crop_name;
+            }
+          }
 
           // Recommendations
           if (data.recommendation) {

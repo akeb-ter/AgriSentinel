@@ -421,7 +421,7 @@ async def detect_from_phone(
     # Determine crop
     target_crop = (crop_type or probe.active_crop).lower().strip()
     supported_keys = [c["key"] for c in knowledge_base.get_supported_crops()]
-    if target_crop not in supported_keys:
+    if target_crop not in supported_keys and target_crop not in ("auto", "auto_detect", "autodetect"):
         target_crop = probe.active_crop
 
     # Run inference with optional custom confidence threshold & profile asynchronously
@@ -431,10 +431,6 @@ async def detect_from_phone(
         probe.detector.detect, frame, target_crop, conf_threshold=parsed_conf, model_profile=clean_profile
     )
 
-    # Prepare metadata & recommendations
-    crop_data = knowledge_base.get_crop(target_crop)
-    crop_name = crop_data.get("name", target_crop.capitalize()) if crop_data else target_crop.capitalize()
-
     primary_pest = detections[0] if detections else None
     pest_name = primary_pest.pest_key if primary_pest else "none"
     pest_count = len(detections)
@@ -442,8 +438,17 @@ async def detect_from_phone(
     is_beneficial = primary_pest.is_beneficial if primary_pest else False
     taxonomy = primary_pest.taxonomy if primary_pest else None
 
+    # Auto-resolve target crop from detected pest
+    if pest_name and pest_name != "none":
+        resolved_crop = knowledge_base.infer_crop_from_pest(pest_name, fallback_crop=target_crop)
+        if resolved_crop:
+            target_crop = resolved_crop
+
+    if target_crop in ("auto", "auto_detect", "autodetect"):
+        target_crop = "rice"
+
     infestation = knowledge_base.calculate_infestation_level(target_crop, pest_name, pest_count)
-    plant_health = knowledge_base.evaluate_plant_health(pest_count, infestation)
+    plant_health = knowledge_base.evaluate_plant_health(pest_count, infestation, pest_name=pest_name)
 
     rec = knowledge_base.get_recommendation(
         crop_key=target_crop,
@@ -453,6 +458,9 @@ async def detect_from_phone(
         is_beneficial=is_beneficial,
         taxonomy=taxonomy
     )
+
+    crop_data = knowledge_base.get_crop(target_crop)
+    crop_name = crop_data.get("name", target_crop.capitalize()) if crop_data else target_crop.capitalize()
 
     # Ensure detected pests receive informative IPM recommendations even if borderline (unless beneficial predator)
     if detections and not is_beneficial and rec.get("status") == "IGNORED_LOW_CONFIDENCE":

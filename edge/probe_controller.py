@@ -39,7 +39,8 @@ class ProbeController:
 
     def __init__(self, probe_id: str = "PROBE-01"):
         self.probe_id = probe_id
-        self.active_crop = "corn"
+        self.crop_mode = "auto"
+        self.active_crop = "auto"
         self.farm_area = "Plot 1 - North Field"
 
         # Subsystems
@@ -66,7 +67,7 @@ class ProbeController:
         self._camera_thread = threading.Thread(target=self._camera_loop, daemon=True)
         self._camera_thread.start()
 
-        logger.info(f"[ProbeController] Initialized probe {self.probe_id} for crop '{self.active_crop}'.")
+        logger.info(f"[ProbeController] Initialized probe {self.probe_id} for crop '{self.active_crop}' (mode: {self.crop_mode}).")
 
     def register_alert_callback(self, cb: Callable[[Dict[str, Any]], None]):
         """Registers a callback for WebSocket alert broadcasting."""
@@ -81,10 +82,16 @@ class ProbeController:
                 logger.error(f"[ProbeController] Alert callback error: {e}")
 
     def set_active_crop(self, crop_key: str):
-        """Sets the host crop being inspected."""
+        """Sets the host crop being inspected or enables auto-detection."""
         crop_clean = crop_key.lower().strip()
+        if crop_clean in ("auto", "auto_detect", "autodetect"):
+            self.crop_mode = "auto"
+            self.active_crop = "auto"
+            logger.info("[ProbeController] Crop mode set to: Auto-Detect (auto)")
+            return
         supported = [c["key"] for c in knowledge_base.get_supported_crops()]
         if crop_clean in supported:
+            self.crop_mode = "manual"
             self.active_crop = crop_clean
             logger.info(f"[ProbeController] Active crop changed to: {self.active_crop}")
         else:
@@ -167,19 +174,34 @@ class ProbeController:
             else:
                 detections = self.latest_detections
 
-            crop_name = knowledge_base.get_crop(self.active_crop).get("name", self.active_crop.capitalize())
+            primary_pest = detections[0] if detections else None
+            primary_pest_name = primary_pest.pest_key if primary_pest else ""
+
+            # Auto-infer crop if pest detected and in auto mode or crop mismatch
+            display_crop = self.active_crop
+            if primary_pest_name and (getattr(self, "crop_mode", "auto") == "auto" or self.active_crop in ("auto", "auto_detect")):
+                inferred = knowledge_base.infer_crop_from_pest(primary_pest_name, fallback_crop=self.active_crop)
+                if inferred:
+                    self.active_crop = inferred
+                    display_crop = inferred
+            elif display_crop in ("auto", "auto_detect"):
+                display_crop = "rice"
+
+            crop_info = knowledge_base.get_crop(display_crop)
+            crop_name = crop_info.get("name", display_crop.capitalize()) if crop_info else display_crop.capitalize()
 
             # Derive metrics
             pest_count = len(detections)
             infestation = knowledge_base.calculate_infestation_level(
-                self.active_crop,
-                detections[0].pest_key if detections else "",
+                display_crop,
+                primary_pest_name,
                 pest_count
             )
             self.latest_infestation = infestation
             self.latest_health = knowledge_base.evaluate_plant_health(
                 pest_count,
-                infestation
+                infestation,
+                pest_name=primary_pest_name
             )
 
             # Annotate frame
@@ -283,6 +305,15 @@ class ProbeController:
             taxonomy=taxonomy
         )
 
+        resolved_crop = rec.get("crop_type", crop_clean)
+        if resolved_crop in ("auto", "auto_detect"):
+            resolved_crop = "rice"
+        crop_data = knowledge_base.get_crop(resolved_crop)
+        crop_name = rec.get("crop_name") or (crop_data.get("name", resolved_crop.capitalize()) if crop_data else resolved_crop.capitalize())
+
+        if getattr(self, "crop_mode", "auto") == "auto" or crop_clean in ("auto", "auto_detect"):
+            self.active_crop = resolved_crop
+
         # Annotate snapshot
         annotated_snapshot = annotate_frame(
             frame,
@@ -292,7 +323,7 @@ class ProbeController:
         )
 
         # Save snapshot file
-        filename = f"det_{ts_str}_{crop_clean}_{uuid.uuid4().hex[:6]}.jpg"
+        filename = f"det_{ts_str}_{resolved_crop}_{uuid.uuid4().hex[:6]}.jpg"
         full_path = os.path.join(DETECTIONS_DIR, filename)
         cv2.imwrite(full_path, annotated_snapshot, [cv2.IMWRITE_JPEG_QUALITY, 85])
         rel_path = f"/static/detections/{filename}"
@@ -300,7 +331,7 @@ class ProbeController:
         # Insert to SQLite
         db_payload = {
             "timestamp": datetime.datetime.now().isoformat(),
-            "crop_type": crop_clean,
+            "crop_type": resolved_crop,
             "farm_area": self.farm_area,
             "detected_pest": rec["detected_pest"],
             "pest_count": pest_count,
@@ -362,6 +393,7 @@ class ProbeController:
         crop_data = knowledge_base.get_crop(self.active_crop)
         return {
             "probe_id": self.probe_id,
+            "crop_mode": getattr(self, "crop_mode", "auto"),
             "active_crop": self.active_crop,
             "crop_name": crop_data.get("name", self.active_crop.capitalize()) if crop_data else self.active_crop,
             "farm_area": self.farm_area,

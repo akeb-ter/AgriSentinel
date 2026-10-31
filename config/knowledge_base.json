@@ -1,6 +1,6 @@
 {
   "system": {
-    "version": "2.1",
+    "version": "3.0",
     "confidence_threshold_high": 0.5,
     "confidence_threshold_uncertain": 0.2
   },
@@ -12,73 +12,42 @@
     "rice": {
       "name": "Rice / Paddy",
       "scientific_name": "Oryza sativa",
-      "description": "Cereal staple crop susceptible to stem borers (deadhearts/whiteheads), plant hoppers, and leaf folders.",
+      "description": "Cereal staple crop susceptible to stem borers, plant hoppers, leaf folders, gall midges, and foliage caterpillars (20 cataloged IP102 species).",
       "pests": {
-        "asiatic_rice_borer": {
-          "common_name": "Asiatic Rice Borer",
-          "scientific_name": "Chilo suppressalis",
+        "rice_leaf_roller": {
+          "common_name": "Rice Leaf Roller",
+          "scientific_name": "Cnaphalocrocis medinalis",
           "infestation_thresholds": {
             "low": [
               1,
-              1
+              2
             ],
             "moderate": [
-              2,
-              3
+              3,
+              5
             ],
-            "severe": 4
+            "severe": 6
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Chlorantraniliprole 18.5% SC or Cartap Hydrochloride 50% SP",
-              "active_ingredient": "Chlorantraniliprole / Cartap",
-              "dosage": "0.3 - 0.4 ml/L water (Chlorantraniliprole) or 2 g/L (Cartap)",
+              "product_name": "Cartap hydrochloride 50% SP",
+              "active_ingredient": "Cartap hydrochloride",
+              "dosage": "1.2 kg/ha in 400L water | PHI: 14 days",
               "phi_days": 14,
-              "timing": "Apply at peak egg-hatching before larvae penetrate the leaf sheath"
+              "timing": "Target early instars or initial sign of foliar folding & skeletonization"
             },
             "organic_biocontrol": {
-              "product_name": "Trichogramma japonicum (Egg Parasitoids) + Bt kurstaki",
-              "dosage": "Release 50,000 parasitoids/ha; spray Bt at 2 g/L during early instars",
+              "product_name": "Bacillus thuringiensis subsp. kurstaki @ 1.5 kg/ha",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Release at first moth emergence"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Maintain 5 cm water level during application. Wear protective neoprene gloves, mask, and goggles."
+            "safety_precautions": "Toxic to fish; do not allow spray drift into adjacent aquatic channels."
           }
         },
-        "yellow_rice_borer": {
-          "common_name": "Yellow Rice Borer",
-          "scientific_name": "Scirpophaga incertulas",
-          "infestation_thresholds": {
-            "low": [
-              1,
-              1
-            ],
-            "moderate": [
-              2,
-              3
-            ],
-            "severe": 4
-          },
-          "recommendations": {
-            "chemical": {
-              "product_name": "Flubendiamide 39.35% SC or Fipronil 5% SC",
-              "active_ingredient": "Flubendiamide / Fipronil",
-              "dosage": "0.25 ml/L (Flubendiamide) or 1.5 ml/L (Fipronil)",
-              "phi_days": 14,
-              "timing": "Target early tillering (deadheart prevention) or booting stage (whitehead prevention)"
-            },
-            "organic_biocontrol": {
-              "product_name": "Pheromone Mass Trapping & Light Traps",
-              "dosage": "Install 20 sex pheromone lures per hectare at canopy level",
-              "phi_days": 0,
-              "timing": "Deploy from seedling transplanting through heading"
-            },
-            "safety_precautions": "Do not apply near fish or shrimp sanctuaries. Wear respirator and protective boots."
-          }
-        },
-        "brown_plant_hopper": {
-          "common_name": "Brown Plant Hopper (BPH)",
-          "scientific_name": "Nilaparvata lugens",
+        "rice_leaf_caterpillar": {
+          "common_name": "Rice Leaf Caterpillar",
+          "scientific_name": "Naranga aenescens",
           "infestation_thresholds": {
             "low": [
               1,
@@ -86,30 +55,61 @@
             ],
             "moderate": [
               4,
-              7
+              6
             ],
-            "severe": 8
+            "severe": 7
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Triflemezopyrim 10% SC or Pymetrozine 50% WG",
-              "active_ingredient": "Triflemezopyrim / Pymetrozine",
-              "dosage": "0.5 ml/L (Triflemezopyrim) or 0.6 g/L (Pymetrozine)",
+              "product_name": "Lambda-cyhalothrin 2.5% EC",
+              "active_ingredient": "Lambda-cyhalothrin",
+              "dosage": "1.2 ml/L water | PHI: 14 days",
               "phi_days": 14,
-              "timing": "Direct nozzle spray at the base of the rice hills where hoppers congregate"
+              "timing": "Target early instars or initial sign of marginal tissue notching"
             },
             "organic_biocontrol": {
-              "product_name": "Beauveria bassiana or Metarhizium anisopliae",
-              "dosage": "5 g/L fungal spore formulation with mild vegetable surfactant",
+              "product_name": "Conserve Braconid wasps; apply botanical neem extract",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Spray in late afternoon to maintain high humidity"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Avoid excessive synthetic pyrethroids which cause BPH resurgence. Wear standard PPE."
+            "safety_precautions": "Flammable solvent base; wear chemical-resistant apron and face shield."
           }
         },
-        "rice_leaf_roller": {
-          "common_name": "Rice Leaf Roller",
-          "scientific_name": "Cnaphalocrocis medinalis",
+        "paddy_stem_maggot": {
+          "common_name": "Paddy Stem Maggot",
+          "scientific_name": "Hydrellia sasakii",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorantraniliprole 18.5% SC",
+              "active_ingredient": "Chlorantraniliprole",
+              "dosage": "0.3 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of linear streak mining & deformed tips"
+            },
+            "organic_biocontrol": {
+              "product_name": "Intermittent field drainage to expose and desiccate larvae",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Avoid spraying during windy conditions to reduce drift into ditches."
+          }
+        },
+        "asiatic_rice_borer": {
+          "common_name": "Asiatic Rice Borer",
+          "scientific_name": "Chilo suppressalis",
           "infestation_thresholds": {
             "low": [
               1,
@@ -123,19 +123,50 @@
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Emamectin Benzoate 5% SG",
-              "active_ingredient": "Emamectin Benzoate",
-              "dosage": "0.4 g per Liter of water",
-              "phi_days": 7,
-              "timing": "Spray when longitudinal folded leaves first appear on flag leaves"
+              "product_name": "Cartap Hydrochloride 50% SP or Chlorantraniliprole 18.5% SC",
+              "active_ingredient": "Cartap hydrochloride",
+              "dosage": "1.5 kg/ha | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of deadheart & whitehead"
             },
             "organic_biocontrol": {
-              "product_name": "Bacillus thuringiensis (Bt subsp. kurstaki) + Neem Extract",
-              "dosage": "2.5 g/L Bt + 3 ml/L cold-pressed Neem oil",
+              "product_name": "Trichogramma chilonis egg parasitoid cards (50,000 parasitoids/ha)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Apply early evening"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Wear mask and goggles. Avoid inhaling spray droplets."
+            "safety_precautions": "Wear nitrile gloves; do not apply during active rain conditions."
+          }
+        },
+        "yellow_rice_borer": {
+          "common_name": "Yellow Rice Borer",
+          "scientific_name": "Scirpophaga incertulas",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorantraniliprole 18.5% SC",
+              "active_ingredient": "Chlorantraniliprole",
+              "dosage": "150 ml/ha | PHI: 21 days",
+              "phi_days": 21,
+              "timing": "Target early instars or initial sign of stem pinhole entry & tillers lodging"
+            },
+            "organic_biocontrol": {
+              "product_name": "Beauveria bassiana foliar spray @ 2 g/L; pheromone delta traps",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Target basal stems. Rotate chemical classes to prevent insect resistance."
           }
         },
         "rice_gall_midge": {
@@ -144,33 +175,188 @@
           "infestation_thresholds": {
             "low": [
               1,
-              1
+              2
             ],
             "moderate": [
-              2,
-              3
+              3,
+              4
             ],
-            "severe": 4
+            "severe": 5
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Thiamethoxam 25% WG",
-              "active_ingredient": "Thiamethoxam",
-              "dosage": "0.3 g per Liter of water",
-              "phi_days": 14,
-              "timing": "Apply as seedling root dip or foliar spray at tillering"
+              "product_name": "Fipronil 0.3% GR",
+              "active_ingredient": "Fipronil",
+              "dosage": "20 kg/ha broadcast into moist soil | PHI: 30 days",
+              "phi_days": 30,
+              "timing": "Target early instars or initial sign of silver shoot / onion leaf gall"
             },
             "organic_biocontrol": {
-              "product_name": "Platygaster oryzae (Parasitoid Wasp Conservation)",
-              "dosage": "Refrain from broad-spectrum insecticides to conserve natural wasps",
+              "product_name": "Conserve Platygaster oryzae larval parasitoids; avoid early standing water",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Throughout vegetative period"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Wear waterproof gloves and face shield."
+            "safety_precautions": "Do not apply near aquatic aquaculture; wear protective rubber boots."
+          }
+        },
+        "rice_stemfly": {
+          "common_name": "Rice Stemfly",
+          "scientific_name": "Chlorops oryzae",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Imidacloprid 17.8% SL",
+              "active_ingredient": "Imidacloprid",
+              "dosage": "0.25 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of ragged leaf margins & aborted heads"
+            },
+            "organic_biocontrol": {
+              "product_name": "Botanical neem oil spray (3 ml/L) with soap emulsifier",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Harmful to bees; spray late afternoon during dormant flight hours."
+          }
+        },
+        "brown_plant_hopper": {
+          "common_name": "Brown Plant Hopper",
+          "scientific_name": "Nilaparvata lugens",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Pymetrozine 50% WDG",
+              "active_ingredient": "Pymetrozine",
+              "dosage": "300 g/ha | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of hopperburn & ragged stunt"
+            },
+            "organic_biocontrol": {
+              "product_name": "Metarhizium anisopliae entomopathogen @ 2.5 kg/ha; temporary field drainage",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Direct nozzle toward plant bases; avoid synthetic pyrethroid resurgence."
+          }
+        },
+        "white_backed_plant_hopper": {
+          "common_name": "White Backed Plant Hopper",
+          "scientific_name": "Sogatella furcifera",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Buprofezin 25% SC",
+              "active_ingredient": "Buprofezin",
+              "dosage": "1.0 L/ha | PHI: 21 days",
+              "phi_days": 21,
+              "timing": "Target early instars or initial sign of stunted growth & orange discoloration"
+            },
+            "organic_biocontrol": {
+              "product_name": "Conserve Cyrtorhinus lividipennis (mirid bug) egg predators",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Chitin synthesis inhibitor. Wear respirator to avoid inhaling fine aerosols."
+          }
+        },
+        "small_brown_plant_hopper": {
+          "common_name": "Small Brown Plant Hopper",
+          "scientific_name": "Laodelphax striatellus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Dinotefuran 20% SG",
+              "active_ingredient": "Dinotefuran",
+              "dosage": "200 g/ha | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of rice stripe virus transmission & chlorosis"
+            },
+            "organic_biocontrol": {
+              "product_name": "Metarhizium rileyi foliar spray; border trap crops",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Keep livestock out of treated fields for 48 hours post-application."
+          }
+        },
+        "rice_water_weevil": {
+          "common_name": "Rice Water Weevil",
+          "scientific_name": "Lissorhoptrus oryzophilus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorpyrifos + Cypermethrin 50% + 5% EC",
+              "active_ingredient": "Chlorpyrifos + Cypermethrin",
+              "dosage": "1.0 L/ha | PHI: 28 days",
+              "phi_days": 28,
+              "timing": "Target early instars or initial sign of windowpane scars & pruned root system"
+            },
+            "organic_biocontrol": {
+              "product_name": "Intermittent paddy drying; delay shallow flooding post-transplant",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Highly toxic to fish and aquatic life; strictly contain drain water."
           }
         },
         "rice_leafhopper": {
-          "common_name": "Green Rice Leafhopper",
+          "common_name": "Rice Leafhopper",
           "scientific_name": "Nephotettix cincticeps",
           "infestation_thresholds": {
             "low": [
@@ -179,37 +365,61 @@
             ],
             "moderate": [
               3,
-              5
+              4
             ],
-            "severe": 6
+            "severe": 5
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Dinotefuran 20% SG",
-              "active_ingredient": "Dinotefuran",
-              "dosage": "0.4 g per Liter of water",
-              "phi_days": 7,
-              "timing": "Foliar spray when nymphs or adults exceed economic threshold"
+              "product_name": "Clothianidin 50% WDG",
+              "active_ingredient": "Clothianidin",
+              "dosage": "40 g/ha | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of yellowing & tungro virus stunting"
             },
             "organic_biocontrol": {
-              "product_name": "Neem Seed Kernel Extract (NSKE 5%)",
-              "dosage": "50 ml extract per Liter of water",
+              "product_name": "Yellow sticky cards (30/ha); release Beauveria bassiana",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Weekly preventative application"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Avoid spraying during windy conditions. Wash exposed skin."
+            "safety_precautions": "Do not exceed recommended dosage; wear protective eyewear."
           }
-        }
-      }
-    },
-    "corn": {
-      "name": "Corn / Maize",
-      "scientific_name": "Zea mays",
-      "description": "Cereal crop vulnerable to Fall Armyworm, Corn Borers, and ear feeding pests.",
-      "pests": {
-        "fall_armyworm": {
-          "common_name": "Fall Armyworm",
-          "scientific_name": "Spodoptera frugiperda",
+        },
+        "grain_spreader_thrips": {
+          "common_name": "Grain Spreader Thrips",
+          "scientific_name": "Stenchaetothrips biformis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spinetoram 11.7% SC",
+              "active_ingredient": "Spinetoram",
+              "dosage": "0.5 ml/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of leaf curl & silvery stippling"
+            },
+            "organic_biocontrol": {
+              "product_name": "Blue sticky cards (25/ha); botanical chili-garlic extract spray",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Limit to two sprays per crop season. Highly toxic to aquatic invertebrates."
+          }
+        },
+        "rice_shell_pest": {
+          "common_name": "Rice Shell Pest",
+          "scientific_name": "Dicladispa armigera",
           "infestation_thresholds": {
             "low": [
               1,
@@ -223,50 +433,398 @@
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Chlorantraniliprole 18.5% SC or Emamectin Benzoate 5% SG",
-              "active_ingredient": "Chlorantraniliprole / Emamectin",
-              "dosage": "0.4 ml/L Chlorantraniliprole OR 0.4 g/L Emamectin Benzoate",
+              "product_name": "Acephate 75% SP",
+              "active_ingredient": "Acephate",
+              "dosage": "1.0 g/L water | PHI: 14 days",
               "phi_days": 14,
-              "timing": "Target the corn whorl funnel directly during early vegetative growth"
+              "timing": "Target early instars or initial sign of white blister mines & leaf scorching"
             },
             "organic_biocontrol": {
-              "product_name": "Spodoptera frugiperda Multiple Nucleopolyhedrovirus (SfMNPV) or Bt",
-              "dosage": "1-2 ml/L bio-virus or 2 g/L Bt kurstaki applied inside leaf whorls",
+              "product_name": "Sweep netting of adults; manual clipping of infested seedling leaf tips",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Apply late afternoon into the funnel"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Wear full PPE including chemical respirator and rubber gloves. Never spray upwind."
+            "safety_precautions": "Use protective mask; wash skin thoroughly after handling organophosphates."
+          }
+        },
+        "mole_cricket": {
+          "common_name": "Mole Cricket",
+          "scientific_name": "Gryllotalpa africana",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorantraniliprole 0.4% GR",
+              "active_ingredient": "Chlorantraniliprole",
+              "dosage": "15 kg/ha | PHI: 45 days",
+              "phi_days": 45,
+              "timing": "Target early instars or initial sign of seedling severing & burrow trenches"
+            },
+            "organic_biocontrol": {
+              "product_name": "Flood seedbed to 3 cm depth for 24 hours to drive crickets to surface",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Ensure granules are buried beneath topsoil. Toxic to aquatic organisms."
+          }
+        },
+        "cicadella_viridis": {
+          "common_name": "Green Leafhopper",
+          "scientific_name": "Cicadella viridis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Acetamiprid 20% SP",
+              "active_ingredient": "Acetamiprid",
+              "dosage": "0.2 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of foliar stippling & slit wounds"
+            },
+            "organic_biocontrol": {
+              "product_name": "Weed management in vineyard rows; conserve Chrysoperla carnea green lacewings",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Avoid spraying near waterways; wear protective gloves during mixing."
+          }
+        },
+        "cicadellidae": {
+          "common_name": "Cicadellidae (Leafhopper Family)",
+          "scientific_name": "Cicadellidae",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Clothianidin 50% WDG",
+              "active_ingredient": "Clothianidin",
+              "dosage": "40 g/ha | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of hopperburn, chlorotic stippling & viral vectoring"
+            },
+            "organic_biocontrol": {
+              "product_name": "Yellow sticky cards (25/ha); conserve predatory mirid bugs and spiders",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Target lower canopy; avoid broad-spectrum pyrethroid resurgence."
+          }
+        },
+        "lawana_imitata_melichar": {
+          "common_name": "Lawana imitata Flatid Planthopper",
+          "scientific_name": "Lawana imitata",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Clothianidin 50% WDG",
+              "active_ingredient": "Clothianidin",
+              "dosage": "0.15 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of white waxy coating & sap depletion"
+            },
+            "organic_biocontrol": {
+              "product_name": "Horticultural insecticidal soap spray; prune densely shaded shoots",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "High volume spray required to penetrate waxy filaments."
+          }
+        },
+        "salurnis_marginella_guerr": {
+          "common_name": "Salurnis marginella Planthopper",
+          "scientific_name": "Salurnis marginella",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Lambda-cyhalothrin 2.5% EC",
+              "active_ingredient": "Lambda-cyhalothrin",
+              "dosage": "1.0 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of powdery wax & honeydew soot"
+            },
+            "organic_biocontrol": {
+              "product_name": "Horticultural oil sprays; light traps for adult planthoppers",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Wash off heavy sooty mold with dilute soap rinse after treatment."
+          }
+        },
+        "cerodonta_denticornis": {
+          "common_name": "Cerodonta denticornis",
+          "scientific_name": "Cerodontha denticornis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Cyromazine 75% WP",
+              "active_ingredient": "Cyromazine",
+              "dosage": "0.2 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of linear pale leaf mines"
+            },
+            "organic_biocontrol": {
+              "product_name": "Release Diglyphus isaea parasitoid wasps; conserve natural Eulophids",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Insect growth regulator; relatively safe for adult beneficial insects."
+          }
+        }
+      }
+    },
+    "corn": {
+      "name": "Corn / Maize",
+      "scientific_name": "Zea mays",
+      "description": "Major cereal & grain crop vulnerable to corn borers, armyworms, cutworms, root grubs, wireworms, and cereal aphids (20 cataloged IP102 species).",
+      "pests": {
+        "grub": {
+          "common_name": "Grub (White Grub)",
+          "scientific_name": "Holotrichia spp.",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Fipronil 0.3% GR",
+              "active_ingredient": "Fipronil",
+              "dosage": "20 kg/ha in furrows | PHI: 60 days",
+              "phi_days": 60,
+              "timing": "Target early instars or initial sign of root pruning & plant lodging"
+            },
+            "organic_biocontrol": {
+              "product_name": "Metarhizium majus soil granules incorporated during land preparation",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Soil incorporated only. Do not handle granules without heavy rubber gloves."
+          }
+        },
+        "wireworm": {
+          "common_name": "Wireworm",
+          "scientific_name": "Agriotes spp.",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Bifenthrin 10% EC",
+              "active_ingredient": "Bifenthrin",
+              "dosage": "1.5 L/ha furrow drench | PHI: 30 days",
+              "phi_days": 30,
+              "timing": "Target early instars or initial sign of hollowed seeds & wilting seedlings"
+            },
+            "organic_biocontrol": {
+              "product_name": "Entomopathogenic nematodes (Heterorhabditis bacteriophora)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Directed soil furrow application; avoid surface water contamination."
+          }
+        },
+        "black_cutworm": {
+          "common_name": "Black Cutworm",
+          "scientific_name": "Agrotis ipsilon",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Beta-cyfluthrin 2.5% SC",
+              "active_ingredient": "Beta-cyfluthrin",
+              "dosage": "1.5 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of seedling shearing & fallen stalks"
+            },
+            "organic_biocontrol": {
+              "product_name": "Poisoned wheat bran bait (carbaryl + molasses + bran) placed at field margins",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Apply at twilight when caterpillars emerge from underground hiding burrows."
+          }
+        },
+        "large_cutworm": {
+          "common_name": "Large Cutworm",
+          "scientific_name": "Xestia c-nigrum",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Indoxacarb 14.5% SC",
+              "active_ingredient": "Indoxacarb",
+              "dosage": "0.5 ml/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of basal stem notching & leaf chewing"
+            },
+            "organic_biocontrol": {
+              "product_name": "Trichogramma wasp release; handpicking larvae from soil mulch at night",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Wear nitrile gloves and respiratory mask during spray preparation."
+          }
+        },
+        "yellow_cutworm": {
+          "common_name": "Yellow Cutworm",
+          "scientific_name": "Peridroma saucia",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Lambda-cyhalothrin 5% EC",
+              "active_ingredient": "Lambda-cyhalothrin",
+              "dosage": "0.8 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of nocturnal foliar skeletonization"
+            },
+            "organic_biocontrol": {
+              "product_name": "Bacillus thuringiensis subsp. aizawai foliar spray @ 1.0 kg/ha",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Keep spray drift away from open irrigation ponds; wear protective clothing."
           }
         },
         "corn_borer": {
-          "common_name": "Asian Corn Borer",
+          "common_name": "Corn Borer",
           "scientific_name": "Ostrinia furnacalis",
           "infestation_thresholds": {
             "low": [
               1,
-              1
-            ],
-            "moderate": [
-              2,
               3
             ],
-            "severe": 4
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Deltamethrin 2.8% EC",
-              "active_ingredient": "Deltamethrin",
-              "dosage": "0.75 ml per Liter of water",
-              "phi_days": 10,
-              "timing": "Apply at tasseling before larvae bore into stalks"
+              "product_name": "Chlorantraniliprole 18.5% SC",
+              "active_ingredient": "Chlorantraniliprole",
+              "dosage": "150 ml/ha | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of broken tassels & stalk frass galleries"
             },
             "organic_biocontrol": {
-              "product_name": "Trichogramma evanescens (Egg Parasitoids)",
-              "dosage": "Release 50-70 Trichocards per hectare at 7-day intervals",
+              "product_name": "Release of Trichogramma cards (50 cards/ha); Bt sprays targeted into whorl",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Release at first moth flight detection"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Do not apply within 50 meters of freshwater streams or apiaries."
+            "safety_precautions": "Target whorls directly; do not apply during active field pollination hours."
           }
         },
         "army_worm": {
@@ -285,93 +843,179 @@
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Indoxacarb 14.5% SC",
-              "active_ingredient": "Indoxacarb",
-              "dosage": "0.5 ml per Liter of water",
-              "phi_days": 7,
-              "timing": "Spray foliage when young larvae feed gregariously on leaf blades"
-            },
-            "organic_biocontrol": {
-              "product_name": "Bacillus thuringiensis (Bt subsp. kurstaki)",
-              "dosage": "2 g per Liter of water",
-              "phi_days": 0,
-              "timing": "Apply early morning or late afternoon"
-            },
-            "safety_precautions": "Wear face shield and protective apron."
-          }
-        },
-        "aphids": {
-          "common_name": "Corn Leaf Aphid",
-          "scientific_name": "Rhopalosiphum maidis",
-          "infestation_thresholds": {
-            "low": [
-              1,
-              3
-            ],
-            "moderate": [
-              4,
-              7
-            ],
-            "severe": 8
-          },
-          "recommendations": {
-            "chemical": {
-              "product_name": "Dimethoate 40% EC or Imidacloprid 17.8% SL",
-              "active_ingredient": "Dimethoate / Imidacloprid",
-              "dosage": "1.0 ml/L Dimethoate OR 0.4 ml/L Imidacloprid",
+              "product_name": "Chlorantraniliprole 18.5% SC or Emamectin Benzoate 5% SG",
+              "active_ingredient": "Emamectin benzoate",
+              "dosage": "200 g/ha | PHI: 14 days",
               "phi_days": 14,
-              "timing": "Foliar spray when upper leaves and tassels are encrusted with honeydew"
+              "timing": "Target early instars or initial sign of extensive ragged defoliation"
             },
             "organic_biocontrol": {
-              "product_name": "Neem Oil 1% + Ladybird Beetle Preservation",
-              "dosage": "5 ml per Liter of water with mild dish soap emulsifier",
+              "product_name": "Bacillus thuringiensis subsp. kurstaki @ 1.5 kg/ha",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Spot spray clusters"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Wear certified respirator and chemical gloves."
+            "safety_precautions": "Toxic to bees; avoid spraying during active crop flowering periods."
           }
         },
-        "black_cutworm": {
-          "common_name": "Black Cutworm",
-          "scientific_name": "Agrotis ipsilon",
+        "potosiabre_vitarsis": {
+          "common_name": "Potosiabre vitarsis",
+          "scientific_name": "Protaetia brevitarsis",
           "infestation_thresholds": {
             "low": [
               1,
-              1
+              2
             ],
             "moderate": [
-              2,
-              3
+              3,
+              5
             ],
-            "severe": 4
+            "severe": 6
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Chlorpyrifos 20% EC (Soil Drench)",
-              "active_ingredient": "Chlorpyrifos",
-              "dosage": "2.0 ml per Liter of water directed around seedling collar",
+              "product_name": "Lambda-cyhalothrin 5% EC",
+              "active_ingredient": "Lambda-cyhalothrin",
+              "dosage": "1.0 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of silk chewing & ear tip damage"
+            },
+            "organic_biocontrol": {
+              "product_name": "Pheromone/food attractant bait traps; handpicking during early morning",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Avoid spraying when corn tassels are actively shedding pollen to safeguard honeybees."
+          }
+        },
+        "english_grain_aphid": {
+          "common_name": "English Grain Aphid",
+          "scientific_name": "Sitobion avenae",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Dimethoate 40% EC",
+              "active_ingredient": "Dimethoate",
+              "dosage": "0.8 L/ha | PHI: 21 days",
               "phi_days": 21,
-              "timing": "Evening application around base of severed seedlings"
+              "timing": "Target early instars or initial sign of kernel shriveling & honeydew soot"
             },
             "organic_biocontrol": {
-              "product_name": "Wheat Bran + Molasses + Bt Cutworm Bait",
-              "dosage": "Scatter poisoned bait pellets around seedling bases at dusk",
+              "product_name": "Conserve Aphidius ervi parasitoid wasps and Coccinellid lady beetles",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Apply at dusk when cutworms emerge to feed"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Do not contaminate livestock grazing areas. Wear heavy rubber gloves."
+            "safety_precautions": "Organophosphate insecticide. Wear respirator and chemical-resistant gloves."
           }
-        }
-      }
-    },
-    "mungbean": {
-      "name": "Mungbean",
-      "scientific_name": "Vigna radiata",
-      "description": "Legume crop sensitive to pod borers, aphids, thrips, and blister beetles.",
-      "pests": {
-        "bean_aphid": {
-          "common_name": "Bean Aphid",
-          "scientific_name": "Aphis craccivora",
+        },
+        "green_bug": {
+          "common_name": "Green Bug",
+          "scientific_name": "Schizaphis graminum",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Imidacloprid 17.8% SL",
+              "active_ingredient": "Imidacloprid",
+              "dosage": "0.25 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of reddish-brown necrotic spots & yellowing"
+            },
+            "organic_biocontrol": {
+              "product_name": "Release Lysiphlebus testaceipes parasitic wasps; plant resistant wheat cultivars",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Do not treat during crop flowering to avoid honeybee exposure."
+          }
+        },
+        "bird_cherry_oataphid": {
+          "common_name": "Bird Cherry-Oat Aphid",
+          "scientific_name": "Rhopalosiphum padi",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Thiamethoxam 25% WG",
+              "active_ingredient": "Thiamethoxam",
+              "dosage": "0.2 g/L water | PHI: 21 days",
+              "phi_days": 21,
+              "timing": "Target early instars or initial sign of bydv virus transmission & stunting"
+            },
+            "organic_biocontrol": {
+              "product_name": "Seed treatment with systemic neonicotinoid; conserve Syrphid fly larvae",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Timely treatment prevents Barley Yellow Dwarf Virus (BYDV) spread."
+          }
+        },
+        "wheat_blossom_midge": {
+          "common_name": "Wheat Blossom Midge",
+          "scientific_name": "Sitodiplosis mosellana",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Deltamethrin 2.5% EC",
+              "active_ingredient": "Deltamethrin",
+              "dosage": "0.5 ml/L water | PHI: 21 days",
+              "phi_days": 21,
+              "timing": "Target early instars or initial sign of shriveled kernels & chaff discoloration"
+            },
+            "organic_biocontrol": {
+              "product_name": "Plant resistant wheat cultivars; conserve ground-dwelling Carabid beetles",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Apply at dusk during peak adult flight at ear emergence."
+          }
+        },
+        "penthaleus_major": {
+          "common_name": "Penthaleus major",
+          "scientific_name": "Penthaleus major",
           "infestation_thresholds": {
             "low": [
               1,
@@ -385,24 +1029,24 @@
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Imidacloprid 17.8% SL",
-              "active_ingredient": "Imidacloprid",
-              "dosage": "0.5 ml per Liter of water",
-              "phi_days": 14,
-              "timing": "Early morning spray at first cluster appearance"
+              "product_name": "Dimethoate 40% EC",
+              "active_ingredient": "Dimethoate",
+              "dosage": "1.0 L/ha | PHI: 21 days",
+              "phi_days": 21,
+              "timing": "Target early instars or initial sign of silvery-white leaf tips"
             },
             "organic_biocontrol": {
-              "product_name": "Neem Oil 10,000 ppm + Potassium Soap",
-              "dosage": "3-5 ml per Liter of water",
+              "product_name": "Timely field irrigation to suppress mite activity; wettable sulfur dusting",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Spray late afternoon on undersides of leaves"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Wear rubber gloves and face mask. Toxic to bees; do NOT spray during bloom."
+            "safety_precautions": "Wear face mask and protective clothing; follow organophosphate handling protocols."
           }
         },
-        "aphids": {
-          "common_name": "Aphids",
-          "scientific_name": "Aphis craccivora",
+        "longlegged_spider_mite": {
+          "common_name": "Longlegged Spider Mite",
+          "scientific_name": "Petrobia latens",
           "infestation_thresholds": {
             "low": [
               1,
@@ -416,55 +1060,24 @@
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Imidacloprid 17.8% SL",
-              "active_ingredient": "Imidacloprid",
-              "dosage": "0.5 ml per Liter of water",
+              "product_name": "Abamectin 1.8% EC",
+              "active_ingredient": "Abamectin",
+              "dosage": "0.5 ml/L water | PHI: 14 days",
               "phi_days": 14,
-              "timing": "Early morning spray on tender shoots"
+              "timing": "Target early instars or initial sign of leaf bronzing & stunted heads"
             },
             "organic_biocontrol": {
-              "product_name": "Neem Oil 10,000 ppm",
-              "dosage": "4 ml per Liter of water",
+              "product_name": "Conserve Phytoseiid predatory mites; apply light sprinkler irrigation",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Late afternoon spray"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Wear protective gloves and eye protection."
+            "safety_precautions": "High hazard to honeybees; avoid spraying blooming border weeds."
           }
         },
-        "legume_blister_beetle": {
-          "common_name": "Legume Blister Beetle",
-          "scientific_name": "Epicauta subglabra",
-          "infestation_thresholds": {
-            "low": [
-              1,
-              1
-            ],
-            "moderate": [
-              2,
-              3
-            ],
-            "severe": 4
-          },
-          "recommendations": {
-            "chemical": {
-              "product_name": "Carbaryl 85% WP or Cypermethrin 5% EC",
-              "active_ingredient": "Carbaryl / Cypermethrin",
-              "dosage": "1.5 g/L Carbaryl or 0.8 ml/L Cypermethrin",
-              "phi_days": 7,
-              "timing": "Spot spray foliage where adult swarms congregate"
-            },
-            "organic_biocontrol": {
-              "product_name": "Hand-picking with Gloves & Soapy Water Drop",
-              "dosage": "Do NOT crush by hand (cantharidin toxin causes severe skin blisters)",
-              "phi_days": 0,
-              "timing": "Collect early morning when beetles are lethargic"
-            },
-            "safety_precautions": "CAUTION: Cantharidin blister agent. Never handle live or dead beetles with bare skin."
-          }
-        },
-        "thrips": {
-          "common_name": "Thrips",
-          "scientific_name": "Thysanoptera",
+        "wheat_phloeothrips": {
+          "common_name": "Wheat Phloeothrips",
+          "scientific_name": "Haplothrips tritici",
           "infestation_thresholds": {
             "low": [
               1,
@@ -480,48 +1093,799 @@
             "chemical": {
               "product_name": "Spinetoram 11.7% SC",
               "active_ingredient": "Spinetoram",
-              "dosage": "0.4 ml per Liter of water",
-              "phi_days": 3,
-              "timing": "Direct fine mist spray into opened flowers and tender shoot tips"
+              "dosage": "0.4 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of silvering of spikes & chaff browning"
             },
             "organic_biocontrol": {
-              "product_name": "Blue Sticky Traps + Beauveria bassiana",
-              "dosage": "Place 10 blue traps/ha; spray 4 g/L fungal suspension",
+              "product_name": "Deep autumn tillage; conservation of predatory Aeolothripid thrips",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Continuous monitoring"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Wear particulate respirator and goggles."
+            "safety_precautions": "Do not spray during high temperatures; toxic to aquatic invertebrates."
           }
         },
-        "pod_borer": {
-          "common_name": "Bean Pod Borer",
-          "scientific_name": "Maruca vitrata",
+        "wheat_sawfly": {
+          "common_name": "Wheat Sawfly",
+          "scientific_name": "Cephus cinctus",
           "infestation_thresholds": {
             "low": [
               1,
-              1
-            ],
-            "moderate": [
-              2,
               3
             ],
-            "severe": 4
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Indoxacarb 14.5% SC",
+              "active_ingredient": "Indoxacarb",
+              "dosage": "0.4 ml/L water | PHI: 21 days",
+              "phi_days": 21,
+              "timing": "Target early instars or initial sign of stem lodging & severed culms"
+            },
+            "organic_biocontrol": {
+              "product_name": "Plant solid-stemmed cultivars; conserve Bracon cephi parasitic wasps",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Target flight window before oviposition; avoid water contamination."
+          }
+        },
+        "locustoidea": {
+          "common_name": "Locustoidea (Locust/Grasshopper)",
+          "scientific_name": "Locusta migratoria",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Malathion 50% EC",
+              "active_ingredient": "Malathion",
+              "dosage": "1.5 L/ha | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of complete plant stripping"
+            },
+            "organic_biocontrol": {
+              "product_name": "Metarhizium acridum fungal biopesticide (Green Muscle)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Area-wide coordinated application; avoid contaminating open water catchments."
+          }
+        },
+        "prodenia_litura": {
+          "common_name": "Tobacco Cutworm / Cluster Caterpillar",
+          "scientific_name": "Spodoptera litura",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Indoxacarb 14.5% SC",
+              "active_ingredient": "Indoxacarb",
+              "dosage": "0.5 ml/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of aggressive foliar skeletonization"
+            },
+            "organic_biocontrol": {
+              "product_name": "Spodoptera litura NPV (SlNPV); pheromone traps (5 traps/ha)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Apply at dusk; highly effective against nocturnal larval stages."
+          }
+        },
+        "meadow_moth": {
+          "common_name": "Meadow Moth",
+          "scientific_name": "Loxostege sticticalis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
           },
           "recommendations": {
             "chemical": {
               "product_name": "Chlorantraniliprole 18.5% SC",
               "active_ingredient": "Chlorantraniliprole",
-              "dosage": "0.3 - 0.4 ml per Liter of water",
-              "phi_days": 10,
-              "timing": "Spray at flower bud initiation before larvae enter pods"
+              "dosage": "150 ml/ha | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of foliar webbing & total defoliation"
             },
             "organic_biocontrol": {
-              "product_name": "Bacillus thuringiensis (Bt subsp. kurstaki)",
-              "dosage": "2 g per Liter of water",
+              "product_name": "Bacillus thuringiensis subsp. kurstaki foliar dusting",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Apply when young caterpillars emerge"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Wear protective coveralls and goggles."
+            "safety_precautions": "Apply during early instar larval stages before dense web formation."
+          }
+        },
+        "chlumetia_transversa": {
+          "common_name": "Mango Shoot Borer",
+          "scientific_name": "Chlumetia transversa",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorantraniliprole 18.5% SC",
+              "active_ingredient": "Chlorantraniliprole",
+              "dosage": "0.3 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of wilted shoot tips & dieback"
+            },
+            "organic_biocontrol": {
+              "product_name": "Prune and destroy wilted shoot tips 5 cm below boreholes; Bt sprays",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Target young flushes early; spray before larvae tunnel inside shoots."
+          }
+        }
+      }
+    },
+    "mungbean": {
+      "name": "Mungbean",
+      "scientific_name": "Vigna radiata",
+      "description": "Leguminous pulse crop sensitive to pod borers, aphids, blister beetles, thrips, plant bugs, and defoliating caterpillars (20 cataloged IP102 species).",
+      "pests": {
+        "white_margined_moth": {
+          "common_name": "White Margined Moth",
+          "scientific_name": "Mythimna separata",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Emamectin benzoate 5% SG",
+              "active_ingredient": "Emamectin benzoate",
+              "dosage": "200 g/ha | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of extensive ragged defoliation"
+            },
+            "organic_biocontrol": {
+              "product_name": "Bacillus thuringiensis subsp. kurstaki @ 1.5 kg/ha",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Toxic to bees; avoid spraying during active crop flowering periods."
+          }
+        },
+        "aphids": {
+          "common_name": "Aphids",
+          "scientific_name": "Rhopalosiphum maidis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Imidacloprid 17.8% SL",
+              "active_ingredient": "Imidacloprid",
+              "dosage": "0.3 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of sooty mold & leaf curl"
+            },
+            "organic_biocontrol": {
+              "product_name": "Neem oil (5 ml/L) with potassium soap emulsifier",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Do not apply when corn tassels are actively shedding pollen to protect bees."
+          }
+        },
+        "sericaorient_alismots_chulsky": {
+          "common_name": "Sericaorient alismots chulsky",
+          "scientific_name": "Maladera orientalis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Lambda-cyhalothrin 2.5% EC",
+              "active_ingredient": "Lambda-cyhalothrin",
+              "dosage": "1.0 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of irregular foliar serration & root pruning"
+            },
+            "organic_biocontrol": {
+              "product_name": "Blacklight traps for adult beetles; entomopathogenic nematodes",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Spray foliage at dusk; keep out of waterways and fish ponds."
+          }
+        },
+        "alfalfa_weevil": {
+          "common_name": "Alfalfa Weevil",
+          "scientific_name": "Hypera postica",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Lambda-Cyhalothrin 5% EC or Indoxacarb 14.5% SC",
+              "active_ingredient": "Indoxacarb",
+              "dosage": "350 ml/ha | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of skeletonized terminal foliage"
+            },
+            "organic_biocontrol": {
+              "product_name": "Bathyplectes curculionis parasitoid wasps; early harvest mowing",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Do not spray blooming alfalfa to safeguard pollinators."
+          }
+        },
+        "flax_budworm": {
+          "common_name": "Flax Budworm",
+          "scientific_name": "Heliothis ononis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Indoxacarb 14.5% SC",
+              "active_ingredient": "Indoxacarb",
+              "dosage": "0.4 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of bored buds & seed cavities"
+            },
+            "organic_biocontrol": {
+              "product_name": "Trichogramma releases; Bacillus thuringiensis foliar spray",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Avoid spraying when beneficial pollinators are visiting flowers."
+          }
+        },
+        "alfalfa_plant_bug": {
+          "common_name": "Alfalfa Plant Bug",
+          "scientific_name": "Adelphocoris lineolatus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Dimethoate 40% EC",
+              "active_ingredient": "Dimethoate",
+              "dosage": "0.8 L/ha | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of bud blasting & crinkled leaves"
+            },
+            "organic_biocontrol": {
+              "product_name": "Timely early cutting of forage; Beauveria bassiana foliar drench",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "High hazard to pollinators; mow field borders before spraying."
+          }
+        },
+        "tarnished_plant_bug": {
+          "common_name": "Tarnished Plant Bug",
+          "scientific_name": "Lygus lineolaris",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Novaluron 10% EC",
+              "active_ingredient": "Novaluron",
+              "dosage": "0.75 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of apical necrosis & cat-facing"
+            },
+            "organic_biocontrol": {
+              "product_name": "Alfalfa trap cropping; predatory Geocoris big-eyed bugs conservation",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Chitin synthesis inhibitor; apply when nymph thresholds exceed 2 per sweep."
+          }
+        },
+        "lytta_polita": {
+          "common_name": "Lytta polita",
+          "scientific_name": "Lytta polita",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Cypermethrin 5% EC",
+              "active_ingredient": "Cypermethrin",
+              "dosage": "0.75 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of blossom destruction & leaf stripping"
+            },
+            "organic_biocontrol": {
+              "product_name": "Manual collection with protective gear; sweep-net perimeter borders",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Contains cantharidin blister toxin; hazardous to horses if trapped in hay."
+          }
+        },
+        "legume_blister_beetle": {
+          "common_name": "Legume Blister Beetle",
+          "scientific_name": "Epicauta subglabra",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Deltamethrin 2.5% EC",
+              "active_ingredient": "Deltamethrin",
+              "dosage": "0.6 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of rapid foliar stripping in patches"
+            },
+            "organic_biocontrol": {
+              "product_name": "Conserve ground beetle predators; hand collect with gloves into soapy water",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Wear protective clothing; do not crush beetles against bare skin."
+          }
+        },
+        "blister_beetle": {
+          "common_name": "Blister Beetle",
+          "scientific_name": "Epicauta spp.",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Beta-cyfluthrin 2.5% SC",
+              "active_ingredient": "Beta-cyfluthrin",
+              "dosage": "1.0 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of defoliation & flower feeding"
+            },
+            "organic_biocontrol": {
+              "product_name": "Flock poultry/chickens in field margins; entomopathogenic fungi",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "High bee hazard; apply strictly outside active foraging hours."
+          }
+        },
+        "therioaphis_maculata_buckton": {
+          "common_name": "Spotted Alfalfa Aphid",
+          "scientific_name": "Therioaphis maculata",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Flonicamid 50% WG",
+              "active_ingredient": "Flonicamid",
+              "dosage": "0.15 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of vein chlorosis & premature leaf drop"
+            },
+            "organic_biocontrol": {
+              "product_name": "Conserve Trioxys complanatus parasitoids; plant aphid-resistant alfalfa cultivars",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Selective feeding blocker; highly safe for pollinators and predatory mites."
+          }
+        },
+        "odontothrips_loti": {
+          "common_name": "Odontothrips loti",
+          "scientific_name": "Odontothrips loti",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spinetoram 11.7% SC",
+              "active_ingredient": "Spinetoram",
+              "dosage": "0.4 ml/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of flower blasting & distorted seed pods"
+            },
+            "organic_biocontrol": {
+              "product_name": "Blue sticky traps; release predatory Orius anthocorid bugs",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Do not apply during full bloom to safeguard native bumblebees."
+          }
+        },
+        "thrips": {
+          "common_name": "Thrips",
+          "scientific_name": "Stenchaetothrips biformis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spinetoram 11.7% SC",
+              "active_ingredient": "Spinetoram",
+              "dosage": "0.5 ml/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of leaf curl & silvery stippling"
+            },
+            "organic_biocontrol": {
+              "product_name": "Blue sticky cards (25/ha); botanical chili-garlic extract spray",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Limit to two sprays per crop season. Highly toxic to aquatic invertebrates."
+          }
+        },
+        "alfalfa_seed_chalcid": {
+          "common_name": "Alfalfa Seed Chalcid",
+          "scientific_name": "Bruchophagus roddi",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Indoxacarb 14.5% SC",
+              "active_ingredient": "Indoxacarb",
+              "dosage": "0.4 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of hollow seeds & pinhole emergence holes"
+            },
+            "organic_biocontrol": {
+              "product_name": "Destroy chaff piles after harvest; plant early-maturing cultivars",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Chemical sprays ineffective once larvae enter seed pods; target adult flight."
+          }
+        },
+        "apolygus_lucorum": {
+          "common_name": "Apolygus lucorum",
+          "scientific_name": "Apolygus lucorum",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Thiamethoxam 25% WG",
+              "active_ingredient": "Thiamethoxam",
+              "dosage": "0.2 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of ragged leaves & blossom drop"
+            },
+            "organic_biocontrol": {
+              "product_name": "Alfalfa trap crops around vineyard perimeter; spray before grape budburst",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Apply before full grape bloom to prevent flower drop."
+          }
+        },
+        "miridae": {
+          "common_name": "Miridae (Plant Bug)",
+          "scientific_name": "Apolygus lucorum",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Thiamethoxam 25% WG",
+              "active_ingredient": "Thiamethoxam",
+              "dosage": "0.2 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of ragged leaves & blossom drop"
+            },
+            "organic_biocontrol": {
+              "product_name": "Alfalfa trap crops around vineyard perimeter; spray before grape budburst",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Apply before full grape bloom to prevent flower drop."
+          }
+        },
+        "beet_army_worm": {
+          "common_name": "Beet Armyworm",
+          "scientific_name": "Spodoptera exigua",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Emamectin benzoate 5% SG",
+              "active_ingredient": "Emamectin benzoate",
+              "dosage": "0.4 g/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of foliar skeletonization & webbed clusters"
+            },
+            "organic_biocontrol": {
+              "product_name": "Spodoptera exigua nucleopolyhedrovirus (SeNPV) @ 1.5 L/ha; pheromone traps",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Rotate chemistry to prevent rapid resistance. Spray during evening hours."
+          }
+        },
+        "beet_weevil": {
+          "common_name": "Beet Weevil",
+          "scientific_name": "Bothynoderes punctiventris",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Fipronil 5% SC",
+              "active_ingredient": "Fipronil",
+              "dosage": "0.5 L/ha | PHI: 30 days",
+              "phi_days": 30,
+              "timing": "Target early instars or initial sign of severed cotyledons & root cavities"
+            },
+            "organic_biocontrol": {
+              "product_name": "Deep autumn ploughing; Beauveria bassiana soil treatment",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Wear impervious protective suit; avoid drift near livestock pastures."
+          }
+        },
+        "dasineura_sp": {
+          "common_name": "Dasineura Gall Midge",
+          "scientific_name": "Dasineura spp.",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Abamectin 1.8% EC",
+              "active_ingredient": "Abamectin",
+              "dosage": "0.5 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of rolled leaf margins & swollen galls"
+            },
+            "organic_biocontrol": {
+              "product_name": "Prune and destroy infested terminal galls; conserve predatory anthocorid bugs",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Spray at bud burst when adults emerge before gall closure."
+          }
+        },
+        "deporaus_marginatus_pascoe": {
+          "common_name": "Mango Leaf-Cutting Weevil",
+          "scientific_name": "Deporaus marginatus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Lambda-cyhalothrin 5% EC",
+              "active_ingredient": "Lambda-cyhalothrin",
+              "dosage": "0.8 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of severed leaf blades & floor litter"
+            },
+            "organic_biocontrol": {
+              "product_name": "Collect and burn fallen severed leaf tips containing eggs; neem kernel extract",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Spray immediately upon flush emergence before oviposition cutting begins."
           }
         }
       }
@@ -529,42 +1893,855 @@
     "squash": {
       "name": "Squash / Cucurbits",
       "scientific_name": "Cucurbita moschata",
-      "description": "Vining vegetable vulnerable to squash bugs, fruit flies, and whiteflies.",
+      "description": "Cucurbitaceous & fruit vegetable vulnerable to fruit flies, whiteflies, fruit borers, leafminers, and spider mites (20 cataloged IP102 species).",
       "pests": {
+        "trialeurodes_vaporariorum": {
+          "common_name": "Greenhouse Whitefly",
+          "scientific_name": "Trialeurodes vaporariorum",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spiromesifen 22.9% SC",
+              "active_ingredient": "Spiromesifen",
+              "dosage": "0.8 ml/L water | PHI: 3 days",
+              "phi_days": 3,
+              "timing": "Target early instars or initial sign of chlorotic mottling & sooty mold"
+            },
+            "organic_biocontrol": {
+              "product_name": "Encarsia formosa parasitic wasps; yellow sticky sheets (30 traps/ha)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Thorough under-leaf spray coverage required; wear splash goggles."
+          }
+        },
         "dacus_dorsalis": {
           "common_name": "Oriental Fruit Fly",
           "scientific_name": "Bactrocera dorsalis",
           "infestation_thresholds": {
             "low": [
               1,
-              1
-            ],
-            "moderate": [
-              2,
               3
             ],
-            "severe": 4
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Malathion 57% EC with Protein Hydrolysate Bait",
-              "active_ingredient": "Malathion",
-              "dosage": "1.5 ml Malathion + 10 g Protein Bait per Liter of water",
+              "product_name": "Malathion + Protein Bait 50% EC + Hydrolyzed Protein",
+              "active_ingredient": "Malathion + Protein Bait",
+              "dosage": "2.0 ml + 10 ml/L water bait spray | PHI: 7 days",
               "phi_days": 7,
-              "timing": "Spot spray foliage (not fruit directly) as attractant bait"
+              "timing": "Target early instars or initial sign of oviposition punctures & internal rot"
             },
             "organic_biocontrol": {
-              "product_name": "Methyl Eugenol Pheromone Traps & Fruit Bagging",
-              "dosage": "Deploy 1 trap per 100 sq meters; bag developing fruits",
+              "product_name": "Methyl eugenol pheromone male-annihilation traps; fruit bagging",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Continuous"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Toxic to honeybees. Never spray open blossoms."
+            "safety_precautions": "Bait application only on outer foliage; never blanket spray entire crop."
           }
         },
-        "trialeurodes_vaporariorum": {
-          "common_name": "Greenhouse Whitefly",
-          "scientific_name": "Trialeurodes vaporariorum",
+        "tetradacus_c_bactrocera_minax": {
+          "common_name": "Chinese Citrus Fly",
+          "scientific_name": "Bactrocera minax",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spinosad 0.02% Protein Bait",
+              "active_ingredient": "Spinosad",
+              "dosage": "Spot spray 1.5 L/ha bait | PHI: 1 days",
+              "phi_days": 1,
+              "timing": "Target early instars or initial sign of premature yellowing & fruit drop"
+            },
+            "organic_biocontrol": {
+              "product_name": "Protein hydrolysate bait stations; soil raking to expose pupae in winter",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Apply as coarse droplets to leaves; minimal chemical volume required."
+          }
+        },
+        "bactrocera_tsuneonis": {
+          "common_name": "Japanese Orange Fly",
+          "scientific_name": "Bactrocera tsuneonis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spinosad 0.02% GF-120 Fruit Fly Bait",
+              "active_ingredient": "Spinosad",
+              "dosage": "1.0 - 1.5 L/ha spot spray | PHI: 1 days",
+              "phi_days": 1,
+              "timing": "Target early instars or initial sign of pitted rind & premature internal rot"
+            },
+            "organic_biocontrol": {
+              "product_name": "Collect and destroy fallen fruits in sealed bags; protein bait sprays",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Coarse droplet application; organically certified and environmentally benign."
+          }
+        },
+        "cabbage_army_worm": {
+          "common_name": "Cabbage Armyworm",
+          "scientific_name": "Mamestra brassicae",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Emamectin benzoate 5% SG",
+              "active_ingredient": "Emamectin benzoate",
+              "dosage": "0.3 g/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of extensive skeletonization & frass piles"
+            },
+            "organic_biocontrol": {
+              "product_name": "Mamestra brassicae nuclear polyhedrosis virus (MbNPV)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Spray late evening when larvae actively feed on exposed foliage."
+          }
+        },
+        "pieris_canidia": {
+          "common_name": "Indian Cabbage White",
+          "scientific_name": "Pieris canidia",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorantraniliprole 18.5% SC",
+              "active_ingredient": "Chlorantraniliprole",
+              "dosage": "0.3 ml/L water | PHI: 3 days",
+              "phi_days": 3,
+              "timing": "Target early instars or initial sign of large ragged holes & frass deposits"
+            },
+            "organic_biocontrol": {
+              "product_name": "Bacillus thuringiensis subsp. kurstaki @ 1.5 kg/ha; Cotesia glomerata parasitoids",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "High rainfastness; safe for non-target predatory beetles."
+          }
+        },
+        "beet_fly": {
+          "common_name": "Beet Fly",
+          "scientific_name": "Pegomya hyoscyami",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spinosad 48% SC",
+              "active_ingredient": "Spinosad",
+              "dosage": "0.3 ml/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of blister leaf mines & necrosis"
+            },
+            "organic_biocontrol": {
+              "product_name": "Yellow water pan traps for adult flies; conserve Opius nitidulator",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Spray early before larvae penetrate deep inside the mesophyll layer."
+          }
+        },
+        "beet_spot_flies": {
+          "common_name": "Beet Spot Flies",
+          "scientific_name": "Psilopa leucostoma",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorantraniliprole / Lambda-cyhalothrin 18.5% SC / 5% EC",
+              "active_ingredient": "Chlorantraniliprole / Lambda-cyhalothrin",
+              "dosage": "0.5 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of tissue chewing & feeding punctures"
+            },
+            "organic_biocontrol": {
+              "product_name": "Botanical neem oil extract (5 ml/L); conserve native parasitic wasps",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Apply with calibrated low-drift nozzle; wear protective gear."
+          }
+        },
+        "oides_decempunctata": {
+          "common_name": "Oides decempunctata",
+          "scientific_name": "Oides decempunctata",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Lambda-cyhalothrin 5% EC",
+              "active_ingredient": "Lambda-cyhalothrin",
+              "dosage": "0.8 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of skeletonized foliage & defoliated canes"
+            },
+            "organic_biocontrol": {
+              "product_name": "Hand collection into soapy water; botanical azadirachtin neem spray",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Toxic to aquatic life; maintain 10-meter buffer strip near waterways."
+          }
+        },
+        "pseudococcus_comstocki_kuwana": {
+          "common_name": "Comstock Mealybug",
+          "scientific_name": "Pseudococcus comstocki",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spirotetramat 15.3% OD",
+              "active_ingredient": "Spirotetramat",
+              "dosage": "0.75 ml/L water + penetrant | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of white cottony wax & black sooty mold"
+            },
+            "organic_biocontrol": {
+              "product_name": "Cryptolaemus montrouzieri ladybird predator release; dormant mineral oil (2%)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Requires penetrant surfactant to break hydrophobic mealybug wax coating."
+          }
+        },
+        "parathrene_regalis": {
+          "common_name": "Parathrene regalis",
+          "scientific_name": "Parathrene regalis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorpyrifos 48% EC",
+              "active_ingredient": "Chlorpyrifos",
+              "dosage": "4.0 ml/L directed trunk spray | PHI: 30 days",
+              "phi_days": 30,
+              "timing": "Target early instars or initial sign of swollen trunk galls & wood frass"
+            },
+            "organic_biocontrol": {
+              "product_name": "Pheromone delta traps for male monitoring; Steinernema carpocapsae nematodes",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Directed bark treatment; fatal if inhaled. Use vapor respirator."
+          }
+        },
+        "ampelophaga": {
+          "common_name": "Ampelophaga (Grape Sphinx)",
+          "scientific_name": "Ampelophaga rubiginosa",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorantraniliprole 18.5% SC",
+              "active_ingredient": "Chlorantraniliprole",
+              "dosage": "0.2 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of voracious leaf chewing"
+            },
+            "organic_biocontrol": {
+              "product_name": "Handpick large larvae; Bacillus thuringiensis subsp. kurstaki foliar spray",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Target early larval instars for optimal biological control efficacy."
+          }
+        },
+        "xylotrechus": {
+          "common_name": "Xylotrechus (Grape Borer)",
+          "scientific_name": "Xylotrechus pyrrhoderus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorpyrifos 48% EC",
+              "active_ingredient": "Chlorpyrifos",
+              "dosage": "5.0 ml/L directed trunk paint | PHI: 30 days",
+              "phi_days": 30,
+              "timing": "Target early instars or initial sign of swollen nodal entry & vine breakage"
+            },
+            "organic_biocontrol": {
+              "product_name": "Prune and burn infested canes during winter dormancy",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Directed trunk application only; never spray fruit clusters."
+          }
+        },
+        "erythroneura_apicalis": {
+          "common_name": "Erythroneura apicalis",
+          "scientific_name": "Erythroneura apicalis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Buprofezin 25% SC",
+              "active_ingredient": "Buprofezin",
+              "dosage": "0.8 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of dense pale stippling & leaf bronzing"
+            },
+            "organic_biocontrol": {
+              "product_name": "Conserve Anagrus erythroneurae parasitoid wasps",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Chitin synthesis inhibitor targeting immature nymphs."
+          }
+        },
+        "colomerus_vitis": {
+          "common_name": "Grape Leaf Blister Mite",
+          "scientific_name": "Colomerus vitis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spirodiclofen 24% SC",
+              "active_ingredient": "Spirodiclofen",
+              "dosage": "0.4 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of erinose leaf blisters & felt galls"
+            },
+            "organic_biocontrol": {
+              "product_name": "Wettable sulfur @ 3 g/L; predatory mites (Typhlodromus pyri)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Do not apply sulfur if ambient temperatures exceed 32°C."
+          }
+        },
+        "viteus_vitifoliae": {
+          "common_name": "Grape Phylloxera",
+          "scientific_name": "Viteus vitifoliae",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spirotetramat 15.3% OD",
+              "active_ingredient": "Spirotetramat",
+              "dosage": "0.6 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of nodosities, tuberosities & stunted vines"
+            },
+            "organic_biocontrol": {
+              "product_name": "Graft onto resistant American rootstocks (e.g. 110R, SO4); flood irrigation",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Two-way systemic movement; apply during active shoot growth."
+          }
+        },
+        "lycorma_delicatula": {
+          "common_name": "Spotted Lanternfly",
+          "scientific_name": "Lycorma delicatula",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Dinotefuran 20% SG",
+              "active_ingredient": "Dinotefuran",
+              "dosage": "0.5 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of weeping wounds & sooty mold encrustation"
+            },
+            "organic_biocontrol": {
+              "product_name": "Tree banding with sticky barrier bands; Beauveria bassiana applications",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Do not apply during bloom; toxic to pollinators."
+          }
+        },
+        "limacodidae": {
+          "common_name": "Limacodidae (Slug Caterpillar)",
+          "scientific_name": "Limacodidae",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Emamectin benzoate 5% SG",
+              "active_ingredient": "Emamectin benzoate",
+              "dosage": "0.4 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of windowpane chewing & complete defoliation"
+            },
+            "organic_biocontrol": {
+              "product_name": "Bacillus thuringiensis spray; conserve parasitic Tachinid flies",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Wear thick protective gloves and face shield; stinging spines cause intense contact dermatitis."
+          }
+        },
+        "peach_borer": {
+          "common_name": "Peach Borer",
+          "scientific_name": "Synanthedon exitiosa",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorpyrifos 48% EC",
+              "active_ingredient": "Chlorpyrifos",
+              "dosage": "3.0 ml/L directed trunk drench | PHI: 30 days",
+              "phi_days": 30,
+              "timing": "Target early instars or initial sign of gummosis & frass at soil line"
+            },
+            "organic_biocontrol": {
+              "product_name": "Mating disruption dispensers; entomopathogenic nematodes (Steinernema carpocapsae)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Directed bark application only; do not spray foliage or fruit."
+          }
+        },
+        "sternochetus_frigidus": {
+          "common_name": "Mango Pulp Weevil",
+          "scientific_name": "Sternochetus frigidus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              3
+            ],
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Thiamethoxam 25% WG",
+              "active_ingredient": "Thiamethoxam",
+              "dosage": "0.3 g/L water | PHI: 21 days",
+              "phi_days": 21,
+              "timing": "Target early instars or initial sign of internal pulp rot & premature drop"
+            },
+            "organic_biocontrol": {
+              "product_name": "Individual fruit bagging at marble stage; destroy fallen infested fruit",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Quarantine pest; strictly monitor export orchards."
+          }
+        }
+      }
+    },
+    "eggplant": {
+      "name": "Eggplant",
+      "scientific_name": "Solanum melongena",
+      "description": "Solanaceous crop susceptible to fruit & shoot borers, flea beetles, broad mites, scale insects, whiteflies, and thrips (20 cataloged IP102 species).",
+      "pests": {
+        "red_spider": {
+          "common_name": "Red Spider Mite",
+          "scientific_name": "Tetranychus urticae",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spiromesifen 22.9% SC",
+              "active_ingredient": "Spiromesifen",
+              "dosage": "0.8 ml/L water | PHI: 5 days",
+              "phi_days": 5,
+              "timing": "Target early instars or initial sign of chlorotic stippling & silky webbing"
+            },
+            "organic_biocontrol": {
+              "product_name": "Predatory mites (Phytoseiulus persimilis); wettable sulfur @ 2.5 g/L",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Ensure thorough coverage of leaf undersides; toxic to aquatic organisms."
+          }
+        },
+        "flea_beetle": {
+          "common_name": "Flea Beetle",
+          "scientific_name": "Chaetocnema concinna",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Thiamethoxam 25% WG",
+              "active_ingredient": "Thiamethoxam",
+              "dosage": "0.25 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of shot-hole foliar perforations"
+            },
+            "organic_biocontrol": {
+              "product_name": "Botanical pyrethrin spray; white floating row covers on seedlings",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Harmful to bees; do not apply when flowering weeds are present in the field."
+          }
+        },
+        "polyphagotars_onemus_latus": {
+          "common_name": "Broad Mite",
+          "scientific_name": "Polyphagotarsonemus latus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spiromesifen 22.9% SC",
+              "active_ingredient": "Spiromesifen",
+              "dosage": "0.8 ml/L water | PHI: 5 days",
+              "phi_days": 5,
+              "timing": "Target early instars or initial sign of downward cupping & leathery bronzing"
+            },
+            "organic_biocontrol": {
+              "product_name": "Wettable sulfur @ 3.0 g/L; predatory mites (Neoseiulus barkeri)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Thorough coverage of shoot tips required; do not mix sulfur with oils."
+          }
+        },
+        "scirtothrips_dorsalis_hood": {
+          "common_name": "Chilli Thrips / Yellow Tea Thrips",
+          "scientific_name": "Scirtothrips dorsalis",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Spinetoram 11.7% SC",
+              "active_ingredient": "Spinetoram",
+              "dosage": "0.5 ml/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of ring scarring & boat-shaped leaf curl"
+            },
+            "organic_biocontrol": {
+              "product_name": "Blue sticky traps; predatory mites (Amblyseius swirskii)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Rotate active ingredients to mitigate severe insecticide resistance."
+          }
+        },
+        "aleurocanthus_spiniferus": {
+          "common_name": "Orange Spiny Whitefly",
+          "scientific_name": "Aleurocanthus spiniferus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Acetamiprid 20% SP",
+              "active_ingredient": "Acetamiprid",
+              "dosage": "0.3 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of spiny black nymphs & sooty mold"
+            },
+            "organic_biocontrol": {
+              "product_name": "Conserve Encarsia smithi parasitoid wasps; apply 1% summer horticultural oil",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Direct spray to undersides of leaves where nymphs reside."
+          }
+        },
+        "nipaecoccus_vastalor": {
+          "common_name": "Spherical Mealybug",
+          "scientific_name": "Nipaecoccus vastator",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Clothianidin 50% WDG",
+              "active_ingredient": "Clothianidin",
+              "dosage": "0.2 g/L water | PHI: 21 days",
+              "phi_days": 21,
+              "timing": "Target early instars or initial sign of globular purplish mealybug clusters"
+            },
+            "organic_biocontrol": {
+              "product_name": "Release Anagyrus dactylopii parasitoids; prune heavily infested shoots",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Systemic action; avoid applying during flowering to safeguard bees."
+          }
+        },
+        "icerya_purchasi_maskell": {
+          "common_name": "Cottony Cushion Scale",
+          "scientific_name": "Icerya purchasi",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Buprofezin 25% SC or Pyriproxyfen 10% EC",
+              "active_ingredient": "Pyriproxyfen",
+              "dosage": "0.75 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of fluted white egg sacs & twig dieback"
+            },
+            "organic_biocontrol": {
+              "product_name": "Vedalia beetle (Rodolia cardinalis) conservation/release; 1.5% narrow-range oil",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Do not spray broad-spectrum pyrethroids which decimate Vedalia ladybirds."
+          }
+        },
+        "ceroplastes_rubens": {
+          "common_name": "Red Wax Scale",
+          "scientific_name": "Ceroplastes rubens",
           "infestation_thresholds": {
             "low": [
               1,
@@ -580,22 +2757,22 @@
             "chemical": {
               "product_name": "Acetamiprid 20% SP",
               "active_ingredient": "Acetamiprid",
-              "dosage": "0.5 g per Liter of water",
-              "phi_days": 7,
-              "timing": "Foliar spray targeting leaf undersides"
+              "dosage": "0.3 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of pink wax scale encrustation & soot"
             },
             "organic_biocontrol": {
-              "product_name": "Yellow Sticky Traps & Encarsia formosa",
-              "dosage": "Deploy 10 yellow cards per plot",
+              "product_name": "Conserve Anicetus beneficus parasitoid wasps; apply summer mineral oil spray",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Continuous"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Avoid inhaling spray mist."
+            "safety_precautions": "Ensure high spray pressure to penetrate dense citrus canopies."
           }
         },
-        "squash_bug": {
-          "common_name": "Squash Bug",
-          "scientific_name": "Anasa tristis",
+        "chrysomphalus_aonidum": {
+          "common_name": "Florida Red Scale",
+          "scientific_name": "Chrysomphalus aonidum",
           "infestation_thresholds": {
             "low": [
               1,
@@ -609,62 +2786,55 @@
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Bifenthrin 10% EC",
-              "active_ingredient": "Bifenthrin",
-              "dosage": "0.8 - 1.0 ml per Liter of water",
-              "phi_days": 3,
-              "timing": "Target base of vines and undersides of lower leaves where adults hide"
+              "product_name": "Spirotetramat 15.3% OD",
+              "active_ingredient": "Spirotetramat",
+              "dosage": "0.6 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of dark circular pitted scales on rind"
             },
             "organic_biocontrol": {
-              "product_name": "Pyrethrin + Diatomaceous Earth",
-              "dosage": "Dust powder around root collar or spray 1 ml/L Pyrethrin",
-              "phi_days": 1,
-              "timing": "Direct contact spray on egg clusters"
+              "product_name": "Aphytis holoxanthus parasitic wasp releases; horticultural oil sprays",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Toxic to fish. Wear rubber boots, apron, and respirator."
+            "safety_precautions": "Target active spring crawler migration for maximum control."
           }
-        }
-      }
-    },
-    "eggplant": {
-      "name": "Eggplant",
-      "scientific_name": "Solanum melongena",
-      "description": "Solanaceous vegetable highly susceptible to shoot borers, flea beetles, and mites.",
-      "pests": {
-        "fruit_and_shoot_borer": {
-          "common_name": "Eggplant Fruit and Shoot Borer (EFSB)",
-          "scientific_name": "Leucinodes orbonalis",
+        },
+        "unaspis_yanonensis": {
+          "common_name": "Arrowhead Scale",
+          "scientific_name": "Unaspis yanonensis",
           "infestation_thresholds": {
             "low": [
               1,
-              1
-            ],
-            "moderate": [
-              2,
               3
             ],
-            "severe": 4
+            "moderate": [
+              4,
+              6
+            ],
+            "severe": 7
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Flubendiamide 39.35% SC",
-              "active_ingredient": "Flubendiamide",
-              "dosage": "0.2 - 0.3 ml per Liter of water",
-              "phi_days": 5,
-              "timing": "Spray at first sign of drooping shoots or small boreholes"
+              "product_name": "Buprofezin 25% SC",
+              "active_ingredient": "Buprofezin",
+              "dosage": "1.0 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of arrowhead scale crust & leaf chlorosis"
             },
             "organic_biocontrol": {
-              "product_name": "Pheromone Traps (Lucinlure) + Clip & Burn Wilted Shoots",
-              "dosage": "Place 1 lure trap per 150 sq meters; sanitize weekly",
+              "product_name": "Introduce Coccobius fulvus parasitoid wasps; summer mineral oil (1%) at crawler stage",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Continuous throughout vegetative and fruiting cycle"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Prune infested shoots before chemical spraying. Wear protective mask and gloves."
+            "safety_precautions": "Target crawler emergence window; adult scales protected by impervious wax covers."
           }
         },
-        "flea_beetle": {
-          "common_name": "Flea Beetle",
-          "scientific_name": "Phyllotreta striolata",
+        "parlatoria_zizyphus_lucus": {
+          "common_name": "Black Parlatoria Scale",
+          "scientific_name": "Parlatoria ziziphi",
           "infestation_thresholds": {
             "low": [
               1,
@@ -678,24 +2848,24 @@
           },
           "recommendations": {
             "chemical": {
-              "product_name": "Carbaryl 85% WP",
-              "active_ingredient": "Carbaryl",
-              "dosage": "2 g per Liter of water",
-              "phi_days": 7,
-              "timing": "Spray seedlings and lower foliage thoroughly"
+              "product_name": "Chlorantraniliprole / Lambda-cyhalothrin 18.5% SC / 5% EC",
+              "active_ingredient": "Chlorantraniliprole / Lambda-cyhalothrin",
+              "dosage": "0.5 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of tissue chewing & feeding punctures"
             },
             "organic_biocontrol": {
-              "product_name": "Neem Cake Soil Amendment + Insecticidal Soap",
-              "dosage": "200 g Neem cake per plant; 10 ml/L soap spray",
+              "product_name": "Botanical neem oil extract (5 ml/L); conserve native parasitic wasps",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
               "phi_days": 0,
-              "timing": "Apply early morning"
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Toxic to pollinators. Spray in late evening when bees are not foraging."
+            "safety_precautions": "Apply with calibrated low-drift nozzle; wear protective gear."
           }
         },
-        "red_spider": {
-          "common_name": "Red Spider Mite",
-          "scientific_name": "Tetranychus urticae",
+        "panonchus_citri_mcgregor": {
+          "common_name": "Citrus Red Mite",
+          "scientific_name": "Panonychus citri",
           "infestation_thresholds": {
             "low": [
               1,
@@ -703,25 +2873,273 @@
             ],
             "moderate": [
               3,
-              5
+              4
             ],
-            "severe": 6
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Hexythiazox 10% EC",
+              "active_ingredient": "Hexythiazox",
+              "dosage": "0.5 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of silvery-grey speckling & leaf drop"
+            },
+            "organic_biocontrol": {
+              "product_name": "Release predatory mites (Neoseiulus californicus); mineral oil (1%)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Ovicidal and nymphal action; does not kill adults immediately."
+          }
+        },
+        "phyllocoptes_oleiverus_ashmead": {
+          "common_name": "Citrus Rust Mite",
+          "scientific_name": "Phyllocoptruta oleivora",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
           },
           "recommendations": {
             "chemical": {
               "product_name": "Spiromesifen 22.9% SC",
               "active_ingredient": "Spiromesifen",
-              "dosage": "0.7 ml per Liter of water",
-              "phi_days": 3,
-              "timing": "Direct nozzle toward undersides of leaves where webbing occurs"
+              "dosage": "0.6 ml/L water | PHI: 7 days",
+              "phi_days": 7,
+              "timing": "Target early instars or initial sign of sharkskin fruit russeting & bronzing"
             },
             "organic_biocontrol": {
-              "product_name": "Sulfur 80% WDG or Horticultural Oil",
-              "dosage": "2-3 g Sulfur per Liter of water",
-              "phi_days": 1,
-              "timing": "Do not apply when temperatures exceed 32\u00b0C (90\u00b0F)"
+              "product_name": "Wettable sulfur @ 2.5 g/L; Hirsutella thompsonii fungal pathogen",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
             },
-            "safety_precautions": "Wear dust mask when measuring wettable powders."
+            "safety_precautions": "Do not mix sulfur with horticultural oils; maintain 21-day safety gap."
+          }
+        },
+        "brevipoalpus_lewisi_mcgregor": {
+          "common_name": "Citrus Flat Mite",
+          "scientific_name": "Brevipalpus lewisi",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Pyridaben 20% WP",
+              "active_ingredient": "Pyridaben",
+              "dosage": "0.5 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of stem necrosis & berry russeting"
+            },
+            "organic_biocontrol": {
+              "product_name": "Mineral horticultural oil spray (1%); conserve Phytoseiid predatory mites",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Rotate with alternate miticides to suppress rapid acaricide resistance."
+          }
+        },
+        "phyllocnistis_citrella_stainton": {
+          "common_name": "Citrus Leafminer",
+          "scientific_name": "Phyllocnistis citrella",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Abamectin 1.8% EC",
+              "active_ingredient": "Abamectin",
+              "dosage": "0.6 ml/L water + 0.5% mineral oil | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of silvery serpentine mines & flush curling"
+            },
+            "organic_biocontrol": {
+              "product_name": "Pheromone mating disruption; conserve Ageniaspis citricola",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Apply strictly at 50% flush emergence before leaf tissue hardens."
+          }
+        },
+        "toxoptera_citricidus": {
+          "common_name": "Brown Citrus Aphid",
+          "scientific_name": "Toxoptera citricida",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Acetamiprid 20% SP",
+              "active_ingredient": "Acetamiprid",
+              "dosage": "0.3 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of severe leaf curl & ctv virus vectoring"
+            },
+            "organic_biocontrol": {
+              "product_name": "Release Lysiphlebus testaceipes parasitic wasps; summer mineral oil (1%)",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Vector control is crucial; eradicate confirmed CTV-infected trees."
+          }
+        },
+        "toxoptera_aurantii": {
+          "common_name": "Black Citrus Aphid",
+          "scientific_name": "Toxoptera aurantii",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Imidacloprid 17.8% SL",
+              "active_ingredient": "Imidacloprid",
+              "dosage": "0.3 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of leaf curling & flower distortion"
+            },
+            "organic_biocontrol": {
+              "product_name": "Neem seed oil (5 ml/L); conserve Chrysoperla carnea green lacewings",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Harmful to bees; spray strictly outside citrus blossom period."
+          }
+        },
+        "aphis_citricola_vander_goot": {
+          "common_name": "Spirea Aphid",
+          "scientific_name": "Aphis spiraecola",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Thiamethoxam 25% WG",
+              "active_ingredient": "Thiamethoxam",
+              "dosage": "0.2 g/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of downward foliar rolling & stunting"
+            },
+            "organic_biocontrol": {
+              "product_name": "Spray horticultural mineral oil (1.0%); conserve Coccinellid beetles",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Do not spray on high-temperature dry afternoons; wear PPE."
+          }
+        },
+        "papilio_xuthus": {
+          "common_name": "Asian Swallowtail",
+          "scientific_name": "Papilio xuthus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              5
+            ],
+            "severe": 6
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorantraniliprole 18.5% SC",
+              "active_ingredient": "Chlorantraniliprole",
+              "dosage": "0.25 ml/L water | PHI: 14 days",
+              "phi_days": 14,
+              "timing": "Target early instars or initial sign of voracious flush defoliation"
+            },
+            "organic_biocontrol": {
+              "product_name": "Bacillus thuringiensis subsp. kurstaki; hand-picking on young citrus trees",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Extremely safe for beneficial parasitoids; low toxicity to mammals."
+          }
+        },
+        "adristyrannus": {
+          "common_name": "Adristyrannus",
+          "scientific_name": "Adristyrannus",
+          "infestation_thresholds": {
+            "low": [
+              1,
+              2
+            ],
+            "moderate": [
+              3,
+              4
+            ],
+            "severe": 5
+          },
+          "recommendations": {
+            "chemical": {
+              "product_name": "Chlorpyrifos 48% EC",
+              "active_ingredient": "Chlorpyrifos",
+              "dosage": "5.0 ml/L injected into boreholes | PHI: 30 days",
+              "phi_days": 30,
+              "timing": "Target early instars or initial sign of trunk galleries & structural weakening"
+            },
+            "organic_biocontrol": {
+              "product_name": "Probe boreholes with flexible wire to kill larvae; plug holes with mud/cotton",
+              "dosage": "2.5 g/L or 3-5 ml/L spray application",
+              "phi_days": 0,
+              "timing": "Apply at early detection or as preventative field border buffer"
+            },
+            "safety_precautions": "Directed borehole injection; seal treated holes immediately."
           }
         }
       }

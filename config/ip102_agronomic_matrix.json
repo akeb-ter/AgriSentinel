@@ -354,7 +354,7 @@
       "common_name": "Mole Cricket",
       "scientific_name": "Gryllotalpa africana",
       "pest_category": "Subterranean Pest",
-      "primary_crop": "Rice / Corn",
+      "primary_crop": "Rice",
       "plant_health": {
         "affected_part": "Sub-surface Roots & Seeds",
         "primary_symptom": "Seedling Severing & Burrow Trenches",
@@ -377,7 +377,7 @@
       "common_name": "Wireworm",
       "scientific_name": "Agriotes spp.",
       "pest_category": "Subterranean Pest",
-      "primary_crop": "Corn / Wheat",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Germinating Seed & Crown",
         "primary_symptom": "Hollowed Seeds & Wilting Seedlings",
@@ -400,7 +400,7 @@
       "common_name": "White Margined Moth",
       "scientific_name": "Mythimna separata",
       "pest_category": "Defoliator",
-      "primary_crop": "Corn / Cereals",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Foliage",
         "primary_symptom": "Extensive Ragged Defoliation",
@@ -446,7 +446,7 @@
       "common_name": "Large Cutworm",
       "scientific_name": "Xestia c-nigrum",
       "pest_category": "Defoliator / Cutter",
-      "primary_crop": "Corn / Vegetables",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Lower Stems & Foliage",
         "primary_symptom": "Basal Stem Notching & Leaf Chewing",
@@ -469,7 +469,7 @@
       "common_name": "Yellow Cutworm",
       "scientific_name": "Peridroma saucia",
       "pest_category": "Defoliator",
-      "primary_crop": "Corn / Vegetables",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Leaves & Stems",
         "primary_symptom": "Nocturnal Foliar Skeletonization",
@@ -492,7 +492,7 @@
       "common_name": "Red Spider Mite",
       "scientific_name": "Tetranychus urticae",
       "pest_category": "Mite / Sap Sucker",
-      "primary_crop": "Corn / Vegetables",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Foliage Underside",
         "primary_symptom": "Chlorotic Stippling & Silky Webbing",
@@ -538,7 +538,7 @@
       "common_name": "Armyworm",
       "scientific_name": "Mythimna separata",
       "pest_category": "Defoliator",
-      "primary_crop": "Corn / Cereals",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Foliage",
         "primary_symptom": "Extensive Ragged Defoliation",
@@ -561,7 +561,7 @@
       "common_name": "Aphids",
       "scientific_name": "Rhopalosiphum maidis",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Corn",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Tassels & Upper Foliage",
         "primary_symptom": "Sooty Mold & Leaf Curl",
@@ -584,7 +584,7 @@
       "common_name": "Potosiabre vitarsis",
       "scientific_name": "Protaetia brevitarsis",
       "pest_category": "Beetle / Flower & Shoot Pest",
-      "primary_crop": "Corn / Fruit",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Silk, Tassels & Ripe Ears",
         "primary_symptom": "Silk Chewing & Ear Tip Damage",
@@ -607,7 +607,7 @@
       "common_name": "Peach Borer",
       "scientific_name": "Synanthedon exitiosa",
       "pest_category": "Wood & Trunk Borer",
-      "primary_crop": "Fruit Trees",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Crown & Lower Trunk",
         "primary_symptom": "Gummosis & Frass at Soil Line",
@@ -630,7 +630,7 @@
       "common_name": "English Grain Aphid",
       "scientific_name": "Sitobion avenae",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Wheat / Barley",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Wheat Heads & Flag Leaf",
         "primary_symptom": "Kernel Shriveling & Honeydew Soot",
@@ -653,7 +653,7 @@
       "common_name": "Green Bug",
       "scientific_name": "Schizaphis graminum",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Wheat / Sorghum",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Leaves & Tillers",
         "primary_symptom": "Reddish-Brown Necrotic Spots & Yellowing",
@@ -676,7 +676,7 @@
       "common_name": "Bird Cherry-Oat Aphid",
       "scientific_name": "Rhopalosiphum padi",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Wheat / Cereals",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Lower Stems & Sheaths",
         "primary_symptom": "BYDV Virus Transmission & Stunting",
@@ -699,7 +699,7 @@
       "common_name": "Wheat Blossom Midge",
       "scientific_name": "Sitodiplosis mosellana",
       "pest_category": "Grain / Head Pest",
-      "primary_crop": "Wheat",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Spikelet & Developing Grain",
         "primary_symptom": "Shriveled Kernels & Chaff Discoloration",
@@ -722,7 +722,7 @@
       "common_name": "Penthaleus major",
       "scientific_name": "Penthaleus major",
       "pest_category": "Mite / Sap Sucker",
-      "primary_crop": "Wheat",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Foliage",
         "primary_symptom": "Silvery-White Leaf Tips",
@@ -745,7 +745,7 @@
       "common_name": "Longlegged Spider Mite",
       "scientific_name": "Petrobia latens",
       "pest_category": "Mite / Sap Sucker",
-      "primary_crop": "Wheat",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Foliage",
         "primary_symptom": "Leaf Bronzing & Stunted Heads",
@@ -768,7 +768,7 @@
       "common_name": "Wheat Phloeothrips",
       "scientific_name": "Haplothrips tritici",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Wheat / Rye",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Ears & Developing Grains",
         "primary_symptom": "Silvering of Spikes & Chaff Browning",
@@ -791,7 +791,7 @@
       "common_name": "Wheat Sawfly",
       "scientific_name": "Cephus cinctus",
       "pest_category": "Stem Borer",
-      "primary_crop": "Wheat",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Stalk Base",
         "primary_symptom": "Stem Lodging & Severed Culms",
@@ -814,7 +814,7 @@
       "common_name": "Cerodonta denticornis",
       "scientific_name": "Cerodontha denticornis",
       "pest_category": "Leaf Miner",
-      "primary_crop": "Wheat",
+      "primary_crop": "Rice",
       "plant_health": {
         "affected_part": "Leaves",
         "primary_symptom": "Linear Pale Leaf Mines",
@@ -837,7 +837,7 @@
       "common_name": "Beet Fly",
       "scientific_name": "Pegomya hyoscyami",
       "pest_category": "Leaf Miner",
-      "primary_crop": "Beet",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Leaves",
         "primary_symptom": "Blister Leaf Mines & Necrosis",
@@ -860,7 +860,7 @@
       "common_name": "Flea Beetle",
       "scientific_name": "Chaetocnema concinna",
       "pest_category": "Foliar Beetle",
-      "primary_crop": "Beet",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Cotyledons & Leaves",
         "primary_symptom": "Shot-hole Foliar Perforations",
@@ -883,7 +883,7 @@
       "common_name": "Cabbage Armyworm",
       "scientific_name": "Mamestra brassicae",
       "pest_category": "Defoliator",
-      "primary_crop": "Beet",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Foliage & Crown",
         "primary_symptom": "Extensive Skeletonization & Frass Piles",
@@ -906,7 +906,7 @@
       "common_name": "Beet Armyworm",
       "scientific_name": "Spodoptera exigua",
       "pest_category": "Defoliator",
-      "primary_crop": "Vegetables / Corn / Beet",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Foliage & Terminal Buds",
         "primary_symptom": "Foliar Skeletonization & Webbed Clusters",
@@ -929,7 +929,7 @@
       "common_name": "Beet Spot Flies",
       "scientific_name": "Psilopa leucostoma",
       "pest_category": "Defoliator / Chewing Pest",
-      "primary_crop": "Beet",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Foliage & Shoots",
         "primary_symptom": "Tissue Chewing & Feeding Punctures",
@@ -952,7 +952,7 @@
       "common_name": "Meadow Moth",
       "scientific_name": "Loxostege sticticalis",
       "pest_category": "Defoliator / Webworm",
-      "primary_crop": "Beet / Alfalfa",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Leaves",
         "primary_symptom": "Foliar Webbing & Total Defoliation",
@@ -975,7 +975,7 @@
       "common_name": "Beet Weevil",
       "scientific_name": "Bothynoderes punctiventris",
       "pest_category": "Foliar & Root Weevil",
-      "primary_crop": "Beet",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Seedlings & Taproot",
         "primary_symptom": "Severed Cotyledons & Root Cavities",
@@ -998,7 +998,7 @@
       "common_name": "Sericaorient alismots chulsky",
       "scientific_name": "Maladera orientalis",
       "pest_category": "Foliar & Root Pest",
-      "primary_crop": "Beet",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Leaves & Roots",
         "primary_symptom": "Irregular Foliar Serration & Root Pruning",
@@ -1021,7 +1021,7 @@
       "common_name": "Alfalfa Weevil",
       "scientific_name": "Hypera postica",
       "pest_category": "Defoliator",
-      "primary_crop": "Alfalfa",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Terminal Shoots & Leaves",
         "primary_symptom": "Skeletonized Terminal Foliage",
@@ -1044,7 +1044,7 @@
       "common_name": "Flax Budworm",
       "scientific_name": "Heliothis ononis",
       "pest_category": "Bud & Seed Pod Borer",
-      "primary_crop": "Alfalfa",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Flower Buds & Seed Pods",
         "primary_symptom": "Bored Buds & Seed Cavities",
@@ -1067,7 +1067,7 @@
       "common_name": "Alfalfa Plant Bug",
       "scientific_name": "Adelphocoris lineolatus",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Alfalfa",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Flower Buds & Shoots",
         "primary_symptom": "Bud Blasting & Crinkled Leaves",
@@ -1090,7 +1090,7 @@
       "common_name": "Tarnished Plant Bug",
       "scientific_name": "Lygus lineolaris",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Alfalfa",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Growing Points & Florets",
         "primary_symptom": "Apical Necrosis & Cat-facing",
@@ -1113,7 +1113,7 @@
       "common_name": "Locustoidea (Locust/Grasshopper)",
       "scientific_name": "Locusta migratoria",
       "pest_category": "Defoliator",
-      "primary_crop": "Alfalfa / Field Crops",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Entire Foliage & Stems",
         "primary_symptom": "Complete Plant Stripping",
@@ -1136,7 +1136,7 @@
       "common_name": "Lytta polita",
       "scientific_name": "Lytta polita",
       "pest_category": "Defoliator",
-      "primary_crop": "Legumes / Alfalfa",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Flowers & Young Leaves",
         "primary_symptom": "Blossom Destruction & Leaf Stripping",
@@ -1159,7 +1159,7 @@
       "common_name": "Legume Blister Beetle",
       "scientific_name": "Epicauta subglabra",
       "pest_category": "Defoliator",
-      "primary_crop": "Mungbean / Soybeans",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Foliage & Floral Buds",
         "primary_symptom": "Rapid Foliar Stripping in Patches",
@@ -1182,7 +1182,7 @@
       "common_name": "Blister Beetle",
       "scientific_name": "Epicauta spp.",
       "pest_category": "Defoliator",
-      "primary_crop": "Legumes / Alfalfa",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Leaves & Blossoms",
         "primary_symptom": "Defoliation & Flower Feeding",
@@ -1205,7 +1205,7 @@
       "common_name": "Spotted Alfalfa Aphid",
       "scientific_name": "Therioaphis maculata",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Alfalfa / Legumes",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Lower Leaves & Stems",
         "primary_symptom": "Vein Chlorosis & Premature Leaf Drop",
@@ -1228,7 +1228,7 @@
       "common_name": "Odontothrips loti",
       "scientific_name": "Odontothrips loti",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Legumes / Alfalfa",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Flowers & Young Pods",
         "primary_symptom": "Flower Blasting & Distorted Seed Pods",
@@ -1251,7 +1251,7 @@
       "common_name": "Thrips",
       "scientific_name": "Stenchaetothrips biformis",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Rice",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Seedling Leaves",
         "primary_symptom": "Leaf Curl & Silvery Stippling",
@@ -1274,7 +1274,7 @@
       "common_name": "Alfalfa Seed Chalcid",
       "scientific_name": "Bruchophagus roddi",
       "pest_category": "Seed Borer",
-      "primary_crop": "Alfalfa / Legumes",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Developing Seed Pods",
         "primary_symptom": "Hollow Seeds & Pinhole Emergence Holes",
@@ -1297,7 +1297,7 @@
       "common_name": "Indian Cabbage White",
       "scientific_name": "Pieris canidia",
       "pest_category": "Defoliator",
-      "primary_crop": "Cruciferous Vegetables",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Leaves & Head",
         "primary_symptom": "Large Ragged Holes & Frass Deposits",
@@ -1320,7 +1320,7 @@
       "common_name": "Apolygus lucorum",
       "scientific_name": "Apolygus lucorum",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Vitis (Grape)",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Growing Tips & Flower Buds",
         "primary_symptom": "Ragged Leaves & Blossom Drop",
@@ -1343,7 +1343,7 @@
       "common_name": "Limacodidae (Slug Caterpillar)",
       "scientific_name": "Limacodidae",
       "pest_category": "Defoliator (Stinging Caterpillar)",
-      "primary_crop": "Fruit Trees / Palms",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Leaves",
         "primary_symptom": "Windowpane Chewing & Complete Defoliation",
@@ -1366,7 +1366,7 @@
       "common_name": "Grape Phylloxera",
       "scientific_name": "Viteus vitifoliae",
       "pest_category": "Root & Foliar Gall Maker (Phylloxera)",
-      "primary_crop": "Grape (Vitis)",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Roots & Foliage",
         "primary_symptom": "Nodosities, Tuberosities & Stunted Vines",
@@ -1389,7 +1389,7 @@
       "common_name": "Grape Leaf Blister Mite",
       "scientific_name": "Colomerus vitis",
       "pest_category": "Gall / Rust Mite",
-      "primary_crop": "Vitis (Grape)",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Foliage & Buds",
         "primary_symptom": "Erinose Leaf Blisters & Felt Galls",
@@ -1412,7 +1412,7 @@
       "common_name": "Citrus Flat Mite",
       "scientific_name": "Brevipalpus lewisi",
       "pest_category": "False Spider Mite",
-      "primary_crop": "Vitis (Grape)",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Bunch Stems & Berries",
         "primary_symptom": "Stem Necrosis & Berry Russeting",
@@ -1435,7 +1435,7 @@
       "common_name": "Oides decempunctata",
       "scientific_name": "Oides decempunctata",
       "pest_category": "Defoliator",
-      "primary_crop": "Grape (Vitis)",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Leaves & Young Shoots",
         "primary_symptom": "Skeletonized Foliage & Defoliated Canes",
@@ -1458,7 +1458,7 @@
       "common_name": "Broad Mite",
       "scientific_name": "Polyphagotarsonemus latus",
       "pest_category": "Broad Mite / Sap Sucker",
-      "primary_crop": "Eggplant / Chilli / Peppers",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Young Leaves & Growing Tips",
         "primary_symptom": "Downward Cupping & Leathery Bronzing",
@@ -1481,7 +1481,7 @@
       "common_name": "Comstock Mealybug",
       "scientific_name": "Pseudococcus comstocki",
       "pest_category": "Mealybug / Sap Sucker",
-      "primary_crop": "Fruit Trees / Grapes",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Fruit Calyx, Bark & Twigs",
         "primary_symptom": "White Cottony Wax & Black Sooty Mold",
@@ -1504,7 +1504,7 @@
       "common_name": "Parathrene regalis",
       "scientific_name": "Parathrene regalis",
       "pest_category": "Wood Borer (Clearwing Moth)",
-      "primary_crop": "Fruit Trees / Grape",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Trunk & Major Limbs",
         "primary_symptom": "Swollen Trunk Galls & Wood Frass",
@@ -1527,7 +1527,7 @@
       "common_name": "Ampelophaga (Grape Sphinx)",
       "scientific_name": "Ampelophaga rubiginosa",
       "pest_category": "Defoliator",
-      "primary_crop": "Vitis (Grape)",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Leaves & Young Shoots",
         "primary_symptom": "Voracious Leaf Chewing",
@@ -1550,7 +1550,7 @@
       "common_name": "Spotted Lanternfly",
       "scientific_name": "Lycorma delicatula",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Vitis (Grape)",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Canes & Trunk",
         "primary_symptom": "Weeping Wounds & Sooty Mold Encrustation",
@@ -1573,7 +1573,7 @@
       "common_name": "Xylotrechus (Grape Borer)",
       "scientific_name": "Xylotrechus pyrrhoderus",
       "pest_category": "Wood Borer",
-      "primary_crop": "Vitis (Grape)",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Canes & Trunk",
         "primary_symptom": "Swollen Nodal Entry & Vine Breakage",
@@ -1596,7 +1596,7 @@
       "common_name": "Green Leafhopper",
       "scientific_name": "Cicadella viridis",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Vitis (Grape)",
+      "primary_crop": "Rice",
       "plant_health": {
         "affected_part": "Leaves & Young Shoots",
         "primary_symptom": "Foliar Stippling & Slit Wounds",
@@ -1619,7 +1619,7 @@
       "common_name": "Miridae (Plant Bug)",
       "scientific_name": "Apolygus lucorum",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Vitis (Grape)",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Growing Tips & Flower Buds",
         "primary_symptom": "Ragged Leaves & Blossom Drop",
@@ -1642,7 +1642,7 @@
       "common_name": "Greenhouse Whitefly",
       "scientific_name": "Trialeurodes vaporariorum",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Vitis / Greenhouse Crops",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Foliage Underside",
         "primary_symptom": "Chlorotic Mottling & Sooty Mold",
@@ -1665,7 +1665,7 @@
       "common_name": "Erythroneura apicalis",
       "scientific_name": "Erythroneura apicalis",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Vitis (Grape)",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Foliage",
         "primary_symptom": "Dense Pale Stippling & Leaf Bronzing",
@@ -1688,7 +1688,7 @@
       "common_name": "Asian Swallowtail",
       "scientific_name": "Papilio xuthus",
       "pest_category": "Defoliator",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Flush Shoots & Young Leaves",
         "primary_symptom": "Voracious Flush Defoliation",
@@ -1711,7 +1711,7 @@
       "common_name": "Citrus Red Mite",
       "scientific_name": "Panonychus citri",
       "pest_category": "Mite / Sap Sucker",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Foliage & Fruit",
         "primary_symptom": "Silvery-Grey Speckling & Leaf Drop",
@@ -1734,7 +1734,7 @@
       "common_name": "Citrus Rust Mite",
       "scientific_name": "Phyllocoptruta oleivora",
       "pest_category": "Rust Mite",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Fruit Rind & Foliage",
         "primary_symptom": "Sharkskin Fruit Russeting & Bronzing",
@@ -1757,7 +1757,7 @@
       "common_name": "Cottony Cushion Scale",
       "scientific_name": "Icerya purchasi",
       "pest_category": "Scale / Sap Sucker",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Twigs, Branches & Leaves",
         "primary_symptom": "Fluted White Egg Sacs & Twig Dieback",
@@ -1780,7 +1780,7 @@
       "common_name": "Arrowhead Scale",
       "scientific_name": "Unaspis yanonensis",
       "pest_category": "Armored Scale",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Leaves, Twigs & Fruit",
         "primary_symptom": "Arrowhead Scale Crust & Leaf Chlorosis",
@@ -1803,7 +1803,7 @@
       "common_name": "Red Wax Scale",
       "scientific_name": "Ceroplastes rubens",
       "pest_category": "Soft Scale",
-      "primary_crop": "Citrus / Mango",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Leaves & Green Twigs",
         "primary_symptom": "Pink Wax Scale Encrustation & Soot",
@@ -1826,7 +1826,7 @@
       "common_name": "Florida Red Scale",
       "scientific_name": "Chrysomphalus aonidum",
       "pest_category": "Armored Scale",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Fruit & Leaves",
         "primary_symptom": "Dark Circular Pitted Scales on Rind",
@@ -1849,7 +1849,7 @@
       "common_name": "Black Parlatoria Scale",
       "scientific_name": "Parlatoria ziziphi",
       "pest_category": "Defoliator / Chewing Pest",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Foliage & Shoots",
         "primary_symptom": "Tissue Chewing & Feeding Punctures",
@@ -1872,7 +1872,7 @@
       "common_name": "Spherical Mealybug",
       "scientific_name": "Nipaecoccus vastator",
       "pest_category": "Mealybug",
-      "primary_crop": "Citrus / Fruit",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Twigs, Leaves & Fruit Clusters",
         "primary_symptom": "Globular Purplish Mealybug Clusters",
@@ -1895,7 +1895,7 @@
       "common_name": "Orange Spiny Whitefly",
       "scientific_name": "Aleurocanthus spiniferus",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Underside Foliage",
         "primary_symptom": "Spiny Black Nymphs & Sooty Mold",
@@ -1918,7 +1918,7 @@
       "common_name": "Chinese Citrus Fly",
       "scientific_name": "Bactrocera minax",
       "pest_category": "Fruit Fly",
-      "primary_crop": "Citrus",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Fruit",
         "primary_symptom": "Premature Yellowing & Fruit Drop",
@@ -1941,7 +1941,7 @@
       "common_name": "Oriental Fruit Fly",
       "scientific_name": "Bactrocera dorsalis",
       "pest_category": "Fruit Fly",
-      "primary_crop": "Mango / Citrus / Squash",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Ripening Fruit",
         "primary_symptom": "Oviposition Punctures & Internal Rot",
@@ -1964,7 +1964,7 @@
       "common_name": "Japanese Orange Fly",
       "scientific_name": "Bactrocera tsuneonis",
       "pest_category": "Fruit Fly",
-      "primary_crop": "Citrus",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Fruit Flesh",
         "primary_symptom": "Pitted Rind & Premature Internal Rot",
@@ -1987,7 +1987,7 @@
       "common_name": "Tobacco Cutworm / Cluster Caterpillar",
       "scientific_name": "Spodoptera litura",
       "pest_category": "Defoliator",
-      "primary_crop": "Citrus / Vegetables",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Leaves & Tender Fruit Rinds",
         "primary_symptom": "Aggressive Foliar Skeletonization",
@@ -2010,7 +2010,7 @@
       "common_name": "Adristyrannus",
       "scientific_name": "Adristyrannus",
       "pest_category": "Bark / Wood Borer",
-      "primary_crop": "Citrus / Trees",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Main Trunk & Scaffolds",
         "primary_symptom": "Trunk Galleries & Structural Weakening",
@@ -2033,7 +2033,7 @@
       "common_name": "Citrus Leafminer",
       "scientific_name": "Phyllocnistis citrella",
       "pest_category": "Leaf Miner",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Young Flush Leaves",
         "primary_symptom": "Silvery Serpentine Mines & Flush Curling",
@@ -2056,7 +2056,7 @@
       "common_name": "Brown Citrus Aphid",
       "scientific_name": "Toxoptera citricida",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Flush Shoots & Leaves",
         "primary_symptom": "Severe Leaf Curl & CTV Virus Vectoring",
@@ -2079,7 +2079,7 @@
       "common_name": "Black Citrus Aphid",
       "scientific_name": "Toxoptera aurantii",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Young Shoots & Blossoms",
         "primary_symptom": "Leaf Curling & Flower Distortion",
@@ -2102,7 +2102,7 @@
       "common_name": "Spirea Aphid",
       "scientific_name": "Aphis spiraecola",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Citrus",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Terminal Flush Shoots",
         "primary_symptom": "Downward Foliar Rolling & Stunting",
@@ -2125,7 +2125,7 @@
       "common_name": "Chilli Thrips / Yellow Tea Thrips",
       "scientific_name": "Scirtothrips dorsalis",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Citrus / Chilli",
+      "primary_crop": "Eggplant",
       "plant_health": {
         "affected_part": "Young Leaves & Fruit Calyx",
         "primary_symptom": "Ring Scarring & Boat-shaped Leaf Curl",
@@ -2148,7 +2148,7 @@
       "common_name": "Dasineura Gall Midge",
       "scientific_name": "Dasineura spp.",
       "pest_category": "Gall Maker",
-      "primary_crop": "Citrus / Fruit Trees",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Tender Leaves & Buds",
         "primary_symptom": "Rolled Leaf Margins & Swollen Galls",
@@ -2171,7 +2171,7 @@
       "common_name": "Lawana imitata Flatid Planthopper",
       "scientific_name": "Lawana imitata",
       "pest_category": "Flatid Planthopper",
-      "primary_crop": "Fruit Trees / Mango",
+      "primary_crop": "Rice",
       "plant_health": {
         "affected_part": "Tender Shoots & Panicles",
         "primary_symptom": "White Waxy Coating & Sap Depletion",
@@ -2194,7 +2194,7 @@
       "common_name": "Salurnis marginella Planthopper",
       "scientific_name": "Salurnis marginella",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Citrus / Fruit Trees",
+      "primary_crop": "Rice",
       "plant_health": {
         "affected_part": "Green Twigs & Foliage",
         "primary_symptom": "Powdery Wax & Honeydew Soot",
@@ -2217,7 +2217,7 @@
       "common_name": "Mango Leaf-Cutting Weevil",
       "scientific_name": "Deporaus marginatus",
       "pest_category": "Leaf-Cutting Weevil",
-      "primary_crop": "Mango",
+      "primary_crop": "Mungbean",
       "plant_health": {
         "affected_part": "Young Flush Leaves",
         "primary_symptom": "Severed Leaf Blades & Floor Litter",
@@ -2240,7 +2240,7 @@
       "common_name": "Mango Shoot Borer",
       "scientific_name": "Chlumetia transversa",
       "pest_category": "Shoot Borer",
-      "primary_crop": "Mango",
+      "primary_crop": "Corn",
       "plant_health": {
         "affected_part": "Terminal Growing Shoots",
         "primary_symptom": "Wilted Shoot Tips & Dieback",
@@ -2263,7 +2263,7 @@
       "common_name": "Mango Flat Beak Leafhopper",
       "scientific_name": "Idioscopus niveosparsus",
       "pest_category": "Sucking Insect",
-      "primary_crop": "Mango",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Inflorescence / Flower Panicles",
         "primary_symptom": "Panicle Drying & Fruit Drop",
@@ -2286,7 +2286,7 @@
       "common_name": "Mango Branch Borer",
       "scientific_name": "Rhytidodera bowringii",
       "pest_category": "Stem & Branch Borer (Longhorn Beetle)",
-      "primary_crop": "Mango / Fruit",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Branches & Main Trunk",
         "primary_symptom": "Branch Dieback & Large Wood Cavities",
@@ -2309,7 +2309,7 @@
       "common_name": "Mango Pulp Weevil",
       "scientific_name": "Sternochetus frigidus",
       "pest_category": "Fruit Pulp Weevil",
-      "primary_crop": "Mango",
+      "primary_crop": "Squash",
       "plant_health": {
         "affected_part": "Fruit Pulp & Seed",
         "primary_symptom": "Internal Pulp Rot & Premature Drop",
@@ -2332,7 +2332,7 @@
       "common_name": "Cicadellidae (Leafhopper Family)",
       "scientific_name": "Cicadellidae",
       "pest_category": "Leafhopper (Family General)",
-      "primary_crop": "Rice / Vegetables / Cereals",
+      "primary_crop": "Rice",
       "plant_health": {
         "affected_part": "Foliage & Stems",
         "primary_symptom": "Hopperburn, Chlorotic Stippling & Viral Vectoring",
