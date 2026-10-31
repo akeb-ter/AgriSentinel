@@ -209,6 +209,54 @@
         </select>
       </div>
 
+      <!-- FEELWORLD 4K10X Touch Remote Bar (Onboard Camera Mode) -->
+      <div id="mobilePtzBar" class="bg-slate-900/80 p-3 rounded-xl border border-slate-700/80 space-y-2.5">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-slate-200 flex items-center gap-1.5">
+            <i class="fas fa-video text-green-400"></i> FEELWORLD 4K10X PTZ
+          </span>
+          <span id="mobilePtzCoords" class="font-mono text-[11px] text-green-400 bg-slate-800 px-2 py-0.5 rounded">Pan: 0° · Tilt: 0° · 1.0x</span>
+        </div>
+
+        <!-- D-Pad and Zoom Controls -->
+        <div class="grid grid-cols-5 gap-1.5 text-center">
+          <button type="button" onclick="moveMobilePTZ('pan_left')" class="p-2.5 bg-slate-800 hover:bg-slate-700 active:bg-green-700 text-slate-200 rounded-lg text-xs font-bold transition flex items-center justify-center">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <div class="grid grid-rows-2 gap-1">
+            <button type="button" onclick="moveMobilePTZ('tilt_up')" class="py-1 bg-slate-800 hover:bg-slate-700 active:bg-green-700 text-slate-200 rounded text-[10px] font-bold transition flex items-center justify-center">
+              <i class="fas fa-chevron-up"></i>
+            </button>
+            <button type="button" onclick="moveMobilePTZ('tilt_down')" class="py-1 bg-slate-800 hover:bg-slate-700 active:bg-green-700 text-slate-200 rounded text-[10px] font-bold transition flex items-center justify-center">
+              <i class="fas fa-chevron-down"></i>
+            </button>
+          </div>
+          <button type="button" onclick="moveMobilePTZ('home')" class="p-2.5 bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white rounded-lg text-[10px] font-black transition flex items-center justify-center">
+            HOME
+          </button>
+          <button type="button" onclick="moveMobilePTZ('pan_right')" class="p-2.5 bg-slate-800 hover:bg-slate-700 active:bg-green-700 text-slate-200 rounded-lg text-xs font-bold transition flex items-center justify-center">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          <div class="grid grid-rows-2 gap-1">
+            <button type="button" onclick="moveMobilePTZ('zoom_in')" title="Zoom In" class="py-1 bg-slate-800 hover:bg-slate-700 active:bg-green-700 text-green-400 rounded text-[11px] font-bold transition flex items-center justify-center">
+              <i class="fas fa-search-plus"></i>
+            </button>
+            <button type="button" onclick="moveMobilePTZ('zoom_out')" title="Zoom Out" class="py-1 bg-slate-800 hover:bg-slate-700 active:bg-green-700 text-green-400 rounded text-[11px] font-bold transition flex items-center justify-center">
+              <i class="fas fa-search-minus"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Presets Quick Bar -->
+        <div class="flex items-center justify-between gap-1 text-[10px]">
+          <span class="text-slate-400 font-medium">Presets:</span>
+          <button type="button" onclick="recallMobilePreset(1)" class="px-2 py-1 bg-slate-800 text-slate-300 rounded font-bold hover:bg-slate-700">P1 Center</button>
+          <button type="button" onclick="recallMobilePreset(2)" class="px-2 py-1 bg-slate-800 text-slate-300 rounded font-bold hover:bg-slate-700">P2 Left</button>
+          <button type="button" onclick="recallMobilePreset(3)" class="px-2 py-1 bg-slate-800 text-slate-300 rounded font-bold hover:bg-slate-700">P3 Right</button>
+          <button type="button" onclick="recallMobilePreset(4)" class="px-2 py-1 bg-slate-800 text-slate-300 rounded font-bold hover:bg-slate-700">P4 Upper</button>
+        </div>
+      </div>
+
       <!-- Action Buttons for Mobile Camera Snapshot Detection -->
       <div id="phoneCaptureArea" class="hidden space-y-2">
         <div class="grid grid-cols-2 gap-2">
@@ -443,6 +491,8 @@
 
         latencyTag.innerText = "Native Camera";
         activeSourceText.innerText = "Smartphone Native Camera (LAN HTTP Mode)";
+        const ptzBar = document.getElementById("mobilePtzBar");
+        if (ptzBar) ptzBar.classList.add("hidden");
       } else {
         // Switch to ROBOT CAMERA
         stopPhoneStream();
@@ -461,8 +511,50 @@
         latencyTag.innerText = "Pi Feed";
         activeSourceText.innerText = "Raspberry Pi Onboard Camera";
         document.getElementById("sourceBadgeRow").style.display = "none";
+        const ptzBar = document.getElementById("mobilePtzBar");
+        if (ptzBar) ptzBar.classList.remove("hidden");
       }
     });
+
+    // FEELWORLD 4K10X Mobile PTZ Controls
+    async function moveMobilePTZ(action) {
+      try {
+        const res = await fetch('/api/ptz/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: action })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ptz) updateMobilePTZCoords(data.ptz);
+        }
+      } catch (e) {
+        console.error('PTZ mobile error:', e);
+      }
+    }
+
+    async function recallMobilePreset(id) {
+      try {
+        const res = await fetch('/api/ptz/preset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'recall', preset_id: id })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ptz) updateMobilePTZCoords(data.ptz);
+        }
+      } catch (e) {
+        console.error('Preset mobile error:', e);
+      }
+    }
+
+    function updateMobilePTZCoords(ptz) {
+      const el = document.getElementById("mobilePtzCoords");
+      if (el) {
+        el.innerText = `Pan: ${ptz.pan > 0 ? '+' : ''}${ptz.pan}° · Tilt: ${ptz.tilt > 0 ? '+' : ''}${ptz.tilt}° · ${ptz.zoom_display}`;
+      }
+    }
 
     function stopPhoneStream() {
       if (phoneStream) {

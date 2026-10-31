@@ -2,10 +2,10 @@
 AgriSentinel - Smart Crop Probe Controller
 
 Coordinates the smart probe stick hardware and software subsystems:
-1. Camera video streaming and frame capture
+1. Camera video streaming and frame capture (FEELWORLD 4K10X PTZ + Adaptive HD)
 2. AI Pest Detection & Bounding Box Annotation
 3. Agricultural Knowledge Base & Pesticide Recommendations
-4. Auto-Pause & Confirmation Capture Loop
+4. Auto-Pause, Smart Auto-Zoom & Confirmation Capture Loop
 5. SQLite DBMS persistence & WebSocket alert notifications
 """
 
@@ -24,6 +24,7 @@ import numpy as np
 from edge.knowledge_base import knowledge_base
 from edge.vision.detector import get_detector, annotate_frame, DetectionBox
 from edge.database import insert_detection, get_recent_detections, DETECTIONS_DIR
+from edge.drivers.ptz_camera import ptz_driver, PTZCameraDriver, RESOLUTION_PROFILES
 
 logger = logging.getLogger("AgriSentinel-ProbeController")
 
@@ -45,6 +46,7 @@ class ProbeController:
 
         # Subsystems
         self.detector = get_detector()
+        self.ptz: PTZCameraDriver = ptz_driver
 
         # Operational state
         self.is_paused = False
@@ -59,6 +61,7 @@ class ProbeController:
         self.latest_health = "Healthy / Pest-Free"
         self.latest_infestation = "None"
         self.latest_annotated_frame: Optional[np.ndarray] = None
+        self.latest_raw_frame: Optional[np.ndarray] = None
 
         # Camera Management
         self.cap: Optional[cv2.VideoCapture] = None
@@ -67,7 +70,10 @@ class ProbeController:
         self._camera_thread = threading.Thread(target=self._camera_loop, daemon=True)
         self._camera_thread.start()
 
-        logger.info(f"[ProbeController] Initialized probe {self.probe_id} for crop '{self.active_crop}' (mode: {self.crop_mode}).")
+        logger.info(
+            f"[ProbeController] Initialized probe {self.probe_id} for crop '{self.active_crop}' "
+            f"(mode: {self.crop_mode}, camera: {self.ptz.model_name})."
+        )
 
     def register_alert_callback(self, cb: Callable[[Dict[str, Any]], None]):
         """Registers a callback for WebSocket alert broadcasting."""
@@ -103,51 +109,109 @@ class ProbeController:
         logger.info(f"[ProbeController] Farm area updated to: {self.farm_area}")
 
     def _init_camera(self):
-        """Initializes OpenCV video capture or synthetic fallback."""
-        try:
-            # Try DirectShow on Windows or standard V4L2 on Linux
-            backend = cv2.CAP_DSHOW if os.name == "nt" else cv2.CAP_V4L2
-            self.cap = cv2.VideoCapture(CAMERA_INDEX, backend)
-            if not self.cap.isOpened():
-                self.cap = cv2.VideoCapture(CAMERA_INDEX)
-
-            if self.cap.isOpened():
-                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, STREAM_WIDTH)
-                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, STREAM_HEIGHT)
-                logger.info(f"[ProbeController] Physical camera opened on index {CAMERA_INDEX}.")
-            else:
-                logger.info("[ProbeController] Physical camera not opened. Using synthetic crop simulation feed.")
+        """Initializes OpenCV video capture (USB UVC, RTSP stream, or synthetic fallback)."""
+        with self._camera_lock:
+            if self.cap is not None:
+                try:
+                    self.cap.release()
+                except Exception:
+                    pass
                 self.cap = None
-        except Exception as e:
-            logger.warning(f"[ProbeController] Camera open failed: {e}. Falling back to simulation pattern.")
-            self.cap = None
+
+            cap_w, cap_h = self.ptz.profile["capture_size"]
+            mode = self.ptz.connection_mode
+
+            try:
+                # 1. IP / RTSP Stream Mode (Ethernet / PoE)
+                if mode == "ip_rtsp":
+                    logger.info(f"[ProbeController] Connecting to RTSP stream: {self.ptz.rtsp_url}")
+                    self.cap = cv2.VideoCapture(self.ptz.rtsp_url, cv2.CAP_FFMPEG)
+                    if self.cap and self.cap.isOpened():
+                        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                        logger.info(f"[ProbeController] RTSP stream connected successfully.")
+                        return
+
+                # 2. USB 3.0 UVC Mode (Direct USB connection)
+                backend = cv2.CAP_DSHOW if os.name == "nt" else cv2.CAP_V4L2
+                idx = self.ptz.camera_index
+                self.cap = cv2.VideoCapture(idx, backend)
+                if not self.cap.isOpened():
+                    self.cap = cv2.VideoCapture(idx)
+
+                if self.cap.isOpened():
+                    # Request MJPEG FOURCC for high-speed hardware-compressed 1080p/4K transmission
+                    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+                    self.cap.set(cv2.CAP_PROP_FOURCC, fourcc)
+                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, cap_w)
+                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, cap_h)
+                    self.cap.set(cv2.CAP_PROP_FPS, 30)
+
+                    actual_w = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    actual_h = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    logger.info(
+                        f"[ProbeController] {self.ptz.model_name} opened on USB index {idx} "
+                        f"(requested {cap_w}x{cap_h}, negotiated {actual_w}x{actual_h})."
+                    )
+                    self.ptz.connection_mode = "usb_uvc"
+                else:
+                    logger.info(f"[ProbeController] Physical camera not opened on index {idx}. Using synthetic simulation pattern.")
+                    self.ptz.connection_mode = "synthetic"
+                    self.cap = None
+
+            except Exception as e:
+                logger.warning(f"[ProbeController] Camera init error: {e}. Falling back to simulation pattern.")
+                self.ptz.connection_mode = "synthetic"
+                self.cap = None
+
+    def restart_camera(
+        self,
+        connection_mode: Optional[str] = None,
+        camera_index: Optional[int] = None,
+        rtsp_url: Optional[str] = None,
+        visca_ip: Optional[str] = None,
+        visca_port: Optional[int] = None,
+        resolution_profile: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Dynamically reconfigures and restarts the camera backend without dropping the server."""
+        self.ptz.set_connection_config(
+            connection_mode=connection_mode,
+            camera_index=camera_index,
+            rtsp_url=rtsp_url,
+            visca_ip=visca_ip,
+            visca_port=visca_port,
+            resolution_profile=resolution_profile
+        )
+        self._init_camera()
+        return self.get_telemetry()
 
     def _generate_synthetic_frame(self) -> np.ndarray:
-        """Generates a realistic animated plant canopy background frame."""
-        frame = np.zeros((STREAM_HEIGHT, STREAM_WIDTH, 3), dtype=np.uint8)
+        """Generates a realistic animated plant canopy background frame matching profile resolution."""
+        w, h = self.ptz.profile["capture_size"]
+        frame = np.zeros((h, w, 3), dtype=np.uint8)
 
         # Foliage green gradient background
-        for y in range(STREAM_HEIGHT):
-            shade = int(35 + (y / STREAM_HEIGHT) * 45)
-            frame[y, :] = [20, shade, 15]
+        for y in range(0, h, 2):
+            shade = int(35 + (y / h) * 45)
+            frame[y:y+2, :] = [20, shade, 15]
 
         # Draw animated leaf veins and crop canopy elements
         t = time.time()
-        center_x = int(STREAM_WIDTH // 2 + math.sin(t * 0.5) * 30)
-        center_y = int(STREAM_HEIGHT // 2)
+        center_x = int(w // 2 + math.sin(t * 0.5) * (w * 0.05))
+        center_y = int(h // 2)
 
-        # Plant stem / leaf shapes
-        cv2.ellipse(frame, (center_x - 80, center_y), (140, 70), 35, 0, 360, (25, 120, 35), -1)
-        cv2.ellipse(frame, (center_x + 90, center_y + 40), (160, 80), -25, 0, 360, (20, 105, 30), -1)
-        cv2.ellipse(frame, (center_x, center_y - 60), (120, 60), 10, 0, 360, (30, 140, 40), -1)
+        scale = w / 640.0
+        cv2.ellipse(frame, (center_x - int(80*scale), center_y), (int(140*scale), int(70*scale)), 35, 0, 360, (25, 120, 35), -1)
+        cv2.ellipse(frame, (center_x + int(90*scale), center_y + int(40*scale)), (int(160*scale), int(80*scale)), -25, 0, 360, (20, 105, 30), -1)
+        cv2.ellipse(frame, (center_x, center_y - int(60*scale)), (int(120*scale), int(60*scale)), 10, 0, 360, (30, 140, 40), -1)
 
-        # Add simulated natural texture
-        noise = np.random.randint(-10, 10, (STREAM_HEIGHT, STREAM_WIDTH, 3), dtype=np.int16)
-        frame_noisy = np.clip(frame.astype(np.int16) + noise, 0, 255).astype(np.uint8)
+        # Natural noise texture
+        noise = np.random.randint(-8, 8, (h // 2, w // 2, 3), dtype=np.int16)
+        noise_full = cv2.resize(noise, (w, h), interpolation=cv2.INTER_NEAREST)
+        frame_noisy = np.clip(frame.astype(np.int16) + noise_full, 0, 255).astype(np.uint8)
         return frame_noisy
 
     def _camera_loop(self):
-        """Continuous camera frame acquisition and detection stream loop."""
+        """Continuous camera frame acquisition, PTZ patrol, and detection stream loop."""
         self._init_camera()
 
         while self._running:
@@ -155,17 +219,27 @@ class ProbeController:
                 time.sleep(0.05)
                 continue
 
-            frame = None
+            # Execute automated canopy patrol step if scheduled
+            try:
+                self.ptz.step_patrol()
+            except Exception as e:
+                logger.debug(f"[ProbeController] Patrol step error: {e}")
+
+            raw_frame = None
             if self.cap and self.cap.isOpened():
                 with self._camera_lock:
-                    ret, raw_frame = self.cap.read()
-                    if ret and raw_frame is not None:
-                        frame = raw_frame
+                    ret, frame_cap = self.cap.read()
+                    if ret and frame_cap is not None:
+                        raw_frame = frame_cap
 
-            if frame is None:
-                frame = self._generate_synthetic_frame()
+            if raw_frame is None:
+                raw_frame = self._generate_synthetic_frame()
 
-            # Run detection inference periodically (prevents CPU choking and keeps model available for on-demand analysis)
+            # Apply PTZ Virtual Viewport transform (simulates pan/tilt/zoom on synthetic or fixed frames)
+            frame = self.ptz.apply_virtual_viewport(raw_frame)
+            self.latest_raw_frame = frame
+
+            # Run detection inference periodically (keeps AI responsive while avoiding CPU throttling)
             now = time.time()
             if (now - self._last_bg_detection_time) >= self._bg_detection_interval:
                 self._last_bg_detection_time = now
@@ -206,7 +280,7 @@ class ProbeController:
 
             # Annotate frame
             model_status = "Online" if getattr(self.detector, "is_model_loaded", False) else "Offline (Missing)"
-            annotated = annotate_frame(
+            annotated_full = annotate_frame(
                 frame,
                 detections,
                 crop_name=crop_name,
@@ -214,8 +288,15 @@ class ProbeController:
                 model_status=model_status
             )
 
+            # Downscale preview frame for low-latency, bandwidth-efficient web streaming
+            preview_w, preview_h = self.ptz.profile["preview_size"]
+            if annotated_full.shape[1] != preview_w or annotated_full.shape[0] != preview_h:
+                annotated_preview = cv2.resize(annotated_full, (preview_w, preview_h), interpolation=cv2.INTER_LINEAR)
+            else:
+                annotated_preview = annotated_full
+
             with self._camera_lock:
-                self.latest_annotated_frame = annotated
+                self.latest_annotated_frame = annotated_preview
 
             # Check Auto-Pause & Confirmation Trigger (only active when model is loaded)
             now = time.time()
@@ -233,22 +314,30 @@ class ProbeController:
 
     def _trigger_auto_confirmation(self, raw_frame: np.ndarray, detections: List[DetectionBox]):
         """
-        Executes the 2-step Auto-Pause & Re-verification workflow:
-        1. Halt frame acquisition for 0.5s to eliminate motion blur.
-        2. Capture a fresh still frame from camera.
-        3. Re-run inference on still frame.
-        4. If verified, save snapshot image, insert DBMS record, and broadcast alert.
-        5. Resume preview.
+        Executes the 2-step Auto-Pause, Smart Auto-Zoom, & Re-verification workflow:
+        1. Halt patrol and preview acquisition to eliminate motion blur.
+        2. Optionally perform Smart Auto-Zoom on detected pest target.
+        3. Capture a fresh high-resolution still frame.
+        4. Re-run inference on still frame.
+        5. If verified, save crisp snapshot, insert DBMS record, and broadcast alert.
+        6. Restore zoom & resume patrol.
         """
         self._last_auto_detection_time = time.time()
-        logger.info("[ProbeController] Pest candidate detected. Executing 2-Step Auto-Pause & Verification...")
+        logger.info("[ProbeController] Pest candidate detected. Executing 2-Step Auto-Pause & Smart Zoom Verification...")
 
         self.is_paused = True
-        try:
-            # 1. Stabilization pause to eliminate motion blur
-            time.sleep(0.5)
+        self.ptz.pause_patrol()
 
-            # 2. Capture clean still frame from camera
+        zoomed = False
+        try:
+            # 1. Smart Auto-Zoom to target bounding box for high-detail optical inspection
+            if self.ptz.auto_zoom_on_detect and detections:
+                zoomed = self.ptz.trigger_smart_zoom(detections[0], zoom_target=3.5)
+
+            # 2. Stabilization pause to allow camera optics / zoom motor to settle
+            time.sleep(0.6)
+
+            # 3. Capture clean still frame from camera
             still_frame = None
             if self.cap and self.cap.isOpened():
                 with self._camera_lock:
@@ -257,22 +346,29 @@ class ProbeController:
                         still_frame = frame_cap
 
             if still_frame is None:
-                still_frame = raw_frame
+                still_frame = self._generate_synthetic_frame()
 
-            # 3. Re-verify detection on clean still frame
-            verified_pests = self.detector.detect(still_frame, self.active_crop)
+            # Apply PTZ viewport to still frame if needed
+            still_frame_transformed = self.ptz.apply_virtual_viewport(still_frame)
 
-            # 4. Save and broadcast if verified
+            # 4. Re-verify detection on clean high-detail still frame
+            verified_pests = self.detector.detect(still_frame_transformed, self.active_crop)
+
+            # 5. Save and broadcast if verified
             if verified_pests and len(verified_pests) > 0:
                 logger.info(
                     f"[ProbeController] Detections verified on still frame ({len(verified_pests)} found). Logging alert..."
                 )
-                self._process_and_save_detection(still_frame, verified_pests, trigger_type="AUTO")
+                self._process_and_save_detection(still_frame_transformed, verified_pests, trigger_type="AUTO")
             else:
                 logger.info(
                     "[ProbeController] Pest not verified on clean still frame (unconfirmed motion blur/candidate). Resuming stream."
                 )
         finally:
+            if zoomed:
+                time.sleep(0.2)
+                self.ptz.restore_zoom()
+            self.ptz.resume_patrol()
             self.is_paused = False
             logger.info("[ProbeController] Confirmation complete. Resumed preview stream.")
 
@@ -314,7 +410,7 @@ class ProbeController:
         if getattr(self, "crop_mode", "auto") == "auto" or crop_clean in ("auto", "auto_detect"):
             self.active_crop = resolved_crop
 
-        # Annotate snapshot
+        # Annotate full resolution snapshot
         annotated_snapshot = annotate_frame(
             frame,
             detections,
@@ -373,15 +469,17 @@ class ProbeController:
             self.set_farm_area(farm_area)
 
         # Grab current raw frame
-        frame = None
+        raw_frame = None
         if self.cap and self.cap.isOpened():
             with self._camera_lock:
-                ret, raw_frame = self.cap.read()
-                if ret and raw_frame is not None:
-                    frame = raw_frame
+                ret, frame_cap = self.cap.read()
+                if ret and frame_cap is not None:
+                    raw_frame = frame_cap
 
-        if frame is None:
-            frame = self._generate_synthetic_frame()
+        if raw_frame is None:
+            raw_frame = self._generate_synthetic_frame()
+
+        frame = self.ptz.apply_virtual_viewport(raw_frame)
 
         # Run inference
         detections = self.detector.detect(frame, self.active_crop)
@@ -389,8 +487,9 @@ class ProbeController:
         return result
 
     def get_telemetry(self) -> Dict[str, Any]:
-        """Returns consolidated live telemetry payload."""
+        """Returns consolidated live telemetry payload including PTZ status."""
         crop_data = knowledge_base.get_crop(self.active_crop)
+        cap_w, cap_h = self.ptz.profile["capture_size"]
         return {
             "probe_id": self.probe_id,
             "crop_mode": getattr(self, "crop_mode", "auto"),
@@ -398,6 +497,12 @@ class ProbeController:
             "crop_name": crop_data.get("name", self.active_crop.capitalize()) if crop_data else self.active_crop,
             "farm_area": self.farm_area,
             "camera_active": True,
+            "camera_model": self.ptz.model_name,
+            "camera_connection_mode": self.ptz.connection_mode,
+            "resolution_profile": self.ptz.profile_key,
+            "capture_resolution": f"{cap_w}x{cap_h}",
+            "aspect_ratio": self.ptz.profile["aspect_ratio"],
+            "ptz": self.ptz.get_status(),
             "is_paused": self.is_paused,
             "latest_pest": self.latest_detections[0].label if self.latest_detections else "Pest-Free",
             "latest_pest_count": len(self.latest_detections),
@@ -436,4 +541,3 @@ class ProbeController:
 
 # Global singleton instance
 probe = ProbeController()
-

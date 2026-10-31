@@ -367,40 +367,72 @@
             </div>
         </div>
 
-        <!-- CARD 2: CAMERA & VISION -->
+        <!-- CARD 2: FEELWORLD 4K10X PTZ CAMERA & RESOLUTION -->
         <div class="dev-card">
             <div>
                 <div class="card-header">
                     <div class="card-title">
-                        <i class="fas fa-eye"></i>
-                        <span>Camera Subsystem</span>
+                        <i class="fas fa-video"></i>
+                        <span>FEELWORLD 4K10X PTZ</span>
                     </div>
                     <span id="camBadge" class="status-pill green">
                         <span class="pulse-dot"></span> <span id="camBadgeText">Active</span>
                     </span>
                 </div>
 
-                <div class="info-list">
+                <div class="info-list" style="margin-bottom:12px;">
                     <div class="info-row">
-                        <span class="info-label">Active Backend:</span>
+                        <span class="info-label">Camera Model:</span>
+                        <span id="camModel" class="info-val">FEELWORLD 4K10X 4K PTZ</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Active Transport:</span>
                         <span id="camBackend" class="info-val">Detecting...</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Resolution / FPS:</span>
-                        <span id="camRes" class="info-val">--</span>
+                        <span class="info-label">Resolution Profile:</span>
+                        <span id="camProfileText" class="info-val">1080p Adaptive HD</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Frames Served:</span>
-                        <span id="camFrames" class="info-val">--</span>
+                        <span class="info-label">PTZ Coordinates:</span>
+                        <span id="camPtzCoords" class="info-val">Pan: 0° · Tilt: 0° · 1.0x</span>
                     </div>
+                </div>
+
+                <!-- Camera Config Form -->
+                <div style="background: #f4fcf0; border-radius: 12px; padding: 12px; border: 1px solid #dce8d6; margin-bottom: 12px;">
+                    <div style="font-size: 13px; font-weight: 600; color: #2a4f32; margin-bottom: 8px;">Hardware &amp; Resolution Configuration</div>
+                    
+                    <label style="display:block; font-size:11px; font-weight:600; color:#58795c; margin-bottom:3px;">Resolution Profile:</label>
+                    <select id="camProfileSelect" style="width: 100%; padding: 7px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; background:white;">
+                        <option value="1080p_adaptive">Adaptive 1080p Full HD (1920x1080) - Recommended</option>
+                        <option value="720p_lightweight">Lightweight 720p HD (1280x720) - Fast Pi Mode</option>
+                        <option value="4k_uhd">Ultra HD 4K (3840x2160) - Macro Foliage Detail</option>
+                        <option value="480p_legacy">Legacy 480p SD (640x480)</option>
+                    </select>
+
+                    <label style="display:block; font-size:11px; font-weight:600; color:#58795c; margin-bottom:3px;">Transport Source:</label>
+                    <select id="camTransportSelect" onchange="onTransportModeChange(this.value)" style="width: 100%; padding: 7px; margin-bottom: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; background:white;">
+                        <option value="usb_uvc">USB 3.0 UVC (Plug &amp; Play /dev/video0)</option>
+                        <option value="ip_rtsp">LAN IP / PoE (RTSP Network Stream)</option>
+                    </select>
+
+                    <div id="rtspConfigBox" style="display:none; margin-bottom:8px;">
+                        <label style="display:block; font-size:11px; font-weight:600; color:#58795c; margin-bottom:3px;">RTSP Stream URL:</label>
+                        <input type="text" id="camRtspUrl" placeholder="rtsp://192.168.1.88:554/live/av0" style="width: 100%; padding: 6px 8px; margin-bottom: 6px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px;">
+                        
+                        <label style="display:block; font-size:11px; font-weight:600; color:#58795c; margin-bottom:3px;">VISCA-over-IP Host:</label>
+                        <input type="text" id="camViscaIp" placeholder="192.168.1.88" style="width: 100%; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 11px;">
+                    </div>
+
+                    <button id="camApplyBtn" class="btn btn-green" style="padding:8px 14px; font-size:12.5px; width:100%; justify-content:center;" onclick="applyCameraConfig()">
+                        <i class="fas fa-save"></i> Apply &amp; Restart Camera
+                    </button>
                 </div>
             </div>
 
-            <div style="display:flex; flex-direction:column; gap:10px;">
-                <button id="camRestartBtn" class="btn btn-secondary" onclick="restartCamera()">
-                    <i class="fas fa-sync-alt"></i> Restart Camera Backend
-                </button>
-                <a href="/video_feed" target="_blank" class="btn btn-secondary" style="text-decoration:none;">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <a href="/video_feed" target="_blank" class="btn btn-secondary" style="text-decoration:none; padding:8px 14px; font-size:12px; justify-content:center;">
                     <i class="fas fa-external-link-alt"></i> Open Direct Video Stream
                 </a>
             </div>
@@ -628,18 +660,45 @@
 
             // Camera
             const cam = data.camera;
-            document.getElementById('camBackend').textContent = cam.backend || 'Unknown';
-            document.getElementById('camRes').textContent = `${cam.resolution || '640x480'} @ ${cam.fps || 30} FPS`;
-            document.getElementById('camFrames').textContent = cam.frames_served !== undefined ? cam.frames_served : '--';
-            
-            const camBadge = document.getElementById('camBadge');
-            const camBadgeText = document.getElementById('camBadgeText');
-            if (cam.is_running) {
-                camBadge.className = 'status-pill green';
-                camBadgeText.textContent = cam.is_synthetic ? 'Synthetic' : 'Live Camera';
-            } else {
-                camBadge.className = 'status-pill amber';
-                camBadgeText.textContent = 'Stopped';
+            if (cam) {
+                const modelEl = document.getElementById('camModel');
+                if (modelEl) modelEl.textContent = cam.model || 'FEELWORLD 4K10X 4K PTZ';
+                const backEl = document.getElementById('camBackend');
+                if (backEl) backEl.textContent = cam.backend || 'Unknown';
+                const profEl = document.getElementById('camProfileText');
+                if (profEl) profEl.textContent = `${cam.profile_name || '1080p Full HD'} (${cam.resolution})`;
+
+                if (cam.ptz) {
+                    const ptzEl = document.getElementById('camPtzCoords');
+                    if (ptzEl) ptzEl.textContent = `Pan: ${cam.ptz.pan > 0 ? '+' : ''}${cam.ptz.pan}° · Tilt: ${cam.ptz.tilt > 0 ? '+' : ''}${cam.ptz.tilt}° · ${cam.ptz.zoom_display}`;
+                    
+                    const pSel = document.getElementById('camProfileSelect');
+                    if (pSel && document.activeElement !== pSel) pSel.value = cam.ptz.resolution_profile || '1080p_adaptive';
+                    
+                    const tSel = document.getElementById('camTransportSelect');
+                    if (tSel && document.activeElement !== tSel) {
+                        tSel.value = cam.ptz.connection_mode === 'ip_rtsp' ? 'ip_rtsp' : 'usb_uvc';
+                        onTransportModeChange(tSel.value);
+                    }
+                    if (cam.ptz.rtsp_url) {
+                        const rUrl = document.getElementById('camRtspUrl');
+                        if (rUrl && document.activeElement !== rUrl) rUrl.value = cam.ptz.rtsp_url;
+                    }
+                    if (cam.ptz.visca_ip) {
+                        const vIp = document.getElementById('camViscaIp');
+                        if (vIp && document.activeElement !== vIp) vIp.value = cam.ptz.visca_ip;
+                    }
+                }
+
+                const camBadge = document.getElementById('camBadge');
+                const camBadgeText = document.getElementById('camBadgeText');
+                if (cam.is_active) {
+                    camBadge.className = 'status-pill green';
+                    camBadgeText.textContent = cam.is_synthetic ? 'Synthetic (Sim)' : (cam.connection_mode === 'ip_rtsp' ? 'PoE RTSP' : 'USB 3.0 UVC');
+                } else {
+                    camBadge.className = 'status-pill amber';
+                    camBadgeText.textContent = 'Stopped';
+                }
             }
 
             // System info
@@ -651,11 +710,56 @@
         }
     }
 
+    function onTransportModeChange(mode) {
+        const box = document.getElementById('rtspConfigBox');
+        if (box) {
+            box.style.display = mode === 'ip_rtsp' ? 'block' : 'none';
+        }
+    }
+
+    async function applyCameraConfig() {
+        const btn = document.getElementById('camApplyBtn');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Applying &amp; Restarting...`;
+
+        const profile = document.getElementById('camProfileSelect').value;
+        const transport = document.getElementById('camTransportSelect').value;
+        const rtspUrl = document.getElementById('camRtspUrl').value;
+        const viscaIp = document.getElementById('camViscaIp').value;
+
+        try {
+            const res = await fetch('/api/dev/camera/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    resolution_profile: profile,
+                    connection_mode: transport,
+                    rtsp_url: rtspUrl || undefined,
+                    visca_ip: viscaIp || undefined
+                })
+            });
+            const data = await res.json();
+            if (data.status === 'success') {
+                showToast('Camera reconfigured and restarted successfully.');
+            } else {
+                showToast(`Camera config failed: ${data.message}`, true);
+            }
+        } catch (err) {
+            showToast(`Error: ${err.message}`, true);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fas fa-save"></i> Apply &amp; Restart Camera`;
+            fetchDevStatus();
+        }
+    }
+
     // Restart Camera
     async function restartCamera() {
         const btn = document.getElementById('camRestartBtn');
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Restarting camera...`;
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Restarting camera...`;
+        }
 
         try {
             const res = await fetch('/api/dev/camera/restart', { method: 'POST' });

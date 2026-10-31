@@ -755,12 +755,22 @@ async def dev_get_status():
         "ip_address": ip_addr,
         "network_mode": net_mode,
         "active_connection": "wlan0",
+        "network": {
+            "connection": "wlan0",
+            "ip_address": ip_addr,
+            "mode": net_mode
+        },
         "camera": {
-            "backend": "OpenCV / Probe Vision",
-            "resolution": "640x480",
+            "model": probe.ptz.model_name,
+            "connection_mode": probe.ptz.connection_mode,
+            "backend": f"{probe.ptz.model_name} ({probe.ptz.connection_mode.upper()})",
+            "resolution": f"{probe.ptz.profile['capture_size'][0]}x{probe.ptz.profile['capture_size'][1]}",
+            "profile": probe.ptz.profile_key,
+            "profile_name": probe.ptz.profile["name"],
             "target_fps": 30,
             "is_active": True,
-            "is_synthetic": probe.cap is None
+            "is_synthetic": probe.cap is None,
+            "ptz": probe.ptz.get_status()
         },
         "model": {
             "loaded": getattr(probe.detector, "is_model_loaded", False),
@@ -926,5 +936,96 @@ async def dev_update_vision_settings(req: VisionSettingsRequest):
             "model_loaded": getattr(detector, "is_model_loaded", False)
         }
     }
+
+
+# --- FEELWORLD 4K10X PTZ & Camera Configuration Endpoints ---
+
+class PTZMoveRequest(BaseModel):
+    action: str  # pan_left, pan_right, tilt_up, tilt_down, zoom_in, zoom_out, home, set
+    step: Optional[float] = 5.0
+    zoom_step: Optional[float] = 0.5
+    pan: Optional[float] = None
+    tilt: Optional[float] = None
+    zoom: Optional[float] = None
+
+
+class PTZPresetRequest(BaseModel):
+    action: str  # recall, save
+    preset_id: int
+    name: Optional[str] = None
+
+
+class PTZPatrolRequest(BaseModel):
+    patrol_mode: str  # off, preset_sweep, continuous_sweep
+    interval_sec: Optional[float] = None
+    auto_zoom_on_detect: Optional[bool] = None
+
+
+class CameraConfigRequest(BaseModel):
+    connection_mode: Optional[str] = None
+    camera_index: Optional[int] = None
+    rtsp_url: Optional[str] = None
+    visca_ip: Optional[str] = None
+    visca_port: Optional[int] = None
+    resolution_profile: Optional[str] = None
+
+
+@router.get("/api/ptz/status")
+async def api_ptz_status():
+    """Returns FEELWORLD 4K10X PTZ current pan, tilt, zoom, presets, patrol and limits."""
+    return {"status": "success", "ptz": probe.ptz.get_status()}
+
+
+@router.post("/api/ptz/move")
+async def api_ptz_move(req: PTZMoveRequest):
+    """Executes relative or absolute PTZ step."""
+    if req.action == "set":
+        status = probe.ptz.set_position(pan=req.pan, tilt=req.tilt, zoom=req.zoom)
+    else:
+        status = probe.ptz.move_step(action=req.action, step=req.step or 5.0, zoom_step=req.zoom_step or 0.5)
+    return {"status": "success", "ptz": status}
+
+
+@router.post("/api/ptz/preset")
+async def api_ptz_preset(req: PTZPresetRequest):
+    """Recalls or saves a canopy preset slot."""
+    if req.action == "recall":
+        status = probe.ptz.recall_preset(preset_id=req.preset_id)
+    elif req.action == "save":
+        status = probe.ptz.save_preset(preset_id=req.preset_id, name=req.name)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown preset action: {req.action}")
+    return {"status": "success", "ptz": status}
+
+
+@router.post("/api/ptz/patrol")
+async def api_ptz_patrol(req: PTZPatrolRequest):
+    """Configures automated field sweep patrol and smart auto-zoom."""
+    status = probe.ptz.set_patrol_mode(
+        mode=req.patrol_mode,
+        interval_sec=req.interval_sec,
+        auto_zoom=req.auto_zoom_on_detect
+    )
+    return {"status": "success", "ptz": status}
+
+
+@router.post("/api/dev/camera/config")
+async def api_dev_camera_config(req: CameraConfigRequest):
+    """Dynamically applies FEELWORLD 4K10X connection mode and resolution profile."""
+    telemetry = probe.restart_camera(
+        connection_mode=req.connection_mode,
+        camera_index=req.camera_index,
+        rtsp_url=req.rtsp_url,
+        visca_ip=req.visca_ip,
+        visca_port=req.visca_port,
+        resolution_profile=req.resolution_profile
+    )
+    return {
+        "status": "success",
+        "message": "Camera configuration updated and restarted.",
+        "telemetry": telemetry,
+        "ptz": probe.ptz.get_status()
+    }
+
 
 

@@ -276,13 +276,146 @@
         .video-box {
             position: relative;
             background: #090d16;
-            aspect-ratio: 4/3;
+            aspect-ratio: 16/9;
             width: 100%;
             border-radius: var(--radius-md);
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        /* ── FEELWORLD 4K10X PTZ Control Dock ── */
+        .ptz-dock {
+            margin-top: 14px;
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+        }
+        .ptz-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 12.5px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .ptz-coords-badge {
+            font-family: monospace;
+            background: #e2e8f0;
+            color: #334155;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .ptz-grid {
+            display: grid;
+            grid-template-columns: 130px 1fr;
+            gap: 16px;
+            align-items: center;
+        }
+        @media (max-width: 600px) {
+            .ptz-grid { grid-template-columns: 1fr; }
+        }
+        .ptz-dpad {
+            display: grid;
+            grid-template-columns: repeat(3, 38px);
+            grid-template-rows: repeat(3, 34px);
+            gap: 4px;
+            justify-content: center;
+            align-items: center;
+        }
+        .ptz-btn {
+            background: white;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+            user-select: none;
+            width: 100%;
+            height: 100%;
+        }
+        .ptz-btn:hover {
+            background: #f1f5f9;
+            border-color: #94a3b8;
+            color: var(--primary);
+            transform: scale(1.05);
+        }
+        .ptz-btn:active {
+            transform: scale(0.95);
+            background: #e2e8f0;
+        }
+        .ptz-btn-center {
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            font-size: 10px;
+        }
+        .ptz-btn-center:hover {
+            background: #166534;
+            color: white;
+        }
+        .ptz-zoom-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .ptz-slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .ptz-slider-row input[type="range"] {
+            flex: 1;
+            accent-color: var(--primary);
+        }
+        .ptz-presets-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+        .preset-chip {
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .preset-chip:hover {
+            background: #f1f5f9;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        .preset-chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        .ptz-automation-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #e2e8f0;
+            font-size: 12px;
         }
 
         .video-box img {
@@ -820,6 +953,9 @@
                         <div class="video-overlay-badge" id="autoPauseIndicator" style="display:none;">
                             <i class="fas fa-pause-circle" style="color:var(--warning);"></i> Auto-Confirming...
                         </div>
+                        <div class="video-overlay-badge" style="right:12px; left:auto;" id="ptzOverlayBadge">
+                            <i class="fas fa-video"></i> <span id="ptzBadgeModel">FEELWORLD 4K10X</span> · <span id="ptzBadgeZoom">1.0x</span>
+                        </div>
                     </div>
                     <div class="video-controls">
                         <button class="btn-capture" id="btnAnalyze" onclick="triggerAnalyze()">
@@ -831,6 +967,76 @@
                         <button class="btn-action" onclick="toggleAudioChime()">
                             <i id="chimeIcon" class="fas fa-volume-up" style="color:var(--primary);"></i> Chime: <b id="chimeStatusText">On</b>
                         </button>
+                    </div>
+
+                    <!-- ═══ FEELWORLD 4K10X PTZ CONTROL DOCK ═══ -->
+                    <div class="ptz-dock">
+                        <div class="ptz-header">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-video" style="color:var(--primary);"></i>
+                                <span>FEELWORLD 4K10X PTZ Controls</span>
+                                <span style="font-size:10px; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:700;">10X OPTICAL</span>
+                            </div>
+                            <span class="ptz-coords-badge" id="ptzCoordsText">Pan: 0.0° · Tilt: 0.0° · 1.0x</span>
+                        </div>
+
+                        <div class="ptz-grid">
+                            <!-- Directional D-Pad -->
+                            <div class="ptz-dpad">
+                                <div></div>
+                                <button class="ptz-btn" title="Tilt Up" onclick="movePTZ('tilt_up')"><i class="fas fa-chevron-up"></i></button>
+                                <div></div>
+                                <button class="ptz-btn" title="Pan Left" onclick="movePTZ('pan_left')"><i class="fas fa-chevron-left"></i></button>
+                                <button class="ptz-btn ptz-btn-center" title="Center / Home" onclick="movePTZ('home')">HOME</button>
+                                <button class="ptz-btn" title="Pan Right" onclick="movePTZ('pan_right')"><i class="fas fa-chevron-right"></i></button>
+                                <div></div>
+                                <button class="ptz-btn" title="Tilt Down" onclick="movePTZ('tilt_down')"><i class="fas fa-chevron-down"></i></button>
+                                <div></div>
+                            </div>
+
+                            <!-- Optical Zoom & Presets -->
+                            <div class="ptz-zoom-section">
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; font-weight:600; color:var(--text-muted);">
+                                    <span><i class="fas fa-search-plus"></i> Optical Zoom (1.0x – 10.0x):</span>
+                                    <span id="ptzZoomDisplay" style="font-weight:700; color:var(--primary);">1.0x</span>
+                                </div>
+                                <div class="ptz-slider-row">
+                                    <button class="btn-action" style="padding:4px 8px; font-size:12px;" onclick="movePTZ('zoom_out')" title="Zoom Out"><i class="fas fa-minus"></i></button>
+                                    <input type="range" id="ptzZoomSlider" min="1.0" max="10.0" step="0.5" value="1.0" oninput="onZoomSliderChange(this.value)" onchange="onZoomSliderCommit(this.value)" />
+                                    <button class="btn-action" style="padding:4px 8px; font-size:12px;" onclick="movePTZ('zoom_in')" title="Zoom In"><i class="fas fa-plus"></i></button>
+                                </div>
+
+                                <!-- Canopy Presets -->
+                                <div style="margin-top:4px;">
+                                    <span style="font-size:11px; font-weight:600; color:var(--text-muted);">Canopy Presets:</span>
+                                    <div class="ptz-presets-row" id="ptzPresetChips">
+                                        <button class="preset-chip active" id="presetBtn1" onclick="recallPreset(1)">P1: Center</button>
+                                        <button class="preset-chip" id="presetBtn2" onclick="recallPreset(2)">P2: Left Row</button>
+                                        <button class="preset-chip" id="presetBtn3" onclick="recallPreset(3)">P3: Right Row</button>
+                                        <button class="preset-chip" id="presetBtn4" onclick="recallPreset(4)">P4: Upper Canopy</button>
+                                        <button class="preset-chip" style="border-style:dashed;" onclick="saveCurrentPreset()" title="Save current position as active preset"><i class="fas fa-save"></i> Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Automation: Patrol Sweep & Smart Auto-Zoom -->
+                        <div class="ptz-automation-row">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-route" style="color:var(--info);"></i>
+                                <span style="font-weight:600;">Auto-Patrol:</span>
+                                <select id="ptzPatrolSelect" onchange="onPatrolChange(this.value)" style="padding:3px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:11.5px; background:white; font-weight:600;">
+                                    <option value="off">Off (Manual)</option>
+                                    <option value="preset_sweep">Preset Sweep (10s Cycle)</option>
+                                    <option value="continuous_sweep">Continuous Sweep (±90°)</option>
+                                </select>
+                            </div>
+
+                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600;">
+                                <input type="checkbox" id="ptzAutoZoomCheck" checked onchange="onAutoZoomToggle(this.checked)" style="accent-color:var(--primary);" />
+                                <span><i class="fas fa-crosshairs" style="color:var(--warning);"></i> Smart Auto-Zoom on Pest</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1420,6 +1626,149 @@
                 banner.style.display = 'none';
             }
         }
+
+        // Update FEELWORLD 4K10X PTZ UI
+        if (tel.ptz) {
+            const ptz = tel.ptz;
+            const coordsEl = document.getElementById('ptzCoordsText');
+            if (coordsEl) {
+                coordsEl.textContent = `Pan: ${ptz.pan > 0 ? '+' : ''}${ptz.pan}° · Tilt: ${ptz.tilt > 0 ? '+' : ''}${ptz.tilt}° · ${ptz.zoom_display}`;
+            }
+            const badgeZoom = document.getElementById('ptzBadgeZoom');
+            if (badgeZoom) badgeZoom.textContent = ptz.zoom_display;
+            const slider = document.getElementById('ptzZoomSlider');
+            if (slider && document.activeElement !== slider) slider.value = ptz.zoom;
+            const zoomDisp = document.getElementById('ptzZoomDisplay');
+            if (zoomDisp) zoomDisp.textContent = ptz.zoom_display;
+
+            // Highlight active preset chip
+            for (let i = 1; i <= 4; i++) {
+                const pbtn = document.getElementById('presetBtn' + i);
+                if (pbtn) {
+                    if (ptz.active_preset_id === i) pbtn.classList.add('active');
+                    else pbtn.classList.remove('active');
+                }
+            }
+
+            const patrolSel = document.getElementById('ptzPatrolSelect');
+            if (patrolSel && document.activeElement !== patrolSel) patrolSel.value = ptz.patrol_mode || 'off';
+
+            const autoZoomChk = document.getElementById('ptzAutoZoomCheck');
+            if (autoZoomChk && document.activeElement !== autoZoomChk) autoZoomChk.checked = ptz.auto_zoom_on_detect !== false;
+        }
+    }
+
+    // --- FEELWORLD 4K10X PTZ Controls ---
+    async function movePTZ(action) {
+        try {
+            const res = await fetch('/api/ptz/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: action })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.ptz) updateTelemetryUI({ ptz: data.ptz });
+            }
+        } catch (e) {
+            console.error('PTZ move error:', e);
+        }
+    }
+
+    function onZoomSliderChange(val) {
+        const zoomDisp = document.getElementById('ptzZoomDisplay');
+        if (zoomDisp) zoomDisp.textContent = parseFloat(val).toFixed(1) + 'x';
+    }
+
+    async function onZoomSliderCommit(val) {
+        try {
+            const res = await fetch('/api/ptz/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'set', zoom: parseFloat(val) })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.ptz) updateTelemetryUI({ ptz: data.ptz });
+            }
+        } catch (e) {
+            console.error('PTZ zoom commit error:', e);
+        }
+    }
+
+    async function recallPreset(presetId) {
+        try {
+            const res = await fetch('/api/ptz/preset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'recall', preset_id: presetId })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.ptz) updateTelemetryUI({ ptz: data.ptz });
+                showToast('Canopy Preset', `Recalled Preset ${presetId}`);
+            }
+        } catch (e) {
+            console.error('Preset recall error:', e);
+        }
+    }
+
+    async function saveCurrentPreset() {
+        const idStr = prompt('Enter Preset Slot number to save current position (1 to 8):', '1');
+        if (!idStr) return;
+        const id = parseInt(idStr, 10);
+        if (isNaN(id) || id < 1 || id > 8) {
+            alert('Preset ID must be between 1 and 8.');
+            return;
+        }
+        const name = prompt(`Enter a descriptive name for Preset ${id}:`, `Canopy Zone ${id}`);
+        try {
+            const res = await fetch('/api/ptz/preset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'save', preset_id: id, name: name || undefined })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.ptz) updateTelemetryUI({ ptz: data.ptz });
+                showToast('Preset Saved', `Position saved to Preset ${id} (${name || 'Preset ' + id})`);
+            }
+        } catch (e) {
+            console.error('Preset save error:', e);
+        }
+    }
+
+    async function onPatrolChange(mode) {
+        try {
+            const res = await fetch('/api/ptz/patrol', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ patrol_mode: mode })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.ptz) updateTelemetryUI({ ptz: data.ptz });
+                showToast('Auto-Patrol', mode === 'off' ? 'Patrol disabled' : `Patrol active: ${mode}`);
+            }
+        } catch (e) {
+            console.error('Patrol change error:', e);
+        }
+    }
+
+    async function onAutoZoomToggle(enabled) {
+        try {
+            const res = await fetch('/api/ptz/patrol', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ patrol_mode: document.getElementById('ptzPatrolSelect').value, auto_zoom_on_detect: enabled })
+            });
+            if (res.ok) {
+                showToast('Smart Auto-Zoom', enabled ? 'Auto-Zoom on pest enabled' : 'Auto-Zoom disabled');
+            }
+        } catch (e) {
+            console.error('Auto zoom toggle error:', e);
+        }
+    }
     }
 
     function updateUIWithRecord(rec) {

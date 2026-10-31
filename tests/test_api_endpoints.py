@@ -269,5 +269,105 @@ def test_api_detect_upload_with_model_profile():
     assert "recommendation" in data
 
 
+# --- FEELWORLD 4K10X PTZ API Endpoint Tests ---
+
+def test_api_ptz_status():
+    """Verify /api/ptz/status returns FEELWORLD 4K10X telemetry and limits."""
+    res = client.get("/api/ptz/status")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert "ptz" in data
+    ptz = data["ptz"]
+    assert ptz["model_name"] == "FEELWORLD 4K10X 4K PTZ"
+    assert "pan" in ptz
+    assert "tilt" in ptz
+    assert "zoom" in ptz
+    assert "presets" in ptz
+    assert "limits" in ptz
+    assert ptz["limits"]["min_pan"] == -125.0
+    assert ptz["limits"]["max_pan"] == 125.0
+
+
+def test_api_ptz_move_step_and_set():
+    """Verify /api/ptz/move supports both relative direction steps and absolute coordinates."""
+    # Move step pan_right
+    res_step = client.post("/api/ptz/move", json={"action": "pan_right", "step": 10.0})
+    assert res_step.status_code == 200
+    assert res_step.json()["status"] == "success"
+
+    # Home
+    res_home = client.post("/api/ptz/move", json={"action": "home"})
+    assert res_home.status_code == 200
+    assert res_home.json()["ptz"]["pan"] == 0.0
+    assert res_home.json()["ptz"]["tilt"] == 0.0
+    assert res_home.json()["ptz"]["zoom"] == 1.0
+
+    # Set absolute coordinates
+    res_set = client.post("/api/ptz/move", json={"action": "set", "pan": 35.0, "tilt": -10.0, "zoom": 3.0})
+    assert res_set.status_code == 200
+    assert res_set.json()["ptz"]["pan"] == 35.0
+    assert res_set.json()["ptz"]["tilt"] == -10.0
+    assert res_set.json()["ptz"]["zoom"] == 3.0
+
+    # Clean up back to home
+    client.post("/api/ptz/move", json={"action": "home"})
+
+
+def test_api_ptz_preset_recall_and_save():
+    """Verify /api/ptz/preset recalls preset slots and saves new positions."""
+    # Recall Preset 1 (Center Canopy)
+    res_recall = client.post("/api/ptz/preset", json={"action": "recall", "preset_id": 1})
+    assert res_recall.status_code == 200
+    assert res_recall.json()["ptz"]["active_preset_id"] == 1
+
+    # Save to Preset 6
+    client.post("/api/ptz/move", json={"action": "set", "pan": -20.0, "tilt": 8.0, "zoom": 2.0})
+    res_save = client.post("/api/ptz/preset", json={"action": "save", "preset_id": 6, "name": "East Gate"})
+    assert res_save.status_code == 200
+    assert "6" in res_save.json()["ptz"]["presets"] or 6 in res_save.json()["ptz"]["presets"]
+
+    client.post("/api/ptz/move", json={"action": "home"})
+
+
+def test_api_ptz_patrol_config():
+    """Verify /api/ptz/patrol configures sweep mode and auto zoom."""
+    res = client.post("/api/ptz/patrol", json={
+        "patrol_mode": "preset_sweep",
+        "interval_sec": 12.0,
+        "auto_zoom_on_detect": True
+    })
+    assert res.status_code == 200
+    ptz = res.json()["ptz"]
+    assert ptz["patrol_mode"] == "preset_sweep"
+    assert ptz["patrol_interval_sec"] == 12.0
+    assert ptz["auto_zoom_on_detect"] is True
+
+    # Turn off patrol
+    client.post("/api/ptz/patrol", json={"patrol_mode": "off"})
+
+
+def test_api_dev_camera_config():
+    """Verify /api/dev/camera/config updates transport mode and resolution profile."""
+    res = client.post("/api/dev/camera/config", json={
+        "resolution_profile": "720p_lightweight",
+        "connection_mode": "usb_uvc"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["telemetry"]["resolution_profile"] == "720p_lightweight"
+    assert data["telemetry"]["capture_resolution"] == "1280x720"
+
+    # Reset back to recommended 1080p adaptive
+    res_reset = client.post("/api/dev/camera/config", json={
+        "resolution_profile": "1080p_adaptive",
+        "connection_mode": "usb_uvc"
+    })
+    assert res_reset.status_code == 200
+    assert res_reset.json()["telemetry"]["resolution_profile"] == "1080p_adaptive"
+
+
+
 
 
