@@ -22,3 +22,7 @@ Crop_Pest_Edge_Models_TFLite_ONNX/
 !edge/models/quarrying_insect_identifier_224x224.onnx
 *.pt
 *.tar.xz
+
+# Video & large media files
+VIdeoAboutAgriSentinel.mp4
+*.mp4

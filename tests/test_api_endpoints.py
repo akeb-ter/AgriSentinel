@@ -582,6 +582,30 @@ def test_database_farm_analytics_endpoint():
     assert isinstance(stats["severity_breakdown"], list)
 
 
+def test_logo_assets_and_intro_video_endpoint():
+    """Verify official logo emblem, video poster, and intro video streaming endpoints."""
+    # 1. Logo icon endpoint
+    res_icon = client.get("/static/images/logo_icon.png")
+    assert res_icon.status_code == 200
+    assert res_icon.headers["content-type"].startswith("image/png")
+
+    # 2. Logo full poster endpoint
+    res_poster = client.get("/static/images/logo_full.png")
+    assert res_poster.status_code == 200
+    assert res_poster.headers["content-type"].startswith("image/png")
+
+    # 3. Logo fallback route
+    res_fallback = client.get("/logo.png")
+    assert res_fallback.status_code == 200
+    assert res_fallback.headers["content-type"].startswith("image/png")
+
+    # 4. Intro video streaming route
+    res_video = client.get("/api/video/intro")
+    assert res_video.status_code in (200, 206)
+    assert res_video.headers["content-type"].startswith("video/mp4")
+
+
+
 
 
 

@@ -552,9 +552,8 @@
         <!-- ═══ LEFT BRAND PANEL ═══ -->
         <div class="login-brand">
             <div class="brand-top">
-                <div class="logo-container">
-                    <!-- Replace with your logo file path -->
-                    <img src="logo.png" alt="AgriSentinel Logo" />
+                <div class="logo-container" style="background: white; border: 2px solid rgba(255, 255, 255, 0.4); box-shadow: 0 4px 14px rgba(0,0,0,0.15);">
+                    <img src="/static/images/logo_icon.png" alt="AgriSentinel Logo" style="object-fit: contain; width: 100%; height: 100%;" />
                 </div>
                 <div class="brand-text">
                     <h1>AgriSentinel <span>v1.0</span></h1>
@@ -564,6 +563,15 @@
             <div class="brand-mid">
                 <h2>Smart <i>Pest</i> &amp; Crop<br />Intelligence</h2>
                 <p>AI‑driven insights for modern agriculture — detect pests, monitor crops, and protect your harvest.</p>
+            </div>
+
+            <!-- Video Player Showcase -->
+            <div class="brand-video-box" style="position: relative; border-radius: 18px; overflow: hidden; background: #000; box-shadow: 0 10px 25px rgba(0,0,0,0.3); border: 1.5px solid rgba(255,255,255,0.15); margin: 16px 0;">
+                <video id="loginIntroVideo" src="/api/video/intro" poster="/static/images/logo_full.png" autoplay muted loop playsinline controls style="width: 100%; height: auto; display: block; aspect-ratio: 16/9; object-fit: cover;"></video>
+                <button type="button" id="btnToggleVideoSound" onclick="toggleIntroSound()" title="Toggle Video Audio" style="position: absolute; top: 10px; right: 10px; background: rgba(15, 23, 42, 0.75); color: white; border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 5px 10px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; backdrop-filter: blur(4px); z-index: 5;">
+                    <i id="soundIcon" class="fas fa-volume-mute" style="color: #4ade80;"></i>
+                    <span id="soundText">Unmute</span>
+                </button>
             </div>
 
             <div class="brand-features">
@@ -796,6 +804,22 @@
             if (loginInput) loginInput.focus();
             {% endif %}
         });
+
+        function toggleIntroSound() {
+            const vid = document.getElementById('loginIntroVideo');
+            const icon = document.getElementById('soundIcon');
+            const txt = document.getElementById('soundText');
+            if (!vid) return;
+            if (vid.muted) {
+                vid.muted = false;
+                if (icon) icon.className = 'fas fa-volume-up';
+                if (txt) txt.textContent = 'Mute';
+            } else {
+                vid.muted = true;
+                if (icon) icon.className = 'fas fa-volume-mute';
+                if (txt) txt.textContent = 'Unmute';
+            }
+        }
 
         console.log('🔐 AgriSentinel Login System ready (database: agrisentinel)');
     </script>

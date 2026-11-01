@@ -53,6 +53,51 @@ from edge.pest_imagery import get_or_create_pest_reference_image
 
 logger = logging.getLogger("AgriSentinel-WebApp")
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _ensure_video_logo_assets():
+    """Extracts official logo emblem and full video poster from VIdeoAboutAgriSentinel.mp4 if missing."""
+    icon_path = os.path.join(BASE_DIR, "web", "static", "images", "logo_icon.png")
+    full_path = os.path.join(BASE_DIR, "web", "static", "images", "logo_full.png")
+    if os.path.exists(icon_path) and os.path.exists(full_path):
+        return
+
+    video_path = os.path.join(BASE_DIR, "VIdeoAboutAgriSentinel.mp4")
+    if not os.path.exists(video_path):
+        return
+
+    try:
+        cap = cv2.VideoCapture(video_path)
+        ret, frame = cap.read()
+        cap.release()
+        if not ret or frame is None:
+            return
+
+        os.makedirs(os.path.join(BASE_DIR, "web", "static", "images"), exist_ok=True)
+        # 1. Full poster
+        poster = cv2.resize(frame, (1280, 720), interpolation=cv2.INTER_AREA)
+        cv2.imwrite(full_path, poster)
+
+        # 2. Clean circular emblem
+        emblem = frame.copy()
+        emblem[0:850, 1242:] = [255, 255, 255]
+        emblem[850:1210, 1152:] = [255, 255, 255]
+        emblem[1210:, 1305:] = [255, 255, 255]
+
+        cx, cy, size = 705, 1070, 1350
+        x1, y1 = cx - size // 2, cy - size // 2
+        crop = emblem[y1 : y1 + size, x1 : x1 + size]
+        icon = cv2.resize(crop, (512, 512), interpolation=cv2.INTER_AREA)
+        cv2.imwrite(icon_path, icon)
+        logger.info("[WebApp] Successfully generated logo_icon.png and logo_full.png from VIdeoAboutAgriSentinel.mp4")
+    except Exception as e:
+        logger.warning(f"[WebApp] Could not auto-extract video logo assets: {e}")
+
+
+# Run extraction check once on module load
+_ensure_video_logo_assets()
+
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
@@ -127,6 +172,27 @@ def get_current_user(request: Request):
 @router.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return Response(status_code=204)
+
+
+@router.get("/logo.png", include_in_schema=False)
+async def logo_fallback():
+    logo_path = os.path.join(BASE_DIR, "web", "static", "images", "logo_icon.png")
+    if os.path.exists(logo_path):
+        return FileResponse(logo_path, media_type="image/png")
+    return Response(status_code=404)
+
+
+@router.get("/api/video/intro")
+async def get_intro_video():
+    """Serves promotional & introductory video with HTTP byte-range streaming support."""
+    video_path = os.path.join(BASE_DIR, "VIdeoAboutAgriSentinel.mp4")
+    if not os.path.exists(video_path):
+        alt_path = os.path.join(os.path.dirname(BASE_DIR), "VIdeoAboutAgriSentinel.mp4")
+        if os.path.exists(alt_path):
+            video_path = alt_path
+        else:
+            raise HTTPException(status_code=404, detail="Intro video file not found on probe.")
+    return FileResponse(video_path, media_type="video/mp4")
 
 
 @router.get("/sw.js", include_in_schema=False)
