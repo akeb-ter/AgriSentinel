@@ -84,10 +84,15 @@ def init_db():
     logger.info(f"[Database] SQLite schema verified at {DB_PATH}")
 
 
+_db_initialized = False
+
+
 def get_db_connection() -> sqlite3.Connection:
     """Returns a SQLite connection with Row factory enabled."""
-    if not os.path.exists(DB_PATH):
+    global _db_initialized
+    if not _db_initialized or not os.path.exists(DB_PATH):
         init_db()
+        _db_initialized = True
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
@@ -186,8 +191,10 @@ def query_detections(
         src = source.lower().strip()
         if "phone" in src:
             where_clauses.append("farm_area LIKE '%[Phone Camera]%'")
+        elif "dashboard" in src or "upload" in src:
+            where_clauses.append("farm_area LIKE '%[Dashboard Upload]%'")
         elif "robot" in src or "probe" in src:
-            where_clauses.append("farm_area NOT LIKE '%[Phone Camera]%'")
+            where_clauses.append("farm_area NOT LIKE '%[Phone Camera]%' AND farm_area NOT LIKE '%[Dashboard Upload]%'")
 
     where_sql = " AND ".join(where_clauses)
 
@@ -344,8 +351,10 @@ def clear_detections(filters: Optional[Dict[str, Any]] = None, clear_all: bool =
         src = source.lower().strip()
         if "phone" in src:
             where_clauses.append("farm_area LIKE '%[Phone Camera]%'")
+        elif "dashboard" in src or "upload" in src:
+            where_clauses.append("farm_area LIKE '%[Dashboard Upload]%'")
         elif "robot" in src or "probe" in src:
-            where_clauses.append("farm_area NOT LIKE '%[Phone Camera]%'")
+            where_clauses.append("farm_area NOT LIKE '%[Phone Camera]%' AND farm_area NOT LIKE '%[Dashboard Upload]%'")
 
     where_sql = " AND ".join(where_clauses)
 

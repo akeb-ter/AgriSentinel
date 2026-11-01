@@ -281,6 +281,39 @@ def test_api_detect_upload_with_model_profile():
     assert "recommendation" in data
 
 
+def test_api_detect_upload_dashboard_source():
+    """Verify POST /api/detect/upload with source='dashboard_upload' sets [Dashboard Upload] tag, dual snapshots, and recommendations."""
+    import cv2
+    import numpy as np
+    dummy_img = np.zeros((320, 320, 3), dtype=np.uint8)
+    _, encoded = cv2.imencode(".jpg", dummy_img)
+
+    res = client.post(
+        "/api/detect/upload",
+        files={"file": ("field_specimen.jpg", encoded.tobytes(), "image/jpeg")},
+        data={"crop_type": "rice", "source": "dashboard_upload"}
+    )
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["status"] == "success"
+    assert data["source"] in ("dashboard_upload", "DASHBOARD_UPLOAD")
+    assert data["crop_type"] == "rice"
+    assert "findings" in data
+    assert "recommendation" in data
+    assert "recommendations" in data
+    assert isinstance(data["recommendations"], list)
+    assert "image_url" in data and data["image_url"].startswith("/static/detections/")
+    assert "crop_image_url" in data and data["crop_image_url"].startswith("/static/detections/")
+    assert data["image_url"] != data["crop_image_url"]
+
+    # Verify database record tagging
+    record = data["record"]
+    assert "[Dashboard Upload]" in record["farm_area"]
+    assert record["image_path"] == data["image_url"]
+    assert record["crop_image_path"] == data["crop_image_url"]
+
+
 # --- FEELWORLD 4K10X PTZ API Endpoint Tests ---
 
 def test_api_ptz_status():

@@ -418,6 +418,43 @@
             font-size: 12px;
         }
 
+        /* ── Dedicated Click-to-Browse & Drag-and-Drop Image Upload Dropzone ── */
+        .upload-dropzone {
+            border: 2px dashed #cbd5e1;
+            border-radius: var(--radius-md);
+            padding: 24px 16px;
+            text-align: center;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            user-select: none;
+        }
+        .upload-dropzone:hover {
+            border-color: var(--primary);
+            background: #f0fdf4;
+        }
+        .upload-dropzone.drag-over {
+            border-color: var(--primary);
+            background: #ecfdf5;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+            transform: scale(1.005);
+        }
+        .dash-snapshot-card {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .dash-snapshot-card:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
         .video-box img {
             width: 100%;
             height: 100%;
@@ -941,108 +978,201 @@
     <!-- ═══ PANEL 1: LIVE PROBE STREAM & MONITORING ═══ -->
     <main class="panel active" id="panelLive">
         <div class="dashboard-grid">
-            <!-- Left Column: Camera View -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title"><i class="fas fa-camera" style="color:var(--primary);"></i> Probe Camera Feed</span>
-                    <span id="streamStatusBadge" class="status-pill" style="font-size:11px;">● Streaming</span>
-                </div>
-                <div class="card-body">
-                    <div class="video-box">
-                        <img id="liveFeedImg" src="/video_feed" alt="Probe Live Camera Stream" />
-                        <div class="video-overlay-badge" id="autoPauseIndicator" style="display:none;">
-                            <i class="fas fa-pause-circle" style="color:var(--warning);"></i> Auto-Confirming...
-                        </div>
-                        <div class="video-overlay-badge" id="liveAIModeBadge" style="top:44px; left:12px; {% if not telemetry.live_ai_enabled %}display:flex; background:rgba(30,41,59,0.85);{% else %}display:none;{% endif %}">
-                            <i class="fas fa-bolt" style="color:#38bdf8;"></i> 30 FPS Stream · Manual AI Ready
-                        </div>
-                        <div class="video-overlay-badge" style="right:12px; left:auto;" id="ptzOverlayBadge">
-                            <i class="fas fa-video"></i> <span id="ptzBadgeModel">FEELWORLD 4K10X</span> · <span id="ptzBadgeZoom">1.0x</span>
-                        </div>
+            <!-- Left Column: Camera View & Dropzone Upload -->
+            <div style="display:flex; flex-direction:column; gap:18px;">
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title"><i class="fas fa-camera" style="color:var(--primary);"></i> Probe Camera Feed</span>
+                        <span id="streamStatusBadge" class="status-pill" style="font-size:11px;">● Streaming</span>
                     </div>
-                    <div class="video-controls">
-                        <button class="btn-capture" id="btnAnalyze" onclick="triggerAnalyze()">
-                            <i class="fas fa-crosshairs"></i> Capture &amp; Inspect Now
-                        </button>
-                        <button class="btn-action" id="btnLiveAIToggle" onclick="toggleLiveAI()" title="Toggle live continuous AI detection (Turn OFF for smooth 30 FPS video streaming)">
-                            <i id="liveAIIcon" class="fas fa-brain" style="color:{% if telemetry.live_ai_enabled %}var(--primary){% else %}#64748b{% endif %};"></i>
-                            Live AI: <b id="liveAIStatusText">{% if telemetry.live_ai_enabled %}ON{% else %}OFF (30 FPS){% endif %}</b>
-                        </button>
-                        <button class="btn-action" onclick="refreshStream()">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                        <button class="btn-action" onclick="toggleAudioChime()">
-                            <i id="chimeIcon" class="fas fa-volume-up" style="color:var(--primary);"></i> Chime: <b id="chimeStatusText">On</b>
-                        </button>
-                    </div>
-
-                    <!-- ═══ FEELWORLD 4K10X PTZ CONTROL DOCK ═══ -->
-                    <div class="ptz-dock">
-                        <div class="ptz-header">
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <i class="fas fa-video" style="color:var(--primary);"></i>
-                                <span>FEELWORLD 4K10X PTZ Controls</span>
-                                <span style="font-size:10px; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:700;">10X OPTICAL</span>
+                    <div class="card-body">
+                        <div class="video-box">
+                            <img id="liveFeedImg" src="/video_feed" alt="Probe Live Camera Stream" />
+                            <div class="video-overlay-badge" id="autoPauseIndicator" style="display:none;">
+                                <i class="fas fa-pause-circle" style="color:var(--warning);"></i> Auto-Confirming...
                             </div>
-                            <span class="ptz-coords-badge" id="ptzCoordsText">Pan: 0.0° · Tilt: 0.0° · 1.0x</span>
+                            <div class="video-overlay-badge" id="liveAIModeBadge" style="top:44px; left:12px; {% if not telemetry.live_ai_enabled %}display:flex; background:rgba(30,41,59,0.85);{% else %}display:none;{% endif %}">
+                                <i class="fas fa-bolt" style="color:#38bdf8;"></i> 30 FPS Stream · Manual AI Ready
+                            </div>
+                            <div class="video-overlay-badge" style="right:12px; left:auto;" id="ptzOverlayBadge">
+                                <i class="fas fa-video"></i> <span id="ptzBadgeModel">FEELWORLD 4K10X</span> · <span id="ptzBadgeZoom">1.0x</span>
+                            </div>
+                        </div>
+                        <div class="video-controls">
+                            <button class="btn-capture" id="btnAnalyze" onclick="triggerAnalyze()">
+                                <i class="fas fa-crosshairs"></i> Capture &amp; Inspect Now
+                            </button>
+                            <button class="btn-action" id="btnLiveAIToggle" onclick="toggleLiveAI()" title="Toggle live continuous AI detection (Turn OFF for smooth 30 FPS video streaming)">
+                                <i id="liveAIIcon" class="fas fa-brain" style="color:{% if telemetry.live_ai_enabled %}var(--primary){% else %}#64748b{% endif %};"></i>
+                                Live AI: <b id="liveAIStatusText">{% if telemetry.live_ai_enabled %}ON{% else %}OFF (30 FPS){% endif %}</b>
+                            </button>
+                            <button class="btn-action" onclick="refreshStream()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                            <button class="btn-action" onclick="toggleAudioChime()">
+                                <i id="chimeIcon" class="fas fa-volume-up" style="color:var(--primary);"></i> Chime: <b id="chimeStatusText">On</b>
+                            </button>
                         </div>
 
-                        <div class="ptz-grid">
-                            <!-- Directional D-Pad -->
-                            <div class="ptz-dpad">
-                                <div></div>
-                                <button class="ptz-btn" title="Tilt Up" onclick="movePTZ('tilt_up')"><i class="fas fa-chevron-up"></i></button>
-                                <div></div>
-                                <button class="ptz-btn" title="Pan Left" onclick="movePTZ('pan_left')"><i class="fas fa-chevron-left"></i></button>
-                                <button class="ptz-btn ptz-btn-center" title="Center / Home" onclick="movePTZ('home')">HOME</button>
-                                <button class="ptz-btn" title="Pan Right" onclick="movePTZ('pan_right')"><i class="fas fa-chevron-right"></i></button>
-                                <div></div>
-                                <button class="ptz-btn" title="Tilt Down" onclick="movePTZ('tilt_down')"><i class="fas fa-chevron-down"></i></button>
-                                <div></div>
+                        <!-- ═══ FEELWORLD 4K10X PTZ CONTROL DOCK ═══ -->
+                        <div class="ptz-dock">
+                            <div class="ptz-header">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <i class="fas fa-video" style="color:var(--primary);"></i>
+                                    <span>FEELWORLD 4K10X PTZ Controls</span>
+                                    <span style="font-size:10px; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:700;">10X OPTICAL</span>
+                                </div>
+                                <span class="ptz-coords-badge" id="ptzCoordsText">Pan: 0.0° · Tilt: 0.0° · 1.0x</span>
                             </div>
 
-                            <!-- Optical Zoom & Presets -->
-                            <div class="ptz-zoom-section">
-                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; font-weight:600; color:var(--text-muted);">
-                                    <span><i class="fas fa-search-plus"></i> Optical Zoom (1.0x – 10.0x):</span>
-                                    <span id="ptzZoomDisplay" style="font-weight:700; color:var(--primary);">1.0x</span>
-                                </div>
-                                <div class="ptz-slider-row">
-                                    <button class="btn-action" style="padding:4px 8px; font-size:12px;" onclick="movePTZ('zoom_out')" title="Zoom Out"><i class="fas fa-minus"></i></button>
-                                    <input type="range" id="ptzZoomSlider" min="1.0" max="10.0" step="0.5" value="1.0" oninput="onZoomSliderChange(this.value)" onchange="onZoomSliderCommit(this.value)" />
-                                    <button class="btn-action" style="padding:4px 8px; font-size:12px;" onclick="movePTZ('zoom_in')" title="Zoom In"><i class="fas fa-plus"></i></button>
+                            <div class="ptz-grid">
+                                <!-- Directional D-Pad -->
+                                <div class="ptz-dpad">
+                                    <div></div>
+                                    <button class="ptz-btn" title="Tilt Up" onclick="movePTZ('tilt_up')"><i class="fas fa-chevron-up"></i></button>
+                                    <div></div>
+                                    <button class="ptz-btn" title="Pan Left" onclick="movePTZ('pan_left')"><i class="fas fa-chevron-left"></i></button>
+                                    <button class="ptz-btn ptz-btn-center" title="Center / Home" onclick="movePTZ('home')">HOME</button>
+                                    <button class="ptz-btn" title="Pan Right" onclick="movePTZ('pan_right')"><i class="fas fa-chevron-right"></i></button>
+                                    <div></div>
+                                    <button class="ptz-btn" title="Tilt Down" onclick="movePTZ('tilt_down')"><i class="fas fa-chevron-down"></i></button>
+                                    <div></div>
                                 </div>
 
-                                <!-- Canopy Presets -->
-                                <div style="margin-top:4px;">
-                                    <span style="font-size:11px; font-weight:600; color:var(--text-muted);">Canopy Presets:</span>
-                                    <div class="ptz-presets-row" id="ptzPresetChips">
-                                        <button class="preset-chip active" id="presetBtn1" onclick="recallPreset(1)">P1: Center</button>
-                                        <button class="preset-chip" id="presetBtn2" onclick="recallPreset(2)">P2: Left Row</button>
-                                        <button class="preset-chip" id="presetBtn3" onclick="recallPreset(3)">P3: Right Row</button>
-                                        <button class="preset-chip" id="presetBtn4" onclick="recallPreset(4)">P4: Upper Canopy</button>
-                                        <button class="preset-chip" style="border-style:dashed;" onclick="saveCurrentPreset()" title="Save current position as active preset"><i class="fas fa-save"></i> Save</button>
+                                <!-- Optical Zoom & Presets -->
+                                <div class="ptz-zoom-section">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:11.5px; font-weight:600; color:var(--text-muted);">
+                                        <span><i class="fas fa-search-plus"></i> Optical Zoom (1.0x – 10.0x):</span>
+                                        <span id="ptzZoomDisplay" style="font-weight:700; color:var(--primary);">1.0x</span>
+                                    </div>
+                                    <div class="ptz-slider-row">
+                                        <button class="btn-action" style="padding:4px 8px; font-size:12px;" onclick="movePTZ('zoom_out')" title="Zoom Out"><i class="fas fa-minus"></i></button>
+                                        <input type="range" id="ptzZoomSlider" min="1.0" max="10.0" step="0.5" value="1.0" oninput="onZoomSliderChange(this.value)" onchange="onZoomSliderCommit(this.value)" />
+                                        <button class="btn-action" style="padding:4px 8px; font-size:12px;" onclick="movePTZ('zoom_in')" title="Zoom In"><i class="fas fa-plus"></i></button>
+                                    </div>
+
+                                    <!-- Canopy Presets -->
+                                    <div style="margin-top:4px;">
+                                        <span style="font-size:11px; font-weight:600; color:var(--text-muted);">Canopy Presets:</span>
+                                        <div class="ptz-presets-row" id="ptzPresetChips">
+                                            <button class="preset-chip active" id="presetBtn1" onclick="recallPreset(1)">P1: Center</button>
+                                            <button class="preset-chip" id="presetBtn2" onclick="recallPreset(2)">P2: Left Row</button>
+                                            <button class="preset-chip" id="presetBtn3" onclick="recallPreset(3)">P3: Right Row</button>
+                                            <button class="preset-chip" id="presetBtn4" onclick="recallPreset(4)">P4: Upper Canopy</button>
+                                            <button class="preset-chip" style="border-style:dashed;" onclick="saveCurrentPreset()" title="Save current position as active preset"><i class="fas fa-save"></i> Save</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Automation: Patrol Sweep & Smart Auto-Zoom -->
-                        <div class="ptz-automation-row">
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <i class="fas fa-route" style="color:var(--info);"></i>
-                                <span style="font-weight:600;">Auto-Patrol:</span>
-                                <select id="ptzPatrolSelect" onchange="onPatrolChange(this.value)" style="padding:3px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:11.5px; background:white; font-weight:600;">
-                                    <option value="off">Off (Manual)</option>
-                                    <option value="preset_sweep">Preset Sweep (10s Cycle)</option>
-                                    <option value="continuous_sweep">Continuous Sweep (±90°)</option>
-                                </select>
+                            <!-- Automation: Patrol Sweep & Smart Auto-Zoom -->
+                            <div class="ptz-automation-row">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <i class="fas fa-route" style="color:var(--info);"></i>
+                                    <span style="font-weight:600;">Auto-Patrol:</span>
+                                    <select id="ptzPatrolSelect" onchange="onPatrolChange(this.value)" style="padding:3px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:11.5px; background:white; font-weight:600;">
+                                        <option value="off">Off (Manual)</option>
+                                        <option value="preset_sweep">Preset Sweep (10s Cycle)</option>
+                                        <option value="continuous_sweep">Continuous Sweep (±90°)</option>
+                                    </select>
+                                </div>
+
+                                <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600;">
+                                    <input type="checkbox" id="ptzAutoZoomCheck" checked onchange="onAutoZoomToggle(this.checked)" style="accent-color:var(--primary);" />
+                                    <span><i class="fas fa-crosshairs" style="color:var(--warning);"></i> Smart Auto-Zoom on Pest</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ CLICK-TO-BROWSE & DRAG-AND-DROP IMAGE UPLOAD DROPZONE ═══ -->
+                <div class="card" id="dashUploadCard">
+                    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="card-title">
+                            <i class="fas fa-cloud-upload-alt" style="color:var(--primary);"></i> Manual Crop Inspection &amp; Upload
+                        </span>
+                        <span class="status-pill status-healthy" style="font-size:11px;">
+                            <i class="fas fa-microchip"></i> Instant AI Analysis
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <!-- Hidden file input for native file explorer -->
+                        <input type="file" id="dashImageInput" accept="image/*" style="display:none;" onchange="onDashFileSelected(event)" />
+
+                        <!-- Droppable & Clickable Dropzone -->
+                        <div id="dashUploadDropzone" class="upload-dropzone" onclick="triggerDashFileInput()">
+                            
+                            <!-- Idle State -->
+                            <div id="dashIdleState" style="display:block;">
+                                <div style="font-size:32px; color:var(--primary); margin-bottom:8px;">
+                                    <i class="fas fa-file-image"></i>
+                                </div>
+                                <div style="font-weight:700; font-size:13.5px; color:var(--text-main); margin-bottom:4px;">
+                                    Click to choose an image from File Explorer, or drag &amp; drop a crop photo here
+                                </div>
+                                <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">
+                                    Supports high-resolution camera photos, field close-ups, and macroscopic crops
+                                </div>
+                                <div style="display:inline-flex; align-items:center; gap:6px; font-size:11px; background:#e2e8f0; color:#475569; padding:3px 10px; border-radius:9999px; font-weight:600;">
+                                    <i class="fas fa-check-circle" style="color:var(--primary);"></i> JPG, PNG, WEBP · Dual Macro Crop &amp; Multi-Pest AI
+                                </div>
                             </div>
 
-                            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600;">
-                                <input type="checkbox" id="ptzAutoZoomCheck" checked onchange="onAutoZoomToggle(this.checked)" style="accent-color:var(--primary);" />
-                                <span><i class="fas fa-crosshairs" style="color:var(--warning);"></i> Smart Auto-Zoom on Pest</span>
-                            </label>
+                            <!-- Scanning / Progress State -->
+                            <div id="dashScanState" style="display:none; padding:16px 0;">
+                                <div style="font-size:32px; color:var(--primary); margin-bottom:10px;">
+                                    <i class="fas fa-spinner fa-spin"></i>
+                                </div>
+                                <div style="font-weight:700; font-size:14px; color:var(--text-main); margin-bottom:4px;">
+                                    Analyzing image with TFLite AI...
+                                </div>
+                                <div style="font-size:12px; color:var(--text-muted);">
+                                    Detecting pests, generating dual full &amp; cropped ROI snapshots, and formulating IPM advisory...
+                                </div>
+                            </div>
+
+                            <!-- Result State (Dual Snapshots Side-by-Side) -->
+                            <div id="dashResultState" style="display:none;" onclick="onResultStateClick(event)">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                                    <span style="font-size:12px; font-weight:700; color:var(--text-main);">
+                                        <i class="fas fa-check-circle" style="color:var(--primary);"></i> AI Inspection Results (Click to Enlarge)
+                                    </span>
+                                    <div style="display:flex; gap:6px;">
+                                        <button class="btn-action" style="padding:4px 10px; font-size:11.5px;" onclick="triggerDashFileInput()">
+                                            <i class="fas fa-folder-open"></i> Upload / Drop Another
+                                        </button>
+                                        <button class="btn-action" style="padding:4px 10px; font-size:11.5px; color:var(--danger);" onclick="clearDashUpload()">
+                                            <i class="fas fa-trash-alt"></i> Clear
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="dash-result-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                                    <!-- Full Scene Snapshot -->
+                                    <div class="dash-snapshot-card" id="dashFullCard" onclick="openDashFullModal()" title="Click to view full dual inspection">
+                                        <div style="font-size:11px; font-weight:700; color:#334155; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
+                                            <span><i class="fas fa-image"></i> Uncropped Full Scene</span>
+                                            <span style="font-size:10px; color:var(--primary);"><i class="fas fa-expand"></i> Dual View</span>
+                                        </div>
+                                        <div style="background:#0f172a; border-radius:8px; overflow:hidden; height:180px; display:flex; align-items:center; justify-content:center; border:1px solid #cbd5e1;">
+                                            <img id="dashFullThumb" src="" alt="Uncropped Scene" style="width:100%; height:100%; object-fit:contain;" />
+                                        </div>
+                                    </div>
+
+                                    <!-- Cropped Macro ROI Snapshot -->
+                                    <div class="dash-snapshot-card" id="dashCropCard" onclick="openDashCropModal()" title="Click to view full dual inspection">
+                                        <div style="font-size:11px; font-weight:700; color:#334155; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
+                                            <span><i class="fas fa-search-plus"></i> Cropped Pest Close-Up</span>
+                                            <span style="font-size:10px; color:var(--primary);"><i class="fas fa-expand"></i> Dual View</span>
+                                        </div>
+                                        <div style="background:#0f172a; border-radius:8px; overflow:hidden; height:180px; display:flex; align-items:center; justify-content:center; border:1px solid #cbd5e1;">
+                                            <img id="dashCropThumb" src="" alt="Cropped ROI Close-Up" style="width:100%; height:100%; object-fit:contain;" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -1075,8 +1205,9 @@
                             <div class="metric-card">
                                 <span class="metric-label"><i class="fas fa-heartbeat" style="color:var(--primary);"></i> Plant Health</span>
                                 <span class="metric-value" style="font-size:15px; font-weight:700; line-height:1.3;" id="dispPlantHealth">{{ telemetry.plant_health_status }}</span>
-                                <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">
+                                <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap; align-items:center;">
                                     <span class="metric-status status-healthy" id="dispPestName">{{ telemetry.latest_pest }}</span>
+                                    <span class="metric-status" id="dispConfidence" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; font-size:10px;">{{ '%.0f'|format(telemetry.latest_confidence * 100 if telemetry.latest_confidence else 100) }}% Conf</span>
                                     <span class="metric-status status-optimal" id="dispAutoCrop" style="display:none; background:#ecfdf5; color:#047857; border:1px solid #a7f3d0;"><i class="fas fa-check-circle"></i> <span id="dispAutoCropText">Crop: Auto</span></span>
                                 </div>
                             </div>
@@ -1237,6 +1368,7 @@
                     <select id="histSourceFilter" class="form-control" style="height:34px; font-size:12px;" onchange="onFilterChange()">
                         <option value="all">All Sources</option>
                         <option value="phone">Smartphone Camera</option>
+                        <option value="dashboard">Dashboard Upload</option>
                         <option value="robot">Robot Pi Camera</option>
                     </select>
                 </div>
@@ -1717,6 +1849,10 @@
         if (tel.latest_pest) {
             document.getElementById('dispPestName').textContent = tel.latest_pest;
         }
+        if (tel.latest_confidence !== undefined) {
+            const confEl = document.getElementById('dispConfidence');
+            if (confEl) confEl.textContent = `${Math.round(tel.latest_confidence * 100)}% Conf`;
+        }
 
         // Multi-pest dynamic recommendations update
         if (tel.recommendations && tel.recommendations.length > 0) {
@@ -1946,6 +2082,169 @@
         }
     }
 
+    // --- Dedicated Drag-and-Drop & File Explorer Image Upload ---
+    let currentDashUploadResult = null;
+
+    function triggerDashFileInput() {
+        const input = document.getElementById('dashImageInput');
+        if (input) input.click();
+    }
+
+    function onDashFileSelected(event) {
+        const files = event && event.target ? event.target.files : null;
+        if (files && files.length > 0) {
+            handleDashImageUpload(files[0]);
+        }
+    }
+
+    function onResultStateClick(event) {
+        if (event && event.stopPropagation) {
+            event.stopPropagation();
+        }
+    }
+
+    function clearDashUpload() {
+        currentDashUploadResult = null;
+        const input = document.getElementById('dashImageInput');
+        if (input) input.value = '';
+        const idleState = document.getElementById('dashIdleState');
+        const scanState = document.getElementById('dashScanState');
+        const resultState = document.getElementById('dashResultState');
+        if (idleState) idleState.style.display = 'block';
+        if (scanState) scanState.style.display = 'none';
+        if (resultState) resultState.style.display = 'none';
+    }
+
+    function openDashFullModal() {
+        if (currentDashUploadResult) {
+            const pestName = currentDashUploadResult.record?.detected_pest || currentDashUploadResult.crop_name || 'Uploaded Inspection';
+            openImageModal(currentDashUploadResult.image_url, pestName, currentDashUploadResult.crop_image_url);
+        }
+    }
+
+    function openDashCropModal() {
+        if (currentDashUploadResult) {
+            const pestName = currentDashUploadResult.record?.detected_pest || currentDashUploadResult.crop_name || 'Uploaded Inspection';
+            openImageModal(currentDashUploadResult.image_url, pestName, currentDashUploadResult.crop_image_url);
+        }
+    }
+
+    function initDashDragAndDrop() {
+        const dropzone = document.getElementById('dashUploadDropzone');
+        if (!dropzone) return;
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => {
+                dropzone.classList.add('drag-over');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => {
+                dropzone.classList.remove('drag-over');
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            if (dt && dt.files && dt.files.length > 0) {
+                handleDashImageUpload(dt.files[0]);
+            }
+        }, false);
+    }
+
+    async function handleDashImageUpload(file) {
+        if (!file) return;
+        if (!file.type || !file.type.startsWith('image/')) {
+            showToast('Invalid File', 'Please select a valid image file (JPG, PNG, WEBP).', true);
+            return;
+        }
+
+        const idleState = document.getElementById('dashIdleState');
+        const scanState = document.getElementById('dashScanState');
+        const resultState = document.getElementById('dashResultState');
+        if (idleState) idleState.style.display = 'none';
+        if (scanState) scanState.style.display = 'block';
+        if (resultState) resultState.style.display = 'none';
+
+        const formData = new FormData();
+        formData.append('file', file);
+        const currentCrop = document.getElementById('cropSelector')?.value || 'auto';
+        formData.append('crop_type', currentCrop);
+        formData.append('source', 'dashboard_upload');
+
+        try {
+            const res = await fetch('/api/detect/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || `Upload failed with HTTP ${res.status}`);
+            }
+
+            const data = await res.json();
+            currentDashUploadResult = data;
+
+            // 1. Show both uncropped & cropped ROI side-by-side in upload card
+            const fullThumb = document.getElementById('dashFullThumb');
+            const cropThumb = document.getElementById('dashCropThumb');
+            if (fullThumb) fullThumb.src = data.image_url;
+            if (cropThumb) cropThumb.src = data.crop_image_url;
+
+            if (scanState) scanState.style.display = 'none';
+            if (resultState) resultState.style.display = 'block';
+
+            // 2. Update Live Analysis & Findings card
+            if (data.record) {
+                updateUIWithRecord(data.record);
+            }
+            const dispConfidence = document.getElementById('dispConfidence');
+            if (dispConfidence && data.record && typeof data.record.confidence === 'number') {
+                dispConfidence.textContent = Math.round(data.record.confidence * 100) + '% Conf';
+            }
+
+            // 3. Render multi-pest recommendations
+            if (data.recommendations && data.recommendations.length > 0) {
+                renderRecommendationsList(data.recommendations);
+            }
+
+            // 4. Prepend to inspection history table
+            if (data.record) {
+                currentDetections.unshift(data.record);
+                renderDetectionsRows(currentDetections);
+                currentTotal++;
+                const statTotal = document.getElementById('statTotal');
+                if (statTotal) statTotal.textContent = currentTotal;
+            }
+
+            // 5. Toast notification & audio alert
+            const pestName = data.record?.detected_pest || 'Crop Inspection';
+            const count = data.pest_count !== undefined ? data.pest_count : 0;
+            const isSevere = data.record?.infestation_level === 'Severe';
+            showToast('Upload Inspected', `${pestName} (${count} detected)`, isSevere);
+            playAlertChime();
+
+        } catch (err) {
+            console.error('Dashboard upload error:', err);
+            showToast('Upload Error', err.message || 'Failed to analyze uploaded image.', true);
+            if (idleState) idleState.style.display = 'block';
+            if (scanState) scanState.style.display = 'none';
+            if (resultState) resultState.style.display = 'none';
+        } finally {
+            const input = document.getElementById('dashImageInput');
+            if (input) input.value = '';
+        }
+    }
+
     let currentRecsList = [];
     let selectedRecFilter = 'all';
 
@@ -2049,6 +2348,10 @@
 
         document.getElementById('dispPlantHealth').textContent = rec.plant_health_status;
         document.getElementById('dispPestName').textContent = rec.detected_pest;
+        if (rec.confidence !== undefined) {
+            const confEl = document.getElementById('dispConfidence');
+            if (confEl) confEl.textContent = `${Math.round(rec.confidence * 100)}% Conf`;
+        }
 
         if (rec.crop_name) {
             const autoBadge = document.getElementById('dispAutoCrop');
@@ -2962,6 +3265,7 @@
         connectWebSocket();
         loadDetectionsTable(1);
         loadFarmAnalytics();
+        initDashDragAndDrop();
     });
 </script>
 </body>

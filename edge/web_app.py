@@ -406,13 +406,14 @@ async def detect_from_phone(
     file: UploadFile = File(...),
     crop_type: Optional[str] = Form(None),
     conf_threshold: Optional[float] = Form(None),
-    model_profile: Optional[str] = Form(None)
+    model_profile: Optional[str] = Form(None),
+    source: Optional[str] = Form("phone_camera")
 ):
     """
-    Receives an image snapshot uploaded from the smartphone camera,
+    Receives an image snapshot uploaded from the smartphone camera or desktop dashboard,
     runs AI inference with active or selectable model profile,
     generates plant health, beneficial predator protection, & pesticide recommendations,
-    saves the annotated image, logs the detection to SQLite with [Phone Camera] tag,
+    saves the annotated image, logs the detection to SQLite with [Phone Camera] or [Dashboard Upload] tag,
     and broadcasts alert over WebSocket.
     """
     contents = await file.read()
@@ -421,6 +422,10 @@ async def detect_from_phone(
 
     if frame is None:
         raise HTTPException(status_code=400, detail="Invalid image file format")
+
+    is_dashboard = (source or "").lower().strip() == "dashboard_upload"
+    tag_label = "Dashboard Upload" if is_dashboard else "Phone Camera"
+    src_slug = "dash" if is_dashboard else "phone"
 
     # Determine crop
     target_crop = (crop_type or probe.active_crop).lower().strip()
@@ -496,8 +501,8 @@ async def detect_from_phone(
     # Save dual snapshots
     ts_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     uid = uuid.uuid4().hex[:6]
-    full_filename = f"det_{ts_str}_{target_crop}_phone_{uid}_full.jpg"
-    crop_filename = f"det_{ts_str}_{target_crop}_phone_{uid}_crop.jpg"
+    full_filename = f"det_{ts_str}_{target_crop}_{src_slug}_{uid}_full.jpg"
+    crop_filename = f"det_{ts_str}_{target_crop}_{src_slug}_{uid}_crop.jpg"
 
     full_disk_path = os.path.join(DETECTIONS_DIR, full_filename)
     crop_disk_path = os.path.join(DETECTIONS_DIR, crop_filename)
@@ -522,8 +527,8 @@ async def detect_from_phone(
             for r in multi_recs
         ])
 
-    # Insert to database with [Phone Camera] tag in farm_area
-    farm_tag = f"{probe.farm_area} [Phone Camera]"
+    # Insert to database with [Phone Camera] or [Dashboard Upload] tag in farm_area
+    farm_tag = f"{probe.farm_area} [{tag_label}]"
     db_payload = {
         "timestamp": datetime.datetime.now().isoformat(),
         "crop_type": target_crop,
@@ -548,11 +553,12 @@ async def detect_from_phone(
     db_payload["id"] = rec_id
 
     # Broadcast WebSocket alert
+    trigger_type = "DASHBOARD_UPLOAD" if is_dashboard else "PHONE_CAMERA"
     alert_event = {
         "type": "PEST_DETECTION_ALERT",
-        "trigger": "PHONE_CAMERA",
+        "trigger": trigger_type,
         "record": db_payload,
-        "summary": f"{detected_pest_name} ({pest_count} detected via Phone Camera) in {crop_name}",
+        "summary": f"{detected_pest_name} ({pest_count} detected via {tag_label}) in {crop_name}",
         "recommendations": multi_recs
     }
     probe._broadcast_alert(alert_event)
@@ -571,7 +577,7 @@ async def detect_from_phone(
 
     return {
         "status": "success",
-        "source": "PHONE_CAMERA",
+        "source": "dashboard_upload" if is_dashboard else "PHONE_CAMERA",
         "crop_type": target_crop,
         "crop_name": crop_name,
         "pest_count": pest_count,
