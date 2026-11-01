@@ -134,8 +134,11 @@ class PTZCameraDriver:
 
         # V4L2 Hardware Controls Map (Discovered dynamically via v4l2-ctl on Linux)
         self.v4l2_controls: Dict[str, Dict[str, Any]] = {}
+        self.ptz_ctrl_device: str = f"/dev/video{self.camera_index}"
         self.is_hardware_ptz_available: bool = False
         self._cap: Optional[cv2.VideoCapture] = None
+        self._camera_lock_ref: Optional[threading.Lock] = None
+        self._last_action: str = ""
 
         self._init_network_socket()
         if sys.platform.startswith("linux"):
@@ -155,56 +158,78 @@ class PTZCameraDriver:
         except Exception as e:
             logger.debug(f"[PTZCameraDriver] UDP socket init error: {e}")
 
-    def bind_capture(self, cap: cv2.VideoCapture, camera_index: Optional[int] = None):
+    def bind_capture(
+        self,
+        cap: cv2.VideoCapture,
+        camera_index: Optional[int] = None,
+        camera_lock: Optional[threading.Lock] = None
+    ):
         """Binds the active OpenCV VideoCapture handle and triggers hardware control discovery."""
         with self._lock:
             self._cap = cap
             if camera_index is not None:
                 self.camera_index = camera_index
+            if camera_lock is not None:
+                self._camera_lock_ref = camera_lock
         if sys.platform.startswith("linux"):
             self.probe_v4l2_controls(self.camera_index)
 
     def probe_v4l2_controls(self, dev_idx: Optional[int] = None) -> Dict[str, Dict[str, Any]]:
-        """Queries and parses v4l2-ctl hardware controls on Raspberry Pi."""
-        idx = dev_idx if dev_idx is not None else self.camera_index
-        dev_path = f"/dev/video{idx}"
+        """Queries and parses v4l2-ctl hardware controls on Raspberry Pi, scanning candidate /dev/video nodes."""
+        target_idx = dev_idx if dev_idx is not None else self.camera_index
+        candidates = [target_idx]
+        for alt in range(4):
+            if alt not in candidates:
+                candidates.append(alt)
+
         controls: Dict[str, Dict[str, Any]] = {}
+        found_device = f"/dev/video{target_idx}"
+        ptz_keys = {"pan_absolute", "tilt_absolute", "zoom_absolute", "pan_speed", "tilt_speed", "zoom_continuous", "pan_tilt_relative"}
 
-        try:
-            res = subprocess.run(
-                ["v4l2-ctl", "-d", dev_path, "--list-ctrls"],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            if res.returncode == 0:
-                for line in res.stdout.splitlines():
-                    line = line.strip()
-                    # e.g.: pan_absolute 0x009a0908 (int)    : min=-180000 max=180000 step=3600 default=0 value=0
-                    m = re.match(r"^([a-zA-Z0-9_]+)\s+0x[0-9a-fA-F]+\s+\(([a-zA-Z]+)\)\s*:\s*(.*)$", line)
-                    if m:
-                        ctrl_name = m.group(1)
-                        ctrl_type = m.group(2)
-                        params_str = m.group(3)
+        for idx in candidates:
+            dev_path = f"/dev/video{idx}"
+            if not os.path.exists(dev_path):
+                continue
+            curr_ctrls: Dict[str, Dict[str, Any]] = {}
+            try:
+                res = subprocess.run(
+                    ["v4l2-ctl", "-d", dev_path, "--list-ctrls"],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+                if res.returncode == 0:
+                    for line in res.stdout.splitlines():
+                        line = line.strip()
+                        m = re.match(r"^([a-zA-Z0-9_]+)\s+0x[0-9a-fA-F]+\s+\(([a-zA-Z]+)\)\s*:\s*(.*)$", line)
+                        if m:
+                            ctrl_name = m.group(1)
+                            ctrl_type = m.group(2)
+                            params_str = m.group(3)
+                            ctrl_data: Dict[str, Any] = {"type": ctrl_type, "raw": params_str}
+                            for kv in re.finditer(r"([a-zA-Z_]+)=(-?\d+)", params_str):
+                                ctrl_data[kv.group(1)] = int(kv.group(2))
+                            curr_ctrls[ctrl_name] = ctrl_data
 
-                        ctrl_data: Dict[str, Any] = {"type": ctrl_type, "raw": params_str}
-                        for kv in re.finditer(r"([a-zA-Z_]+)=(-?\d+)", params_str):
-                            ctrl_data[kv.group(1)] = int(kv.group(2))
+                if any(k in curr_ctrls for k in ptz_keys):
+                    controls = curr_ctrls
+                    found_device = dev_path
+                    break
+                elif not controls and curr_ctrls:
+                    controls = curr_ctrls
+                    found_device = dev_path
+            except Exception as e:
+                logger.debug(f"[PTZCameraDriver] v4l2-ctl probe exception on {dev_path}: {e}")
 
-                        controls[ctrl_name] = ctrl_data
+        with self._lock:
+            self.ptz_ctrl_device = found_device
+            self.v4l2_controls = controls
+            self.is_hardware_ptz_available = bool(ptz_keys.intersection(controls.keys()))
 
-            with self._lock:
-                self.v4l2_controls = controls
-                ptz_keys = {"pan_absolute", "tilt_absolute", "zoom_absolute", "pan_speed", "tilt_speed", "zoom_continuous"}
-                self.is_hardware_ptz_available = bool(ptz_keys.intersection(controls.keys()))
-
-            if self.is_hardware_ptz_available:
-                logger.info(f"[PTZCameraDriver] Discovered hardware UVC PTZ controls on {dev_path}: {list(controls.keys())}")
-            else:
-                logger.info(f"[PTZCameraDriver] Hardware UVC controls not detected on {dev_path}; using Digital PTZ Viewport assist.")
-
-        except Exception as e:
-            logger.debug(f"[PTZCameraDriver] v4l2-ctl probe exception: {e}")
+        if self.is_hardware_ptz_available:
+            logger.info(f"[PTZCameraDriver] Discovered hardware UVC PTZ controls on {found_device}: {list(controls.keys())}")
+        else:
+            logger.info(f"[PTZCameraDriver] Hardware UVC controls not detected on {found_device}; using Digital PTZ Viewport assist.")
 
         return controls
 
@@ -274,7 +299,7 @@ class PTZCameraDriver:
     def move_step(
         self,
         action: str,
-        step: float = 5.0,
+        step: Optional[float] = None,
         zoom_step: float = 0.5
     ) -> Dict[str, Any]:
         """
@@ -282,18 +307,21 @@ class PTZCameraDriver:
         action in {"pan_left", "pan_right", "tilt_up", "tilt_down", "zoom_in", "zoom_out", "home"}
         """
         action = action.lower().strip()
+        pan_step = 15.0 if step is None else float(step)
+        tilt_step = 8.0 if step is None else float(step)
         with self._lock:
+            self._last_action = action
             if action == "pan_left":
-                self.pan = float(np.clip(self.pan - step, MIN_PAN, MAX_PAN))
+                self.pan = float(np.clip(self.pan - pan_step, MIN_PAN, MAX_PAN))
                 self.active_preset_id = None
             elif action == "pan_right":
-                self.pan = float(np.clip(self.pan + step, MIN_PAN, MAX_PAN))
+                self.pan = float(np.clip(self.pan + pan_step, MIN_PAN, MAX_PAN))
                 self.active_preset_id = None
             elif action == "tilt_up":
-                self.tilt = float(np.clip(self.tilt + step, MIN_TILT, MAX_TILT))
+                self.tilt = float(np.clip(self.tilt + tilt_step, MIN_TILT, MAX_TILT))
                 self.active_preset_id = None
             elif action == "tilt_down":
-                self.tilt = float(np.clip(self.tilt - step, MIN_TILT, MAX_TILT))
+                self.tilt = float(np.clip(self.tilt - tilt_step, MIN_TILT, MAX_TILT))
                 self.active_preset_id = None
             elif action == "zoom_in":
                 self.zoom = float(np.clip(self.zoom + zoom_step, MIN_ZOOM, MAX_ZOOM))
@@ -557,9 +585,9 @@ class PTZCameraDriver:
         if abs(z - 1.0) < 0.05 and abs(p) < 0.5 and abs(t) < 0.5:
             return frame
 
-        # If pan/tilt is requested at 1.0x zoom, provide a slight digital headroom (1.25x)
+        # If pan/tilt is requested at 1.0x zoom, provide a slight digital headroom (1.35x)
         # so panning left/right or tilting up/down is visibly shifted on screen:
-        effective_z = max(z, 1.25 if (abs(p) >= 0.5 or abs(t) >= 0.5) else 1.0)
+        effective_z = max(z, 1.35 if (abs(p) >= 0.5 or abs(t) >= 0.5) else 1.0)
 
         # Crop width and height based on effective zoom factor
         crop_w = int(w / effective_z)
@@ -601,49 +629,87 @@ class PTZCameraDriver:
         Controls are dispatched individually to prevent one unsupported parameter
         from invalidating the rest of the command.
         """
-        dev = f"/dev/video{self.camera_index}"
+        dev = getattr(self, "ptz_ctrl_device", f"/dev/video{self.camera_index}")
         ctrls = self.v4l2_controls
+        last_action = getattr(self, "_last_action", "")
 
-        # 1. Pan Absolute
+        # 1. Pan Absolute or Pan Speed
         if "pan_absolute" in ctrls:
             c = ctrls["pan_absolute"]
             c_min, c_max, step = c.get("min", -180000), c.get("max", 180000), max(1, c.get("step", 3600))
             pan_val = int(c_min + ((self.pan - MIN_PAN) / (MAX_PAN - MIN_PAN)) * (c_max - c_min))
             pan_val = round(pan_val / step) * step
             subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"pan_absolute={pan_val}"], capture_output=True, check=False)
-        elif "pan_speed" in ctrls and abs(self.pan) > 1.0:
+        elif "pan_speed" in ctrls:
             c = ctrls["pan_speed"]
-            spd = int(np.clip(self.pan / 10.0, c.get("min", -24), c.get("max", 24)))
-            subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"pan_speed={spd}"], capture_output=True, check=False)
+            spd_max = c.get("max", 24)
+            spd_min = c.get("min", -24)
+            spd = 0
+            if last_action == "pan_right":
+                spd = max(1, int(spd_max * 0.6))
+            elif last_action == "pan_left":
+                spd = min(-1, int(spd_min * 0.6))
+            if spd != 0:
+                subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"pan_speed={spd}"], capture_output=True, check=False)
+                def _reset_pan():
+                    time.sleep(0.2)
+                    subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", "pan_speed=0"], capture_output=True, check=False)
+                threading.Thread(target=_reset_pan, daemon=True).start()
 
-        # 2. Tilt Absolute
+        # 2. Tilt Absolute or Tilt Speed
         if "tilt_absolute" in ctrls:
             c = ctrls["tilt_absolute"]
             c_min, c_max, step = c.get("min", -180000), c.get("max", 180000), max(1, c.get("step", 3600))
             tilt_val = int(c_min + ((self.tilt - MIN_TILT) / (MAX_TILT - MIN_TILT)) * (c_max - c_min))
             tilt_val = round(tilt_val / step) * step
             subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"tilt_absolute={tilt_val}"], capture_output=True, check=False)
-        elif "tilt_speed" in ctrls and abs(self.tilt) > 1.0:
+        elif "tilt_speed" in ctrls:
             c = ctrls["tilt_speed"]
-            spd = int(np.clip(self.tilt / 5.0, c.get("min", -24), c.get("max", 24)))
-            subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"tilt_speed={spd}"], capture_output=True, check=False)
+            spd_max = c.get("max", 24)
+            spd_min = c.get("min", -24)
+            spd = 0
+            if last_action == "tilt_up":
+                spd = max(1, int(spd_max * 0.6))
+            elif last_action == "tilt_down":
+                spd = min(-1, int(spd_min * 0.6))
+            if spd != 0:
+                subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"tilt_speed={spd}"], capture_output=True, check=False)
+                def _reset_tilt():
+                    time.sleep(0.2)
+                    subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", "tilt_speed=0"], capture_output=True, check=False)
+                threading.Thread(target=_reset_tilt, daemon=True).start()
 
-        # 3. Zoom Absolute
+        # 3. Zoom Absolute or Zoom Continuous
         if "zoom_absolute" in ctrls:
             c = ctrls["zoom_absolute"]
             c_min, c_max, step = c.get("min", 100), c.get("max", 400), max(1, c.get("step", 1))
             zoom_val = int(c_min + ((self.zoom - MIN_ZOOM) / (MAX_ZOOM - MIN_ZOOM)) * (c_max - c_min))
             zoom_val = round(zoom_val / step) * step
             subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"zoom_absolute={zoom_val}"], capture_output=True, check=False)
+        elif "zoom_continuous" in ctrls:
+            spd = 1 if last_action == "zoom_in" else (-1 if last_action == "zoom_out" else 0)
+            if spd != 0:
+                subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", f"zoom_continuous={spd}"], capture_output=True, check=False)
+                def _reset_zoom():
+                    time.sleep(0.2)
+                    subprocess.run(["v4l2-ctl", "-d", dev, "--set-ctrl", "zoom_continuous=0"], capture_output=True, check=False)
+                threading.Thread(target=_reset_zoom, daemon=True).start()
 
     def _apply_opencv_uvc_controls(self):
         """Attempts setting standard OpenCV UVC camera properties on open capture handle."""
         if not self._cap or not self._cap.isOpened():
             return
+        lock = getattr(self, "_camera_lock_ref", None)
         try:
-            self._cap.set(cv2.CAP_PROP_PAN, float(self.pan))
-            self._cap.set(cv2.CAP_PROP_TILT, float(self.tilt))
-            self._cap.set(cv2.CAP_PROP_ZOOM, float(self.zoom))
+            if lock:
+                with lock:
+                    self._cap.set(cv2.CAP_PROP_PAN, float(self.pan))
+                    self._cap.set(cv2.CAP_PROP_TILT, float(self.tilt))
+                    self._cap.set(cv2.CAP_PROP_ZOOM, float(self.zoom))
+            else:
+                self._cap.set(cv2.CAP_PROP_PAN, float(self.pan))
+                self._cap.set(cv2.CAP_PROP_TILT, float(self.tilt))
+                self._cap.set(cv2.CAP_PROP_ZOOM, float(self.zoom))
         except Exception:
             pass
 

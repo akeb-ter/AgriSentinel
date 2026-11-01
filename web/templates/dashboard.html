@@ -1093,29 +1093,35 @@
 
                         <!-- Recommended Pesticide & Safety Guidance -->
                         <div class="rec-section" id="recSection">
-                            <div class="rec-row">
-                                <span class="rec-title">Target Pest &amp; Insecticide</span>
-                                <span class="rec-highlight" id="recPesticide">{{ latest_recommendation.recommended_pesticide }}</span>
-                            </div>
-                            <div class="rec-row" id="recSymptomRow" style="display:none;">
-                                <span class="rec-title"><i class="fas fa-stethoscope" style="color:var(--primary);"></i> Symptoms &amp; Visual Cues</span>
-                                <span class="rec-desc" id="recSymptoms" style="color:#0f172a; font-size:12px;"></span>
-                            </div>
-                            <div class="rec-row">
-                                <span class="rec-title">Application Rate &amp; Pre-Harvest Interval (PHI)</span>
-                                <span class="rec-desc" id="recDosage">{{ latest_recommendation.dosage_instruction or 'Awaiting confirmed detection.' }}</span>
-                            </div>
-                            <div class="rec-row">
-                                <span class="rec-title">Bio-Control / Organic Alternative</span>
-                                <span class="rec-desc" style="color:var(--primary-dark); font-weight:600;" id="recOrganic">{{ latest_recommendation.organic_alternative or 'Neem oil or biological control' }}</span>
-                            </div>
-                            <div class="safety-box">
-                                <strong><i class="fas fa-shield-alt"></i> Safety Precautions &amp; PPE:</strong>
-                                <p id="recSafety" style="margin-top:4px;">{{ latest_recommendation.safety_precautions }}</p>
-                            </div>
-                            <div class="rec-citation" id="recCitationRow" style="margin-top:10px; padding-top:8px; border-top:1px dashed #e2e8f0; font-size:11px; color:#64748b; display:flex; align-items:center; gap:6px;">
-                                <i class="fas fa-book-open" style="color:var(--primary);"></i>
-                                <span id="recCitationText">Source: {{ latest_recommendation.citation or 'FAO / IRRI / UC Davis Integrated Pest Management Guidelines' }}</span>
+                            <!-- Multi-Pest Species Pills (Active when 2+ species detected) -->
+                            <div id="recMultiPestBar" style="display:none; margin-bottom:12px; gap:8px; flex-wrap:wrap;"></div>
+
+                            <!-- Dynamic Recommendations Container -->
+                            <div id="recCardsContainer">
+                                <div class="rec-row">
+                                    <span class="rec-title">Target Pest &amp; Insecticide</span>
+                                    <span class="rec-highlight" id="recPesticide">{{ latest_recommendation.recommended_pesticide }}</span>
+                                </div>
+                                <div class="rec-row" id="recSymptomRow" style="display:none;">
+                                    <span class="rec-title"><i class="fas fa-stethoscope" style="color:var(--primary);"></i> Symptoms &amp; Visual Cues</span>
+                                    <span class="rec-desc" id="recSymptoms" style="color:#0f172a; font-size:12px;"></span>
+                                </div>
+                                <div class="rec-row">
+                                    <span class="rec-title">Application Rate &amp; Pre-Harvest Interval (PHI)</span>
+                                    <span class="rec-desc" id="recDosage">{{ latest_recommendation.dosage_instruction or 'Awaiting confirmed detection.' }}</span>
+                                </div>
+                                <div class="rec-row">
+                                    <span class="rec-title">Bio-Control / Organic Alternative</span>
+                                    <span class="rec-desc" style="color:var(--primary-dark); font-weight:600;" id="recOrganic">{{ latest_recommendation.organic_alternative or 'Neem oil or biological control' }}</span>
+                                </div>
+                                <div class="safety-box">
+                                    <strong><i class="fas fa-shield-alt"></i> Safety Precautions &amp; PPE:</strong>
+                                    <p id="recSafety" style="margin-top:4px;">{{ latest_recommendation.safety_precautions }}</p>
+                                </div>
+                                <div class="rec-citation" id="recCitationRow" style="margin-top:10px; padding-top:8px; border-top:1px dashed #e2e8f0; font-size:11px; color:#64748b; display:flex; align-items:center; gap:6px;">
+                                    <i class="fas fa-book-open" style="color:var(--primary);"></i>
+                                    <span id="recCitationText">Source: {{ latest_recommendation.citation or 'FAO / IRRI / UC Davis Integrated Pest Management Guidelines' }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1180,11 +1186,9 @@
                 </div>
                 <select id="histCropFilter" class="form-control" style="height:38px; border-radius:8px; font-size:13px; font-weight:600; min-width:130px;" onchange="onFilterChange()">
                     <option value="all">All Crops</option>
-                    <option value="corn">Corn</option>
-                    <option value="rice">Rice</option>
-                    <option value="squash">Squash</option>
-                    <option value="eggplant">Eggplant</option>
-                    <option value="mungbean">Mungbean</option>
+                    {% for c in crops %}
+                    <option value="{{ c.key }}">{{ c.name }}</option>
+                    {% endfor %}
                 </select>
                 <select id="histInfestationFilter" class="form-control" style="height:38px; border-radius:8px; font-size:13px; font-weight:600; min-width:145px;" onchange="onFilterChange()">
                     <option value="all">All Infestations</option>
@@ -1286,11 +1290,22 @@
                                     <input type="checkbox" class="row-checkbox" value="{{ d.id }}" onchange="onRowCheckboxChange({{ d.id }}, this.checked)" />
                                 </td>
                                 <td>
-                                    {% if d.image_path %}
-                                    <img src="{{ d.image_path }}" class="img-thumb" onclick="openImageModal('{{ d.image_path }}', '{{ d.detected_pest }}')" alt="Detection thumbnail" />
-                                    {% else %}
-                                    <div style="width:48px; height:48px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#94a3b8;"><i class="fas fa-camera"></i></div>
-                                    {% endif %}
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        {% if d.image_path %}
+                                        <div style="position:relative;" title="Full Scene (Uncropped)">
+                                            <img src="{{ d.image_path }}" class="img-thumb" onclick="openImageModal('{{ d.image_path }}', '{{ d.detected_pest }}', '{{ d.crop_image_path or '' }}')" alt="Full frame" />
+                                            <span style="position:absolute; bottom:2px; right:2px; background:rgba(0,0,0,0.7); color:#fff; font-size:9px; padding:1px 3px; border-radius:3px;">Full</span>
+                                        </div>
+                                        {% endif %}
+                                        {% if d.crop_image_path %}
+                                        <div style="position:relative;" title="Pest Close-Up (Cropped)">
+                                            <img src="{{ d.crop_image_path }}" class="img-thumb" style="border:1.5px solid var(--primary);" onclick="openImageModal('{{ d.image_path }}', '{{ d.detected_pest }}', '{{ d.crop_image_path }}')" alt="Cropped pest" />
+                                            <span style="position:absolute; bottom:2px; right:2px; background:var(--primary); color:#fff; font-size:9px; padding:1px 3px; border-radius:3px; font-weight:bold;">ROI</span>
+                                        </div>
+                                        {% elif not d.image_path %}
+                                        <div style="width:48px; height:48px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#94a3b8;"><i class="fas fa-camera"></i></div>
+                                        {% endif %}
+                                    </div>
                                 </td>
                                 <td><small style="font-family:'JetBrains Mono', monospace; font-size:12px;">{{ d.timestamp[:19].replace('T', ' ') }}</small></td>
                                 <td><b>{{ d.crop_type.capitalize() }}</b><br/><small style="color:var(--text-muted);">{{ d.farm_area }}</small></td>
@@ -1357,33 +1372,105 @@
 
     <!-- ═══ PANEL 4: FARM ANALYTICS & STATS ═══ -->
     <section class="panel" id="panelAnalytics">
-        <div class="metrics-grid">
-            <div class="card" style="padding:20px;">
-                <span class="metric-label"><i class="fas fa-clipboard-check"></i> Total Inspections</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:10px;">
+            <div>
+                <h3 style="font-size:18px; font-weight:700; color:#0f172a; margin-bottom:4px;">
+                    <i class="fas fa-chart-pie" style="color:var(--primary);"></i> Farm Pest &amp; Diagnostic Analytics
+                </h3>
+                <p style="font-size:12.5px; color:var(--text-muted);">
+                    Live telemetry aggregating field inspections, severe outbreak alerts, and beneficial predator preservation.
+                </p>
+            </div>
+            <button class="btn-action" onclick="loadFarmAnalytics()" title="Refresh database analytics">
+                <i class="fas fa-sync-alt" id="analyticsSpin"></i> Refresh Analytics
+            </button>
+        </div>
+
+        <div class="metrics-grid" style="margin-bottom:20px;">
+            <div class="card" style="padding:18px;">
+                <span class="metric-label"><i class="fas fa-clipboard-check" style="color:var(--primary);"></i> Total Inspections</span>
                 <span class="metric-value" id="statTotal">{{ stats.total_inspections }}</span>
             </div>
-            <div class="card" style="padding:20px;">
+            <div class="card" style="padding:18px;">
                 <span class="metric-label"><i class="fas fa-exclamation-circle" style="color:var(--danger);"></i> Severe Infestations</span>
                 <span class="metric-value" style="color:var(--danger);" id="statSevere">{{ stats.severe_alerts }}</span>
             </div>
-            <div class="card" style="padding:20px;">
+            <div class="card" style="padding:18px;">
+                <span class="metric-label"><i class="fas fa-shield-alt" style="color:#10b981;"></i> Beneficial Predators</span>
+                <span class="metric-value" style="color:#10b981;" id="statBeneficial">{{ stats.beneficial_count or 0 }}</span>
+            </div>
+            <div class="card" style="padding:18px;">
                 <span class="metric-label"><i class="fas fa-bullseye" style="color:var(--info);"></i> Avg AI Confidence</span>
                 <span class="metric-value" id="statAvgConfidence">{{ stats.avg_confidence }}%</span>
+            </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:18px;">
+            <!-- Top Pests Distribution -->
+            <div class="card" style="padding:20px;">
+                <div style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="fas fa-bug" style="color:#ef4444; margin-right:6px;"></i> Top Detected Pests</span>
+                    <small style="color:var(--text-muted); font-size:11px;">Frequency Share</small>
+                </div>
+                <div id="analyticsTopPests" style="display:flex; flex-direction:column; gap:10px;">
+                    <!-- Rendered by loadFarmAnalytics() -->
+                </div>
+            </div>
+
+            <!-- Host Crop Share -->
+            <div class="card" style="padding:20px;">
+                <div style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="fas fa-seedling" style="color:var(--primary); margin-right:6px;"></i> Inspections by Crop</span>
+                    <small style="color:var(--text-muted); font-size:11px;">Host Distribution</small>
+                </div>
+                <div id="analyticsCropDist" style="display:flex; flex-direction:column; gap:10px;">
+                    <!-- Rendered by loadFarmAnalytics() -->
+                </div>
+            </div>
+
+            <!-- Severity Distribution -->
+            <div class="card" style="padding:20px;">
+                <div style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="fas fa-heartbeat" style="color:#f59e0b; margin-right:6px;"></i> Infestation Severity</span>
+                    <small style="color:var(--text-muted); font-size:11px;">Stress Breakdown</small>
+                </div>
+                <div id="analyticsSeverityDist" style="display:flex; flex-direction:column; gap:10px;">
+                    <!-- Rendered by loadFarmAnalytics() -->
+                </div>
             </div>
         </div>
     </section>
 </div>
 
-<!-- ═══ MODAL FOR HIGH-RES SNAPSHOT INSPECTION ═══ -->
+<!-- ═══ MODAL FOR DUAL SNAPSHOT INSPECTION (UNCROPPED + CROPPED) ═══ -->
 <div class="modal-overlay" id="imgModal" onclick="closeImageModal()">
-    <div class="modal-card" onclick="event.stopPropagation()">
-        <img id="modalImgTag" class="modal-img" src="" alt="Snapshot Full View" />
-        <div style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
+    <div class="modal-card" style="max-width:960px; width:95%;" onclick="event.stopPropagation()">
+        <div style="padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
             <div>
-                <h4 id="modalPestName" style="font-size:16px; font-weight:700;">Annotated Detection</h4>
-                <p style="font-size:12px; color:var(--text-muted);">High-resolution crop canopy image with bounding boxes</p>
+                <h4 id="modalPestName" style="font-size:16px; font-weight:700; color:var(--text-main);">Dual Snapshot Inspection</h4>
+                <p id="modalSubTitle" style="font-size:12px; color:var(--text-muted);">Comparing Uncropped Full Frame vs. Cropped Pest Close-Up</p>
             </div>
-            <button class="btn-action" onclick="closeImageModal()">Close</button>
+            <button class="btn-action" onclick="closeImageModal()"><i class="fas fa-times"></i> Close</button>
+        </div>
+        <div style="padding:16px; display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; background:#0f172a; border-radius:0 0 16px 16px;">
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; color:#cbd5e1; font-size:12px; font-weight:600;">
+                    <span><i class="fas fa-camera"></i> 1. Uncropped Full Scene</span>
+                    <a id="modalFullDownload" href="" target="_blank" download style="color:#38bdf8; text-decoration:none;"><i class="fas fa-download"></i> Full</a>
+                </div>
+                <div style="background:#1e293b; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; min-height:260px;">
+                    <img id="modalImgTag" class="modal-img" src="" alt="Snapshot Full View" style="max-height:420px; width:100%; object-fit:contain;" />
+                </div>
+            </div>
+            <div id="modalCropContainer">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; color:#cbd5e1; font-size:12px; font-weight:600;">
+                    <span><i class="fas fa-search-plus" style="color:var(--primary-light);"></i> 2. Cropped Pest Close-Up</span>
+                    <a id="modalCropDownload" href="" target="_blank" download style="color:var(--primary-light); text-decoration:none;"><i class="fas fa-download"></i> Crop</a>
+                </div>
+                <div style="background:#1e293b; border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; min-height:260px;">
+                    <img id="modalCropImgTag" class="modal-img" src="" alt="Cropped Pest View" style="max-height:420px; width:100%; object-fit:contain;" />
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1398,6 +1485,17 @@
             <div style="flex:1;">
                 <h4 id="deleteModalTitle" style="font-size:16px; font-weight:700; color:#0f172a; margin-bottom:6px;">Confirm Deletion</h4>
                 <p id="deleteModalBody" style="font-size:13px; color:#475569; line-height:1.5;">Are you sure you want to delete these inspection records?</p>
+            </div>
+        </div>
+
+        <!-- Password verification input (visible ONLY for wipe/clear actions) -->
+        <div id="deletePasswordContainer" style="display:none; margin-top:16px; background:#fff1f2; border:1px solid #fecdd3; border-radius:10px; padding:12px;">
+            <label style="display:block; font-size:12px; font-weight:700; color:#9f1239; margin-bottom:6px;">
+                <i class="fas fa-lock"></i> Account Password Required:
+            </label>
+            <input type="password" id="deleteConfirmPassword" placeholder="Enter your login password to confirm wipe..." class="form-control" style="width:100%; height:36px; font-size:13px; border-radius:6px;" autocomplete="current-password" />
+            <div id="deletePasswordError" style="display:none; color:#e11d48; font-size:11.5px; font-weight:600; margin-top:6px;">
+                <i class="fas fa-exclamation-circle"></i> Incorrect password. Please try again.
             </div>
         </div>
 
@@ -1454,6 +1552,8 @@
             loadAdvisorPests();
         } else if (panelId === 'panelHistory') {
             loadDetectionsTable(currentPage);
+        } else if (panelId === 'panelAnalytics') {
+            loadFarmAnalytics();
         }
     }
 
@@ -1616,6 +1716,11 @@
         }
         if (tel.latest_pest) {
             document.getElementById('dispPestName').textContent = tel.latest_pest;
+        }
+
+        // Multi-pest dynamic recommendations update
+        if (tel.recommendations && tel.recommendations.length > 0) {
+            renderRecommendationsList(tel.recommendations);
         }
 
         // Auto host crop badge
@@ -1841,6 +1946,102 @@
         }
     }
 
+    let currentRecsList = [];
+    let selectedRecFilter = 'all';
+
+    function renderRecommendationsList(recs) {
+        if (!recs || recs.length === 0) return;
+        currentRecsList = recs;
+
+        const multiBar = document.getElementById('recMultiPestBar');
+        const container = document.getElementById('recCardsContainer');
+        if (!container) return;
+
+        if (recs.length <= 1) {
+            if (multiBar) multiBar.style.display = 'none';
+            container.innerHTML = renderSingleRecCardHtml(recs[0]);
+            return;
+        }
+
+        // Multiple distinct pest species detected!
+        if (multiBar) {
+            multiBar.style.display = 'flex';
+            multiBar.innerHTML = `
+                <button class="btn-action ${selectedRecFilter === 'all' ? 'active' : ''}" style="font-size:11.5px; padding:4px 10px; border-radius:14px;" onclick="filterRecPest('all')">
+                    <i class="fas fa-layer-group"></i> All Detected (${recs.length})
+                </button>
+            ` + recs.map((r, idx) => {
+                const count = r.pest_count_for_species || 1;
+                const conf = r.max_confidence ? Math.round(r.max_confidence * 100) : (r.confidence ? Math.round(r.confidence * 100) : 90);
+                const isBeneficial = r.is_beneficial || (r.detected_pest && r.detected_pest.toLowerCase().includes('beneficial'));
+                const icon = isBeneficial ? 'fa-shield-alt' : 'fa-bug';
+                const color = isBeneficial ? '#10b981' : 'var(--primary)';
+                return `
+                    <button class="btn-action ${selectedRecFilter === idx.toString() ? 'active' : ''}" style="font-size:11.5px; padding:4px 10px; border-radius:14px; border-color:${color};" onclick="filterRecPest('${idx}')">
+                        <i class="fas ${icon}" style="color:${color};"></i> ${escapeHtml(r.detected_pest)} ×${count} (${conf}%)
+                    </button>
+                `;
+            }).join('');
+        }
+
+        if (selectedRecFilter === 'all') {
+            container.innerHTML = recs.map((r, idx) => `
+                <div style="background:#f8fafc; border-radius:10px; padding:12px; margin-bottom:12px; border:1px solid #e2e8f0; border-left:4px solid ${r.is_beneficial ? '#10b981' : 'var(--primary)'};">
+                    <div style="font-size:13.5px; font-weight:700; color:#0f172a; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                        <span>${escapeHtml(r.detected_pest)} ${r.pest_count_for_species ? `(${r.pest_count_for_species} in canopy)` : ''}</span>
+                        <span class="metric-status status-${(r.infestation_level || 'low').toLowerCase()}">${r.infestation_level || 'Alert'}</span>
+                    </div>
+                    ${renderSingleRecCardHtml(r)}
+                </div>
+            `).join('');
+        } else {
+            const idx = parseInt(selectedRecFilter, 10);
+            const r = recs[idx] || recs[0];
+            container.innerHTML = renderSingleRecCardHtml(r);
+        }
+    }
+
+    function filterRecPest(key) {
+        selectedRecFilter = key;
+        renderRecommendationsList(currentRecsList);
+    }
+
+    function renderSingleRecCardHtml(rec) {
+        const details = rec.plant_health_details || {};
+        const symHtml = (details.primary_symptom || details.visual_cues) ? `
+            <div class="rec-row">
+                <span class="rec-title"><i class="fas fa-stethoscope" style="color:var(--primary);"></i> Symptoms &amp; Visual Cues</span>
+                <span class="rec-desc" style="color:#0f172a; font-size:12px;">
+                    ${details.affected_part ? `[${escapeHtml(details.affected_part)}] ` : ''}${details.primary_symptom ? `${escapeHtml(details.primary_symptom)} — ` : ''}${escapeHtml(details.visual_cues || '')}
+                </span>
+            </div>
+        ` : '';
+
+        return `
+            <div class="rec-row">
+                <span class="rec-title">Target Pest &amp; Insecticide</span>
+                <span class="rec-highlight">${escapeHtml(rec.recommended_pesticide || 'No chemical pesticide needed.')}</span>
+            </div>
+            ${symHtml}
+            <div class="rec-row">
+                <span class="rec-title">Application Rate &amp; Pre-Harvest Interval (PHI)</span>
+                <span class="rec-desc">${escapeHtml(rec.dosage_instruction || 'Maintain regular crop scouting.')}</span>
+            </div>
+            <div class="rec-row">
+                <span class="rec-title">Bio-Control / Organic Alternative</span>
+                <span class="rec-desc" style="color:var(--primary-dark); font-weight:600;">${escapeHtml(rec.organic_alternative || 'Neem oil or biological control')}</span>
+            </div>
+            <div class="safety-box">
+                <strong><i class="fas fa-shield-alt"></i> Safety Precautions &amp; PPE:</strong>
+                <p style="margin-top:4px;">${escapeHtml(rec.safety_precautions || 'Follow standard field PPE.')}</p>
+            </div>
+            <div class="rec-citation" style="margin-top:10px; padding-top:8px; border-top:1px dashed #e2e8f0; font-size:11px; color:#64748b; display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-book-open" style="color:var(--primary);"></i>
+                <span>Source: ${escapeHtml(rec.citation || 'FAO / IRRI / UC Davis Integrated Pest Management Guidelines')}</span>
+            </div>
+        `;
+    }
+
     function updateUIWithRecord(rec) {
         document.getElementById('dispPestCount').textContent = rec.pest_count;
         document.getElementById('dispInfestation').textContent = rec.infestation_level;
@@ -1858,31 +2059,11 @@
             }
         }
 
-        // Recommendations
-        document.getElementById('recPesticide').textContent = rec.recommended_pesticide || 'No pesticide needed.';
-        document.getElementById('recDosage').textContent = rec.dosage_instruction || 'Maintain regular crop scouting.';
-        document.getElementById('recOrganic').textContent = rec.organic_alternative || 'Neem oil or biological control';
-        document.getElementById('recSafety').textContent = rec.safety_precautions || 'Follow standard field PPE.';
-
-        // Symptoms & Visual Cues
-        const symRow = document.getElementById('recSymptomRow');
-        const symText = document.getElementById('recSymptoms');
-        if (symRow && symText) {
-            if (rec.plant_health_details && (rec.plant_health_details.primary_symptom || rec.plant_health_details.visual_cues)) {
-                symRow.style.display = 'flex';
-                const part = rec.plant_health_details.affected_part ? `[${rec.plant_health_details.affected_part}] ` : '';
-                const sym = rec.plant_health_details.primary_symptom ? `${rec.plant_health_details.primary_symptom} — ` : '';
-                const cues = rec.plant_health_details.visual_cues || '';
-                symText.textContent = part + sym + cues;
-            } else {
-                symRow.style.display = 'none';
-            }
-        }
-
-        // Citation
-        const citText = document.getElementById('recCitationText');
-        if (citText) {
-            citText.textContent = 'Source: ' + (rec.citation || 'FAO / IRRI / UC Davis Integrated Pest Management Guidelines');
+        // Multi-pest dynamic recommendations update
+        if (rec.recommendations && rec.recommendations.length > 0) {
+            renderRecommendationsList(rec.recommendations);
+        } else {
+            renderRecommendationsList([rec]);
         }
 
         // Uncertainty banner
@@ -1894,6 +2075,9 @@
         } else {
             banner.classList.remove('active');
         }
+
+        // Refresh live analytics
+        loadFarmAnalytics();
     }
 
     // --- Toast Notifications ---
@@ -1975,8 +2159,48 @@
 
                 const categoryBadge = rec.pest_category ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:10px; font-size:11px; margin-left:6px; font-weight:600;">${rec.pest_category}</span>` : '';
 
+                // Diagnostic specimen photo/SVG & latest field capture comparison
+                let imageryHtml = '';
+                if (data.images) {
+                    const refImg = data.images.reference_url;
+                    const fieldCap = data.images.latest_field_capture;
+                    imageryHtml = `
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px; margin-bottom:16px; padding:12px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;">
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <span style="font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.5px;">
+                                    <i class="fas fa-microscope" style="color:var(--primary);"></i> Reference Specimen (${data.images.has_photo ? 'Entomological Photo' : 'Taxonomic Specimen'})
+                                </span>
+                            </div>
+                            <div style="height:190px; border-radius:8px; overflow:hidden; background:#0f172a; display:flex; align-items:center; justify-content:center; border:1px solid #cbd5e1;">
+                                <img src="${refImg}" alt="${rec.detected_pest}" style="max-height:100%; max-width:100%; object-fit:contain;" onerror="this.src='${data.images.svg_fallback_url}'" />
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <span style="font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:0.5px;">
+                                    <i class="fas fa-camera" style="color:var(--warning);"></i> Latest Field Capture (From Farm DB)
+                                </span>
+                                ${fieldCap ? `<small style="font-size:10px; color:#64748b;">${fieldCap.timestamp.slice(0, 10)}</small>` : ''}
+                            </div>
+                            <div style="height:190px; border-radius:8px; overflow:hidden; background:#0f172a; display:flex; align-items:center; justify-content:center; border:1px solid #cbd5e1;">
+                                ${fieldCap ? `
+                                    <img src="${fieldCap.url}" alt="Farm field capture" style="max-height:100%; max-width:100%; object-fit:contain; cursor:pointer;" onclick="openImageModal('${fieldCap.url}', '${escapeHtml(rec.detected_pest)}', '')" />
+                                ` : `
+                                    <div style="text-align:center; padding:16px; color:#94a3b8; font-size:12px;">
+                                        <i class="fas fa-seedling" style="font-size:28px; display:block; margin-bottom:6px; opacity:0.6;"></i>
+                                        No local field detections of this pest recorded yet.
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }
+
                 const container = document.getElementById('advisorDetailsCard');
                 container.innerHTML = `
+                    ${imageryHtml}
                     <div class="rec-row">
                         <span class="rec-title">Target Pest</span>
                         <span class="rec-highlight">${rec.detected_pest} <em>(${rec.scientific_name || ''})</em> ${categoryBadge}</span>
@@ -2006,10 +2230,25 @@
         }
     }
 
-    // --- Image Modal ---
-    function openImageModal(imgSrc, pestName) {
-        document.getElementById('modalImgTag').src = imgSrc;
+    // --- Image Modal (Dual View) ---
+    function openImageModal(imgSrc, pestName, cropSrc = '') {
+        document.getElementById('modalImgTag').src = imgSrc || '';
+        const fullDl = document.getElementById('modalFullDownload');
+        if (fullDl) fullDl.href = imgSrc || '#';
         document.getElementById('modalPestName').textContent = pestName || 'Annotated Detection';
+
+        const cropContainer = document.getElementById('modalCropContainer');
+        const cropImg = document.getElementById('modalCropImgTag');
+        const cropDl = document.getElementById('modalCropDownload');
+        if (cropSrc && cropSrc.trim()) {
+            if (cropContainer) cropContainer.style.display = 'block';
+            if (cropImg) cropImg.src = cropSrc;
+            if (cropDl) cropDl.href = cropSrc;
+        } else {
+            if (cropContainer) cropContainer.style.display = 'none';
+            if (cropImg) cropImg.src = '';
+            if (cropDl) cropDl.href = '#';
+        }
         document.getElementById('imgModal').classList.add('active');
     }
 
@@ -2195,14 +2434,33 @@
             const status = d.status || 'PEST_FREE';
             const formattedDate = d.timestamp ? escapeHtml(d.timestamp.substring(0, 19).replace('T', ' ')) : '';
 
-            let thumbHtml = '';
+            let thumbHtml = '<div style="display:flex; align-items:center; gap:6px;">';
             if (d.image_path) {
-                const escapedPath = escapeHtml(d.image_path);
+                const escapedFull = escapeHtml(d.image_path);
+                const escapedCrop = d.crop_image_path ? escapeHtml(d.crop_image_path) : '';
                 const escapedPest = escapeHtml(pest);
-                thumbHtml = `<img src="${escapedPath}" class="img-thumb" onclick="openImageModal('${escapedPath}', '${escapedPest}')" alt="Detection thumbnail" />`;
-            } else {
-                thumbHtml = `<div style="width:48px; height:48px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#94a3b8;"><i class="fas fa-camera"></i></div>`;
+                thumbHtml += `
+                    <div style="position:relative;" title="Full Scene (Uncropped)">
+                        <img src="${escapedFull}" class="img-thumb" onclick="openImageModal('${escapedFull}', '${escapedPest}', '${escapedCrop}')" alt="Full frame" />
+                        <span style="position:absolute; bottom:2px; right:2px; background:rgba(0,0,0,0.7); color:#fff; font-size:9px; padding:1px 3px; border-radius:3px;">Full</span>
+                    </div>
+                `;
             }
+            if (d.crop_image_path) {
+                const escapedFull = escapeHtml(d.image_path || d.crop_image_path);
+                const escapedCrop = escapeHtml(d.crop_image_path);
+                const escapedPest = escapeHtml(pest);
+                thumbHtml += `
+                    <div style="position:relative;" title="Pest Close-Up (Cropped)">
+                        <img src="${escapedCrop}" class="img-thumb" style="border:1.5px solid var(--primary);" onclick="openImageModal('${escapedFull}', '${escapedPest}', '${escapedCrop}')" alt="Cropped pest" />
+                        <span style="position:absolute; bottom:2px; right:2px; background:var(--primary); color:#fff; font-size:9px; padding:1px 3px; border-radius:3px; font-weight:bold;">ROI</span>
+                    </div>
+                `;
+            }
+            if (!d.image_path && !d.crop_image_path) {
+                thumbHtml += `<div style="width:48px; height:48px; background:#e2e8f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#94a3b8;"><i class="fas fa-camera"></i></div>`;
+            }
+            thumbHtml += '</div>';
 
             let statusHtml = '';
             if (status === 'CONFIRMED') {
@@ -2371,9 +2629,11 @@
         const bodyEl = document.getElementById('deleteModalBody');
         const extraChoices = document.getElementById('deleteModalExtraChoices');
         const standardActions = document.getElementById('deleteModalStandardActions');
+        const pwContainer = document.getElementById('deletePasswordContainer');
 
+        if (pwContainer) pwContainer.style.display = 'none';
         if (titleEl) titleEl.textContent = 'Confirm Record Deletion';
-        if (bodyEl) bodyEl.textContent = `Are you sure you want to delete inspection record #${id}? This will permanently remove it and its associated image snapshot.`;
+        if (bodyEl) bodyEl.textContent = `Are you sure you want to delete inspection record #${id}? This will permanently remove it and its associated image snapshots.`;
         if (extraChoices) extraChoices.style.display = 'none';
         if (standardActions) standardActions.style.display = 'flex';
 
@@ -2387,7 +2647,9 @@
         const bodyEl = document.getElementById('deleteModalBody');
         const extraChoices = document.getElementById('deleteModalExtraChoices');
         const standardActions = document.getElementById('deleteModalStandardActions');
+        const pwContainer = document.getElementById('deletePasswordContainer');
 
+        if (pwContainer) pwContainer.style.display = 'none';
         if (titleEl) titleEl.textContent = 'Confirm Batch Deletion';
         if (bodyEl) bodyEl.textContent = `Are you sure you want to delete ${selectedRecordIds.size} selected inspection record(s)? This will permanently remove them and their image snapshots.`;
         if (extraChoices) extraChoices.style.display = 'none';
@@ -2403,13 +2665,20 @@
         const standardActions = document.getElementById('deleteModalStandardActions');
         const filteredCountText = document.getElementById('deleteFilteredCountText');
         const totalCountText = document.getElementById('deleteTotalCountText');
+        const pwContainer = document.getElementById('deletePasswordContainer');
+        const pwInput = document.getElementById('deleteConfirmPassword');
+        const pwErr = document.getElementById('deletePasswordError');
+
+        if (pwContainer) pwContainer.style.display = 'block';
+        if (pwInput) pwInput.value = '';
+        if (pwErr) pwErr.style.display = 'none';
 
         const filtersActive = areFiltersActive();
 
         if (filtersActive) {
             pendingDeleteAction = { type: 'clear_filtered' };
             if (titleEl) titleEl.textContent = 'Clear Inspection History';
-            if (bodyEl) bodyEl.textContent = 'Filters are currently active. Choose whether you want to delete only the records matching your filter criteria, or wipe the entire database history:';
+            if (bodyEl) bodyEl.textContent = 'Filters are currently active. Enter your account password and choose whether to delete only the matching records or wipe the entire database history:';
             if (filteredCountText) filteredCountText.textContent = currentTotal;
             const statTotal = document.getElementById('statTotal')?.textContent || currentTotal;
             if (totalCountText) totalCountText.textContent = statTotal;
@@ -2419,7 +2688,7 @@
         } else {
             pendingDeleteAction = { type: 'clear_all' };
             if (titleEl) titleEl.textContent = 'Wipe All Inspection History';
-            if (bodyEl) bodyEl.textContent = 'Are you sure you want to delete ALL inspection records from the database? This action cannot be undone and all image snapshots will be purged.';
+            if (bodyEl) bodyEl.textContent = 'Enter your account password to confirm wiping ALL inspection records from the database. This action cannot be undone and all image snapshots will be purged.';
             if (extraChoices) extraChoices.style.display = 'none';
             if (standardActions) standardActions.style.display = 'flex';
         }
@@ -2449,6 +2718,7 @@
                     showToast('Deleted', `Record #${id} deleted successfully.`, false);
                     closeDeleteModal();
                     loadDetectionsTable(currentPage);
+                    loadFarmAnalytics();
                 } else {
                     showToast('Error', 'Failed to delete record.', true);
                 }
@@ -2464,6 +2734,7 @@
                     showToast('Batch Deleted', `Deleted ${data.deleted_count} record(s).`, false);
                     closeDeleteModal();
                     loadDetectionsTable(1);
+                    loadFarmAnalytics();
                 } else {
                     showToast('Error', 'Failed to batch delete records.', true);
                 }
@@ -2483,6 +2754,18 @@
 
     async function confirmClearFiltered() {
         const btn = document.getElementById('btnDeleteFiltered');
+        const pwInput = document.getElementById('deleteConfirmPassword');
+        const pw = pwInput ? pwInput.value.trim() : '';
+        const pwErr = document.getElementById('deletePasswordError');
+
+        if (!pw) {
+            if (pwErr) {
+                pwErr.textContent = 'Please enter your account password to confirm deletion.';
+                pwErr.style.display = 'block';
+            }
+            return;
+        }
+
         if (btn) {
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting Filtered...';
@@ -2493,7 +2776,7 @@
             const res = await fetch('/api/detections/clear', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clear_all: false, filters: filters })
+                body: JSON.stringify({ clear_all: false, filters: filters, password: pw })
             });
             if (res.ok) {
                 const data = await res.json();
@@ -2501,8 +2784,14 @@
                 showToast('History Cleared', `Deleted ${data.deleted_count} filtered record(s).`, false);
                 closeDeleteModal();
                 loadDetectionsTable(1);
+                loadFarmAnalytics();
             } else {
-                showToast('Error', 'Failed to clear filtered records.', true);
+                const errData = await res.json().catch(() => ({ detail: 'Incorrect account password.' }));
+                if (pwErr) {
+                    pwErr.textContent = errData.detail || 'Incorrect account password. Deletion cancelled.';
+                    pwErr.style.display = 'block';
+                }
+                showToast('Password Error', errData.detail || 'Incorrect account password.', true);
             }
         } catch (err) {
             console.error('Clear filtered error:', err);
@@ -2517,16 +2806,30 @@
 
     async function confirmClearAllHistory() {
         const btn = document.getElementById('btnDeleteEntireHistory');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Wiping History...';
+        const btnStandard = document.getElementById('btnConfirmDeleteStandard');
+        const activeBtn = btn || btnStandard;
+        const pwInput = document.getElementById('deleteConfirmPassword');
+        const pw = pwInput ? pwInput.value.trim() : '';
+        const pwErr = document.getElementById('deletePasswordError');
+
+        if (!pw) {
+            if (pwErr) {
+                pwErr.textContent = 'Please enter your account password to confirm wipe.';
+                pwErr.style.display = 'block';
+            }
+            return;
+        }
+
+        if (activeBtn) {
+            activeBtn.disabled = true;
+            activeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Wiping History...';
         }
 
         try {
             const res = await fetch('/api/detections/clear', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clear_all: true, filters: {} })
+                body: JSON.stringify({ clear_all: true, filters: {}, password: pw })
             });
             if (res.ok) {
                 const data = await res.json();
@@ -2534,17 +2837,117 @@
                 showToast('History Wiped', `All ${data.deleted_count} inspection record(s) wiped.`, false);
                 closeDeleteModal();
                 loadDetectionsTable(1);
+                loadFarmAnalytics();
             } else {
-                showToast('Error', 'Failed to wipe history.', true);
+                const errData = await res.json().catch(() => ({ detail: 'Incorrect account password.' }));
+                if (pwErr) {
+                    pwErr.textContent = errData.detail || 'Incorrect account password. Wipe cancelled.';
+                    pwErr.style.display = 'block';
+                }
+                showToast('Password Error', errData.detail || 'Incorrect account password.', true);
             }
         } catch (err) {
             console.error('Clear all error:', err);
             showToast('Error', 'Failed to wipe history.', true);
         } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-dumpster"></i> Wipe Entire Database History';
+            if (activeBtn) {
+                activeBtn.disabled = false;
+                activeBtn.innerHTML = '<i class="fas fa-dumpster"></i> Wipe Entire Database History';
             }
+        }
+    }
+
+    // --- Dynamic Farm Analytics Loader ---
+    async function loadFarmAnalytics() {
+        const spin = document.getElementById('analyticsSpin');
+        if (spin) spin.classList.add('fa-spin');
+        try {
+            const res = await fetch('/api/stats');
+            if (!res.ok) return;
+            const data = await res.json();
+            const s = data.stats;
+            if (!s) return;
+
+            const elTotal = document.getElementById('statTotal');
+            const elSevere = document.getElementById('statSevere');
+            const elBeneficial = document.getElementById('statBeneficial');
+            const elAvgConf = document.getElementById('statAvgConfidence');
+
+            if (elTotal) elTotal.textContent = s.total_inspections;
+            if (elSevere) elSevere.textContent = s.severe_alerts;
+            if (elBeneficial) elBeneficial.textContent = s.beneficial_count || 0;
+            if (elAvgConf) elAvgConf.textContent = s.avg_confidence + '%';
+
+            // 1. Top Pests Distribution
+            const pestsContainer = document.getElementById('analyticsTopPests');
+            if (pestsContainer) {
+                if (!s.top_pests || s.top_pests.length === 0) {
+                    pestsContainer.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:16px;">No pest detections recorded yet.</div>';
+                } else {
+                    pestsContainer.innerHTML = s.top_pests.map(p => `
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                                <span style="font-weight:600; color:#1e293b;">${escapeHtml(p.detected_pest)}</span>
+                                <span style="color:#64748b;">${p.count} (${p.percentage}%)</span>
+                            </div>
+                            <div style="height:6px; background:#f1f5f9; border-radius:3px; overflow:hidden;">
+                                <div style="width:${Math.min(100, Math.max(4, p.percentage))}%; height:100%; background:#ef4444; border-radius:3px;"></div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            // 2. Host Crop Distribution
+            const cropContainer = document.getElementById('analyticsCropDist');
+            if (cropContainer) {
+                if (!s.crop_distribution || s.crop_distribution.length === 0) {
+                    cropContainer.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:16px;">No crop data recorded yet.</div>';
+                } else {
+                    cropContainer.innerHTML = s.crop_distribution.map(c => `
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                                <span style="font-weight:600; color:#1e293b;">${escapeHtml(c.crop_type.charAt(0).toUpperCase() + c.crop_type.slice(1))}</span>
+                                <span style="color:#64748b;">${c.count} (${c.percentage}%)</span>
+                            </div>
+                            <div style="height:6px; background:#f1f5f9; border-radius:3px; overflow:hidden;">
+                                <div style="width:${Math.min(100, Math.max(4, c.percentage))}%; height:100%; background:var(--primary); border-radius:3px;"></div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            // 3. Severity Breakdown
+            const sevContainer = document.getElementById('analyticsSeverityDist');
+            if (sevContainer) {
+                const colors = {
+                    'Severe': '#ef4444',
+                    'High': '#f97316',
+                    'Moderate': '#f59e0b',
+                    'Low': '#3b82f6',
+                    'None': '#10b981'
+                };
+                if (!s.severity_breakdown || s.severity_breakdown.length === 0) {
+                    sevContainer.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center; padding:16px;">No severity data recorded yet.</div>';
+                } else {
+                    sevContainer.innerHTML = s.severity_breakdown.map(sv => `
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+                                <span style="font-weight:600; color:#1e293b;">${sv.level}</span>
+                                <span style="color:#64748b;">${sv.count} (${sv.percentage}%)</span>
+                            </div>
+                            <div style="height:6px; background:#f1f5f9; border-radius:3px; overflow:hidden;">
+                                <div style="width:${Math.min(100, Math.max(sv.count > 0 ? 4 : 0, sv.percentage))}%; height:100%; background:${colors[sv.level] || '#64748b'}; border-radius:3px;"></div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load farm analytics:', e);
+        } finally {
+            if (spin) spin.classList.remove('fa-spin');
         }
     }
 
@@ -2558,6 +2961,7 @@
         updateAudioChimeUI();
         connectWebSocket();
         loadDetectionsTable(1);
+        loadFarmAnalytics();
     });
 </script>
 </body>

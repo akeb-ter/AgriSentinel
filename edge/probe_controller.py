@@ -36,6 +36,87 @@ AUTO_TRIGGER_COOLDOWN_SEC = float(os.getenv("AUTO_TRIGGER_COOLDOWN_SEC", "15.0")
 DEFAULT_LIVE_AI = os.getenv("LIVE_AI_ENABLED", "0").lower() in ("1", "true", "yes", "on")
 
 
+def generate_cropped_pest_snapshot(raw_frame: np.ndarray, detections: List[DetectionBox]) -> np.ndarray:
+    """
+    Generates a macro close-up inspection image from the frame.
+    - 1 pest: tightly cropped region with 20% padding and bottom label badge.
+    - 2-4 pests: multi-panel macro comparison grid of detected pests.
+    - Pest-free: center 50% foliage macro inspection.
+    """
+    h, w = raw_frame.shape[:2]
+    target_size = (480, 480)
+
+    if not detections:
+        # Center foliage macro crop
+        cx, cy = w // 2, h // 2
+        half_w, half_h = max(20, w // 4), max(20, h // 4)
+        x1, y1 = max(0, cx - half_w), max(0, cy - half_h)
+        x2, y2 = min(w, cx + half_w), min(h, cy + half_h)
+        crop = raw_frame[y1:y2, x1:x2]
+        crop_resized = cv2.resize(crop, target_size, interpolation=cv2.INTER_LINEAR)
+
+        # Bottom caption bar
+        bar_h = 38
+        cv2.rectangle(crop_resized, (0, target_size[1] - bar_h), (target_size[0], target_size[1]), (20, 20, 20), -1)
+        cv2.putText(
+            crop_resized,
+            "[FOLIAGE CLOSE-UP] Healthy / Pest-Free",
+            (12, target_size[1] - 12),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (50, 205, 50),
+            1,
+            cv2.LINE_AA
+        )
+        return crop_resized
+
+    def _crop_and_badge(det: DetectionBox, out_w: int, out_h: int) -> np.ndarray:
+        pad_x = max(10, int(det.width * 0.20))
+        pad_y = max(10, int(det.height * 0.20))
+        x1 = max(0, det.x - pad_x)
+        y1 = max(0, det.y - pad_y)
+        x2 = min(w, det.x + det.width + pad_x)
+        y2 = min(h, det.y + det.height + pad_y)
+
+        if x2 <= x1 or y2 <= y1:
+            sub = raw_frame[0:min(100, h), 0:min(100, w)]
+        else:
+            sub = raw_frame[y1:y2, x1:x2]
+
+        resized = cv2.resize(sub, (out_w, out_h), interpolation=cv2.INTER_LINEAR)
+        bar_h = 32 if out_h >= 240 else 24
+        cv2.rectangle(resized, (0, out_h - bar_h), (out_w, out_h), (20, 20, 20), -1)
+
+        tag_color = (50, 205, 50) if det.is_beneficial else (0, 165, 255)
+        tag_text = f"{det.label} ({int(det.confidence * 100)}%)"
+        cv2.putText(
+            resized,
+            tag_text,
+            (6, out_h - 8),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.42 if out_w <= 240 else 0.50,
+            tag_color,
+            1,
+            cv2.LINE_AA
+        )
+        return resized
+
+    if len(detections) == 1:
+        return _crop_and_badge(detections[0], 480, 480)
+    elif len(detections) == 2:
+        p1 = _crop_and_badge(detections[0], 240, 480)
+        p2 = _crop_and_badge(detections[1], 240, 480)
+        return np.hstack([p1, p2])
+    else:
+        top_dets = detections[:4]
+        panels = [_crop_and_badge(d, 240, 240) for d in top_dets]
+        while len(panels) < 4:
+            panels.append(np.zeros((240, 240, 3), dtype=np.uint8))
+        row1 = np.hstack([panels[0], panels[1]])
+        row2 = np.hstack([panels[2], panels[3]])
+        return np.vstack([row1, row2])
+
+
 class ProbeController:
     """Central Controller for the AgriSentinel Smart Crop Probe Stick."""
 
@@ -62,6 +143,7 @@ class ProbeController:
 
         # Latest readings cache
         self.latest_detections: List[DetectionBox] = []
+        self.latest_recommendations: List[Dict[str, Any]] = []
         self.latest_health = "Healthy / Pest-Free"
         self.latest_infestation = "None"
         self.latest_annotated_frame: Optional[np.ndarray] = None
@@ -152,7 +234,7 @@ class ProbeController:
                     if self.cap and self.cap.isOpened():
                         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
                         logger.info(f"[ProbeController] RTSP stream connected successfully.")
-                        self.ptz.bind_capture(self.cap)
+                        self.ptz.bind_capture(self.cap, camera_lock=self._camera_lock)
                         return
 
                 # 2. USB 3.0 UVC Mode (Direct USB connection to Raspberry Pi)
@@ -196,7 +278,7 @@ class ProbeController:
                         f"(requested {cap_w}x{cap_h}, negotiated {actual_w}x{actual_h})."
                     )
                     self.ptz.connection_mode = "usb_uvc"
-                    self.ptz.bind_capture(self.cap, opened_idx)
+                    self.ptz.bind_capture(self.cap, opened_idx, camera_lock=self._camera_lock)
                 else:
                     logger.info(f"[ProbeController] Physical camera not opened on index {preferred_idx}. Using synthetic simulation pattern.")
                     self.ptz.connection_mode = "synthetic"
@@ -367,6 +449,7 @@ class ProbeController:
                     infestation,
                     pest_name=primary_pest_name
                 )
+                self.latest_recommendations = self._build_multi_pest_recommendations(detections, display_crop)
 
                 # Check Auto-Pause & Confirmation Trigger
                 now = time.time()
@@ -427,13 +510,65 @@ class ProbeController:
             self.ptz.resume_patrol()
             self.is_paused = False
 
+    def _build_multi_pest_recommendations(
+        self,
+        detections: List[DetectionBox],
+        crop_key: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Groups detections by unique pest species and retrieves tailored agronomic recommendations
+        for each detected species.
+        """
+        clean_crop = crop_key if crop_key not in ("auto", "auto_detect") else "rice"
+        if not detections:
+            rec = knowledge_base.get_recommendation(
+                crop_key=clean_crop,
+                pest_name="none",
+                confidence=1.0,
+                pest_count=0
+            )
+            rec["pest_count_for_species"] = 0
+            rec["max_confidence"] = 1.0
+            return [rec]
+
+        groups: Dict[str, Dict[str, Any]] = {}
+        for det in detections:
+            pkey = det.pest_key or det.label.lower().replace(" ", "_")
+            if pkey not in groups:
+                groups[pkey] = {
+                    "count": 0,
+                    "max_conf": 0.0,
+                    "sample": det
+                }
+            groups[pkey]["count"] += 1
+            if det.confidence > groups[pkey]["max_conf"]:
+                groups[pkey]["max_conf"] = det.confidence
+
+        recs = []
+        for pkey, grp in groups.items():
+            sample_det = grp["sample"]
+            r = knowledge_base.get_recommendation(
+                crop_key=clean_crop,
+                pest_name=pkey,
+                confidence=grp["max_conf"],
+                pest_count=grp["count"],
+                is_beneficial=sample_det.is_beneficial,
+                taxonomy=sample_det.taxonomy
+            )
+            r["pest_count_for_species"] = grp["count"]
+            r["max_confidence"] = round(float(grp["max_conf"]), 4)
+            r["detected_label"] = sample_det.label
+            recs.append(r)
+
+        return recs
+
     def _process_and_save_detection(
         self,
         frame: np.ndarray,
         detections: List[DetectionBox],
         trigger_type: str = "AUTO"
     ) -> Dict[str, Any]:
-        """Saves annotated snapshot to disk, inserts into DBMS, and broadcasts alerts."""
+        """Saves annotated snapshot (uncropped) and close-up (cropped) to disk, inserts into DBMS, and broadcasts alerts."""
         ts_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         crop_clean = self.active_crop
         crop_data = knowledge_base.get_crop(crop_clean)
@@ -464,6 +599,22 @@ class ProbeController:
         if self.crop_mode == "auto" or crop_clean in ("auto", "auto_detect"):
             self.active_crop = resolved_crop
 
+        # Build multi-pest recommendations
+        multi_recs = self._build_multi_pest_recommendations(detections, resolved_crop)
+        self.latest_recommendations = multi_recs
+
+        # Format composite detected_pest name
+        if not detections:
+            detected_pest_str = "Pest-Free"
+        elif len(multi_recs) == 1:
+            detected_pest_str = multi_recs[0].get("detected_pest", primary_pest.label)
+        else:
+            detected_pest_str = ", ".join([
+                f"{r.get('detected_pest', 'Pest')} ({r.get('pest_count_for_species', 1)})"
+                for r in multi_recs
+            ])
+
+        # 1. Uncropped annotated full scene
         annotated_snapshot = annotate_frame(
             frame,
             detections,
@@ -471,16 +622,26 @@ class ProbeController:
             health_status=rec["plant_health_status"]
         )
 
-        filename = f"det_{ts_str}_{resolved_crop}_{uuid.uuid4().hex[:6]}.jpg"
-        full_path = os.path.join(DETECTIONS_DIR, filename)
-        cv2.imwrite(full_path, annotated_snapshot, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        rel_path = f"/static/detections/{filename}"
+        uid = uuid.uuid4().hex[:6]
+        full_filename = f"det_{ts_str}_{resolved_crop}_{uid}_full.jpg"
+        crop_filename = f"det_{ts_str}_{resolved_crop}_{uid}_crop.jpg"
+
+        full_disk_path = os.path.join(DETECTIONS_DIR, full_filename)
+        crop_disk_path = os.path.join(DETECTIONS_DIR, crop_filename)
+
+        cv2.imwrite(full_disk_path, annotated_snapshot, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        rel_full_path = f"/static/detections/{full_filename}"
+
+        # 2. Cropped pest close-up macro
+        cropped_macro = generate_cropped_pest_snapshot(frame, detections)
+        cv2.imwrite(crop_disk_path, cropped_macro, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        rel_crop_path = f"/static/detections/{crop_filename}"
 
         db_payload = {
             "timestamp": datetime.datetime.now().isoformat(),
             "crop_type": resolved_crop,
             "farm_area": self.farm_area,
-            "detected_pest": rec["detected_pest"],
+            "detected_pest": detected_pest_str,
             "pest_count": pest_count,
             "infestation_level": rec["infestation_level"],
             "soil_moisture_percent": 0.0,
@@ -491,8 +652,10 @@ class ProbeController:
             "organic_alternative": rec.get("organic_alternative", ""),
             "dosage_instruction": rec.get("dosage_instruction", ""),
             "safety_precautions": rec.get("safety_precautions", ""),
-            "image_path": rel_path,
-            "status": rec["status"]
+            "image_path": rel_full_path,
+            "crop_image_path": rel_crop_path,
+            "status": rec["status"],
+            "recommendations": multi_recs
         }
         rec_id = insert_detection(db_payload)
         db_payload["id"] = rec_id
@@ -501,7 +664,8 @@ class ProbeController:
             "type": "PEST_DETECTION_ALERT",
             "trigger": trigger_type,
             "record": db_payload,
-            "summary": f"{rec['detected_pest']} ({pest_count} detected) in {crop_name} - {rec['infestation_level']} Infestation"
+            "summary": f"{detected_pest_str} in {crop_name} - {rec['infestation_level']} Infestation",
+            "recommendations": multi_recs
         }
         self._broadcast_alert(alert_event)
 
@@ -558,6 +722,8 @@ class ProbeController:
             "latest_pest_count": len(self.latest_detections),
             "infestation_level": self.latest_infestation,
             "plant_health_status": self.latest_health,
+            "recommendations": getattr(self, "latest_recommendations", []),
+            "box_thickness": getattr(self.detector, "box_thickness", 2),
             "model_loaded": getattr(self.detector, "is_model_loaded", False),
             "model_path": getattr(self.detector, "model_path", ""),
             "model_error": getattr(self.detector, "model_error", None),

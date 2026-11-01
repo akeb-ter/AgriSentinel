@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 260" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#090d16" />
+    </linearGradient>
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <radialGradient id="glowGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.18" />
+      <stop offset="100%" stop-color="#ef4444" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Card Background -->
+  <rect x="2" y="2" width="416" height="256" rx="14" fill="url(#bgGrad)" stroke="url(#borderGrad)" stroke-width="2" />
+  <circle cx="210" cy="118" r="85" fill="url(#glowGrad)" />
+
+  <!-- Grid / Scientific Specimen Graph Backdrop -->
+  <g stroke="#1e293b" stroke-width="0.8" opacity="0.6">
+    <line x1="20" y1="50" x2="400" y2="50" />
+    <line x1="20" y1="90" x2="400" y2="90" />
+    <line x1="20" y1="130" x2="400" y2="130" />
+    <line x1="20" y1="170" x2="400" y2="170" />
+    <line x1="20" y1="210" x2="400" y2="210" />
+    <line x1="70" y1="20" x2="70" y2="240" />
+    <line x1="140" y1="20" x2="140" y2="240" />
+    <line x1="210" y1="20" x2="210" y2="240" />
+    <line x1="280" y1="20" x2="280" y2="240" />
+    <line x1="350" y1="20" x2="350" y2="240" />
+  </g>
+
+  <!-- Specimen Icon Centerpiece -->
+  <g transform="translate(160, 52) scale(1.0)">
+    <path d="M50 20 C48 10 32 6 22 18 C12 30 18 52 32 60 C40 65 48 58 50 50 C52 58 60 65 68 60 C82 52 88 30 78 18 C68 6 52 10 50 20 Z" fill="#4ade80" fill-opacity="0.25" stroke="#4ade80" stroke-width="2.5"/><path d="M50 50 C44 56 32 68 36 82 C40 92 48 88 50 75 C52 88 60 92 64 82 C68 68 56 56 50 50 Z" fill="#22c55e" fill-opacity="0.3" stroke="#22c55e" stroke-width="2"/><ellipse cx="50" cy="46" rx="3.5" ry="24" fill="#86efac"/><path d="M48 24 Q40 10 32 8 M52 24 Q60 10 68 8" stroke="#86efac" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Header Badge -->
+  <rect x="20" y="16" width="130" height="22" rx="11" fill="#ef4444" fill-opacity="0.18" stroke="#ef4444" stroke-width="1" />
+  <text x="85" y="31" fill="#ef4444" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="700" text-anchor="middle" letter-spacing="0.5">
+    ORDER: LEPIDOPTERA
+  </text>
+
+  <!-- Card Title -->
+  <text x="20" y="200" fill="#f8fafc" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="700">
+    Fall Armyworm
+  </text>
+
+  <!-- Subtitle / Taxonomy -->
+  <text x="20" y="222" fill="#94a3b8" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-style="italic">
+    AgriSentinel Taxonomic Specimen Library • fall_armyworm
+  </text>
+
+  <!-- Corner Specimen Index -->
+  <text x="395" y="31" fill="#64748b" font-family="monospace" font-size="10" text-anchor="end">
+    SPECIMEN #1303
+  </text>
+</svg>

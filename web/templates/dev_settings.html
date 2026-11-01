@@ -564,6 +564,18 @@
                                 Default: 0.45 (suppresses redundant bounding box overlaps).
                             </span>
                         </div>
+
+                        <!-- Bounding Box Outline Thickness -->
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <label style="font-size:12.5px; font-weight:600; color:#2e5033;">Bounding Box Outline Thickness:</label>
+                                <span id="boxThickValDisplay" style="font-family:'Fira Code', monospace; font-size:13px; font-weight:700; color:#18381c;">{{ telemetry.box_thickness or 2 }}px</span>
+                            </div>
+                            <input type="range" id="visionBoxThickSlider" min="1" max="8" step="1" value="{{ telemetry.box_thickness or 2 }}" oninput="document.getElementById('boxThickValDisplay').textContent = this.value + 'px'" style="width:100%; accent-color:#2b6e3c;">
+                            <span style="font-size:11px; color:#607d64; display:block; margin-top:4px;">
+                                Customizes detection outline thickness on video stream &amp; saved snapshots (1px–8px).
+                            </span>
+                        </div>
                     </div>
 
                     <div style="display:flex; justify-content:flex-end;">
@@ -939,6 +951,10 @@
             document.getElementById('confValDisplay').textContent = parseFloat(data.conf_threshold).toFixed(2);
             document.getElementById('visionIouSlider').value = data.iou_threshold;
             document.getElementById('iouValDisplay').textContent = parseFloat(data.iou_threshold).toFixed(2);
+            if (data.box_thickness !== undefined) {
+                document.getElementById('visionBoxThickSlider').value = data.box_thickness;
+                document.getElementById('boxThickValDisplay').textContent = data.box_thickness + 'px';
+            }
 
             // Classes list
             renderActiveClasses(data.active_classes, data.class_filter_mode);
@@ -971,7 +987,8 @@
             model_profile: document.getElementById('visionModelProfile').value,
             class_filter_mode: document.getElementById('visionFilterMode').value,
             conf_threshold: parseFloat(document.getElementById('visionConfSlider').value),
-            iou_threshold: parseFloat(document.getElementById('visionIouSlider').value)
+            iou_threshold: parseFloat(document.getElementById('visionIouSlider').value),
+            box_thickness: parseInt(document.getElementById('visionBoxThickSlider').value, 10)
         };
 
         try {

@@ -29,6 +29,7 @@ CONFIG_DIR = os.path.join(BASE_DIR, "config")
 LABELS_PATH = os.path.join(CONFIG_DIR, "labels.txt")
 CLASSES_JSON = os.path.join(CONFIG_DIR, "pest_classes_102.json")
 MODELS_DIR = os.path.join(BASE_DIR, "edge", "models")
+VISION_SETTINGS_FILE = os.path.join(BASE_DIR, "edge", "vision_settings.json")
 
 # Color palette for bounding boxes and UI overlays (BGR format)
 BOX_COLORS = [
@@ -335,16 +336,16 @@ class TfliteRunner(BasePestDetector):
     def __init__(
         self,
         model_path: Optional[str] = None,
-        model_profile: str = "comprehensive_102",
-        conf_threshold: float = float(os.getenv("TFLITE_CONF_THRESHOLD", "0.25")),
-        iou_threshold: float = 0.45,
-        class_filter_mode: str = os.getenv("TFLITE_FILTER_MODE", "full_102"),
+        model_profile: Optional[str] = None,
+        conf_threshold: Optional[float] = None,
+        iou_threshold: Optional[float] = None,
+        class_filter_mode: Optional[str] = None,
         labels: Optional[List[str]] = None
     ):
-        self.conf_threshold = conf_threshold
-        self.iou_threshold = iou_threshold
-        self.class_filter_mode = class_filter_mode  # "strict_12" or "full_102"
-        self.active_profile = model_profile
+        self.conf_threshold = conf_threshold if conf_threshold is not None else float(os.getenv("TFLITE_CONF_THRESHOLD", "0.25"))
+        self.iou_threshold = iou_threshold if iou_threshold is not None else 0.45
+        self.class_filter_mode = class_filter_mode if class_filter_mode is not None else os.getenv("TFLITE_FILTER_MODE", "full_102")
+        self.active_profile = model_profile if model_profile is not None else "comprehensive_102"
         self.labels = labels or list(PEST_LABELS_102)
 
         self.model_path = model_path
@@ -363,15 +364,58 @@ class TfliteRunner(BasePestDetector):
         self.model_error: Optional[str] = None
         self.runtime_name: str = "None"
         self._lock = threading.Lock()
+        self.box_thickness: int = 2
 
         # Preload label catalogs
         self.cereal_labels = load_cereal_labels()
         self.quarrying_labels = load_quarrying_labels()
 
+        # Load persisted settings if available (preserving explicit constructor parameters)
+        self._load_persisted_settings(
+            skip_conf=conf_threshold is not None,
+            skip_iou=iou_threshold is not None,
+            skip_mode=class_filter_mode is not None,
+            skip_profile=model_profile is not None
+        )
+
         if self.model_path:
             self._init_explicit_model(self.model_path)
         else:
             self.switch_model(self.active_profile)
+
+    def _save_persisted_settings(self):
+        """Saves active vision settings to disk so they survive restarts."""
+        try:
+            payload = {
+                "conf_threshold": self.conf_threshold,
+                "iou_threshold": self.iou_threshold,
+                "class_filter_mode": self.class_filter_mode,
+                "active_profile": self.active_profile,
+                "box_thickness": getattr(self, "box_thickness", 2)
+            }
+            with open(VISION_SETTINGS_FILE, "w", encoding="utf-8") as f:
+                json.dump(payload, f, indent=2)
+        except Exception as e:
+            logger.debug(f"[TfliteRunner] Failed persisting vision settings: {e}")
+
+    def _load_persisted_settings(self, skip_conf: bool = False, skip_iou: bool = False, skip_mode: bool = False, skip_profile: bool = False):
+        """Loads saved vision settings from disk on initialization."""
+        try:
+            if os.path.exists(VISION_SETTINGS_FILE):
+                with open(VISION_SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if not skip_conf and "conf_threshold" in data:
+                    self.conf_threshold = float(data["conf_threshold"])
+                if not skip_iou and "iou_threshold" in data:
+                    self.iou_threshold = float(data["iou_threshold"])
+                if not skip_mode and "class_filter_mode" in data and data["class_filter_mode"] in ("strict_12", "full_102"):
+                    self.class_filter_mode = str(data["class_filter_mode"])
+                if not skip_profile and "active_profile" in data and not self.model_path:
+                    self.active_profile = str(data["active_profile"])
+                if "box_thickness" in data:
+                    self.box_thickness = max(1, min(8, int(data["box_thickness"])))
+        except Exception as e:
+            logger.debug(f"[TfliteRunner] Failed loading persisted vision settings: {e}")
 
     def _create_interpreter(self, path: str):
         """Attempts to create a TFLite interpreter from tflite_runtime, ai_edge_litert, or tensorflow.lite."""
@@ -582,9 +626,10 @@ class TfliteRunner(BasePestDetector):
         conf_threshold: Optional[float] = None,
         iou_threshold: Optional[float] = None,
         class_filter_mode: Optional[str] = None,
-        model_profile: Optional[str] = None
+        model_profile: Optional[str] = None,
+        box_thickness: Optional[int] = None
     ):
-        """Updates runtime inference thresholds, class filter mode, and active model profile."""
+        """Updates runtime inference thresholds, class filter mode, box thickness, and active model profile."""
         with self._lock:
             if conf_threshold is not None:
                 self.conf_threshold = max(0.05, min(0.99, float(conf_threshold)))
@@ -592,13 +637,17 @@ class TfliteRunner(BasePestDetector):
                 self.iou_threshold = max(0.05, min(0.99, float(iou_threshold)))
             if class_filter_mode in ["strict_12", "full_102"]:
                 self.class_filter_mode = class_filter_mode
+            if box_thickness is not None:
+                self.box_thickness = max(1, min(8, int(box_thickness)))
 
         if model_profile and model_profile != self.active_profile:
             self.switch_model(model_profile)
 
+        self._save_persisted_settings()
+
         logger.info(
             f"[TfliteRunner] Updated params: conf={self.conf_threshold}, "
-            f"iou={self.iou_threshold}, mode={self.class_filter_mode}, profile={self.active_profile}"
+            f"iou={self.iou_threshold}, mode={self.class_filter_mode}, profile={self.active_profile}, box_thickness={self.box_thickness}"
         )
 
     def preprocess(self, frame_bgr: np.ndarray) -> np.ndarray:
@@ -893,6 +942,7 @@ class SimulatedDetector(BasePestDetector):
         self._enabled = True
         self._force_pest: Optional[str] = None
         self._force_count: int = 1
+        self.box_thickness: int = 2
 
         self.crop_pest_map = {
             "rice": [
@@ -1044,14 +1094,26 @@ def annotate_frame(
     crop_name: str = "Corn",
     health_status: str = "Healthy / Pest-Free",
     model_status: str = "Online",
-    soil_status: Optional[str] = None
+    soil_status: Optional[str] = None,
+    box_thickness: Optional[int] = None
 ) -> np.ndarray:
     """
     Renders high-contrast bounding boxes, pest badges, and telemetry overlays on frame.
     Beneficial natural predators are highlighted with Lime Green badges and [BENEFICIAL] shields.
+    Supports customizable bounding box thickness (1-8px).
     """
     annotated = frame_bgr.copy()
     h, w = annotated.shape[:2]
+
+    # Resolve bounding box outline thickness
+    if box_thickness is not None:
+        draw_thickness = max(1, min(8, int(box_thickness)))
+    else:
+        try:
+            det_inst = get_detector()
+            draw_thickness = max(1, min(8, int(getattr(det_inst, "box_thickness", 2))))
+        except Exception:
+            draw_thickness = 2
 
     has_beneficial = any(d.is_beneficial for d in detections)
     has_pests = any(not d.is_beneficial for d in detections)
@@ -1069,8 +1131,8 @@ def annotate_frame(
 
         x, y, bw, bh = det.x, det.y, det.width, det.height
 
-        # Bounding Box rectangle
-        cv2.rectangle(annotated, (x, y), (x + bw, y + bh), color, 2)
+        # Bounding Box rectangle with dynamic thickness
+        cv2.rectangle(annotated, (x, y), (x + bw, y + bh), color, draw_thickness)
 
         # Label tag with background pill
         font = cv2.FONT_HERSHEY_SIMPLEX

@@ -47,8 +47,9 @@ from edge.database import (
     DETECTIONS_DIR
 )
 from edge.knowledge_base import knowledge_base
-from edge.probe_controller import probe
+from edge.probe_controller import probe, generate_cropped_pest_snapshot
 from edge.vision.detector import annotate_frame
+from edge.pest_imagery import get_or_create_pest_reference_image
 
 logger = logging.getLogger("AgriSentinel-WebApp")
 
@@ -240,6 +241,7 @@ async def dashboard_page(request: Request):
         confidence=0.88,
         pest_count=telemetry["latest_pest_count"]
     )
+    images = get_or_create_pest_reference_image(latest_pest, rec)
 
     return templates.TemplateResponse(
         request=request,
@@ -251,7 +253,8 @@ async def dashboard_page(request: Request):
             "crops": crops,
             "detections": detections,
             "stats": stats,
-            "latest_recommendation": rec
+            "latest_recommendation": rec,
+            "rec_images": images
         }
     )
 
@@ -477,9 +480,9 @@ async def detect_from_phone(
         rec["organic_alternative"] = org_meta.get("product_name", "Cold-pressed Neem Oil spray")
         rec["safety_precautions"] = "Visual confirmation recommended before chemical application."
 
-    # Annotate snapshot
+    # 1. Annotate uncropped full snapshot
     model_status = "Online" if getattr(probe.detector, "is_model_loaded", False) else "Offline (Missing)"
-    annotated = annotate_frame(
+    annotated_full = annotate_frame(
         frame,
         detections,
         crop_name=crop_name,
@@ -487,12 +490,37 @@ async def detect_from_phone(
         model_status=model_status
     )
 
-    # Save snapshot
+    # 2. Generate cropped pest close-up ROI macro
+    cropped_macro = generate_cropped_pest_snapshot(frame, detections)
+
+    # Save dual snapshots
     ts_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"det_{ts_str}_{target_crop}_phone_{uuid.uuid4().hex[:6]}.jpg"
-    full_path = os.path.join(DETECTIONS_DIR, filename)
-    cv2.imwrite(full_path, annotated, [cv2.IMWRITE_JPEG_QUALITY, 85])
-    rel_path = f"/static/detections/{filename}"
+    uid = uuid.uuid4().hex[:6]
+    full_filename = f"det_{ts_str}_{target_crop}_phone_{uid}_full.jpg"
+    crop_filename = f"det_{ts_str}_{target_crop}_phone_{uid}_crop.jpg"
+
+    full_disk_path = os.path.join(DETECTIONS_DIR, full_filename)
+    crop_disk_path = os.path.join(DETECTIONS_DIR, crop_filename)
+
+    cv2.imwrite(full_disk_path, annotated_full, [cv2.IMWRITE_JPEG_QUALITY, 85])
+    cv2.imwrite(crop_disk_path, cropped_macro, [cv2.IMWRITE_JPEG_QUALITY, 90])
+
+    rel_full_path = f"/static/detections/{full_filename}"
+    rel_crop_path = f"/static/detections/{crop_filename}"
+
+    # Build multi-pest recommendations
+    multi_recs = probe._build_multi_pest_recommendations(detections, target_crop)
+
+    # Format composite pest name if multiple species detected
+    if not detections:
+        detected_pest_name = "Pest-Free"
+    elif len(multi_recs) == 1:
+        detected_pest_name = rec["detected_pest"]
+    else:
+        detected_pest_name = ", ".join([
+            f"{r.get('detected_pest', 'Pest')} ({r.get('pest_count_for_species', 1)})"
+            for r in multi_recs
+        ])
 
     # Insert to database with [Phone Camera] tag in farm_area
     farm_tag = f"{probe.farm_area} [Phone Camera]"
@@ -500,7 +528,7 @@ async def detect_from_phone(
         "timestamp": datetime.datetime.now().isoformat(),
         "crop_type": target_crop,
         "farm_area": farm_tag,
-        "detected_pest": rec["detected_pest"],
+        "detected_pest": detected_pest_name,
         "pest_count": pest_count,
         "infestation_level": rec["infestation_level"],
         "soil_moisture_percent": 0.0,
@@ -511,8 +539,10 @@ async def detect_from_phone(
         "organic_alternative": rec.get("organic_alternative", ""),
         "dosage_instruction": rec.get("dosage_instruction", ""),
         "safety_precautions": rec.get("safety_precautions", ""),
-        "image_path": rel_path,
-        "status": rec["status"]
+        "image_path": rel_full_path,
+        "crop_image_path": rel_crop_path,
+        "status": rec["status"],
+        "recommendations": multi_recs
     }
     rec_id = insert_detection(db_payload)
     db_payload["id"] = rec_id
@@ -522,7 +552,8 @@ async def detect_from_phone(
         "type": "PEST_DETECTION_ALERT",
         "trigger": "PHONE_CAMERA",
         "record": db_payload,
-        "summary": f"{rec['detected_pest']} ({pest_count} detected via Phone Camera) in {crop_name}"
+        "summary": f"{detected_pest_name} ({pest_count} detected via Phone Camera) in {crop_name}",
+        "recommendations": multi_recs
     }
     probe._broadcast_alert(alert_event)
 
@@ -546,9 +577,11 @@ async def detect_from_phone(
         "pest_count": pest_count,
         "findings": findings,
         "recommendation": rec,
+        "recommendations": multi_recs,
         "plant_health": rec["plant_health_status"],
         "record": db_payload,
-        "image_url": rel_path
+        "image_url": rel_full_path,
+        "crop_image_url": rel_crop_path
     }
 
 
@@ -559,6 +592,7 @@ class BatchDeleteRequest(BaseModel):
 class ClearDetectionsRequest(BaseModel):
     clear_all: bool = False
     filters: Optional[Dict[str, Any]] = None
+    password: str = ""
 
 
 @router.get("/api/detections")
@@ -643,8 +677,24 @@ async def batch_delete_detections_api(req: BatchDeleteRequest):
 
 
 @router.post("/api/detections/clear")
-async def clear_detections_api(req: ClearDetectionsRequest):
-    """Clears all detection records or filtered records matching criteria."""
+async def clear_detections_api(req: ClearDetectionsRequest, request: Request):
+    """
+    Clears all detection records or filtered records matching criteria.
+    Requires user password verification before execution to prevent accidental data loss.
+    """
+    user = get_current_user(request)
+    if not user:
+        # Fallback to default administrator if called by API without active cookie
+        conn = get_db_connection()
+        user = conn.execute("SELECT * FROM users_tbl WHERE ACCOUNT = ?", ("vicente.labadia@deped.gov.ph",)).fetchone()
+        conn.close()
+
+    if not user:
+        raise HTTPException(status_code=403, detail="No authorized user account found.")
+
+    if not req.password or not verify_password(req.password, user["PASSWORD"]):
+        raise HTTPException(status_code=403, detail="Incorrect account password. Clear History was cancelled.")
+
     deleted_count = clear_detections(filters=req.filters, clear_all=req.clear_all)
     return {
         "status": "success",
@@ -661,7 +711,7 @@ async def query_recommendation(
     count: int = 1,
     soil_status: Optional[str] = None
 ):
-    """Queries agricultural knowledge base directly for a crop and pest combination."""
+    """Queries agricultural knowledge base directly for a crop and pest combination and returns reference imagery."""
     rec = knowledge_base.get_recommendation(
         crop_key=crop,
         pest_name=pest,
@@ -669,9 +719,11 @@ async def query_recommendation(
         pest_count=count,
         soil_status=soil_status
     )
+    images = get_or_create_pest_reference_image(pest, rec)
     return {
         "status": "success",
-        "recommendation": rec
+        "recommendation": rec,
+        "images": images
     }
 
 
@@ -873,6 +925,7 @@ class VisionSettingsRequest(BaseModel):
     conf_threshold: Optional[float] = None
     iou_threshold: Optional[float] = None
     model_profile: Optional[str] = None
+    box_thickness: Optional[int] = None
 
 
 @router.get("/api/dev/vision_settings")
@@ -898,6 +951,7 @@ async def dev_get_vision_settings():
         "class_filter_mode": mode,
         "conf_threshold": getattr(detector, "conf_threshold", 0.25),
         "iou_threshold": getattr(detector, "iou_threshold", 0.45),
+        "box_thickness": getattr(detector, "box_thickness", 2),
         "active_model_profile": active_profile,
         "available_profiles": [
             {
@@ -917,14 +971,15 @@ async def dev_get_vision_settings():
 
 @router.post("/api/dev/vision_settings")
 async def dev_update_vision_settings(req: VisionSettingsRequest):
-    """Updates AI vision engine parameters, class filtering mode, and active model profile live."""
+    """Updates AI vision engine parameters, class filtering mode, box thickness, and active model profile live."""
     detector = probe.detector
     if hasattr(detector, "set_parameters"):
         detector.set_parameters(
             conf_threshold=req.conf_threshold,
             iou_threshold=req.iou_threshold,
             class_filter_mode=req.class_filter_mode,
-            model_profile=req.model_profile
+            model_profile=req.model_profile,
+            box_thickness=req.box_thickness
         )
     return {
         "status": "success",
@@ -934,6 +989,7 @@ async def dev_update_vision_settings(req: VisionSettingsRequest):
             "class_filter_mode": getattr(detector, "class_filter_mode", "full_102"),
             "conf_threshold": getattr(detector, "conf_threshold", 0.25),
             "iou_threshold": getattr(detector, "iou_threshold", 0.45),
+            "box_thickness": getattr(detector, "box_thickness", 2),
             "model_loaded": getattr(detector, "is_model_loaded", False)
         }
     }

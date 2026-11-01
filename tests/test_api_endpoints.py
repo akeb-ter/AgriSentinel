@@ -185,14 +185,26 @@ def test_api_detections_batch_delete():
 
 
 def test_api_detections_clear():
-    """Verify /api/detections/clear removes filtered records."""
+    """Verify /api/detections/clear enforces password protection and removes filtered records when valid."""
     init_db()
     id1 = insert_detection({"crop_type": "test_clear_crop", "detected_pest": "Clear Pest 1", "infestation_level": "Severe", "status": "CONFIRMED"})
     id2 = insert_detection({"crop_type": "test_clear_crop", "detected_pest": "Clear Pest 2", "infestation_level": "Low", "status": "CONFIRMED"})
 
-    # Clear only the Severe one
+    # 1. Attempt to clear without valid password -> Must fail with 403 Forbidden
+    res_bad = client.post("/api/detections/clear", json={
+        "clear_all": False,
+        "password": "wrong_password",
+        "filters": {
+            "crop_type": "test_clear_crop",
+            "infestation_level": "Severe"
+        }
+    })
+    assert res_bad.status_code == 403
+
+    # 2. Clear only the Severe one with correct admin password ("123")
     res = client.post("/api/detections/clear", json={
         "clear_all": False,
+        "password": "123",
         "filters": {
             "crop_type": "test_clear_crop",
             "infestation_level": "Severe"
@@ -441,6 +453,101 @@ def test_rendered_templates_javascript_syntax_and_handlers():
             and not re.search(rf"function\s+{h}\b|(?:const|let|var)\s+{h}\s*=", combined_scripts)
         ]
         assert not missing, f"Undefined JS handler functions in {route}: {missing}"
+
+
+def test_dual_snapshots_and_crop_image_path():
+    """Verify inspection capture saves both uncropped and cropped close-up snapshot images."""
+    import os
+    from edge.database import BASE_DIR, get_detection_by_id
+
+    res = client.post("/api/analyze", json={"crop_type": "rice", "farm_area": "Plot A Dual Snap"})
+    assert res.status_code == 200
+    rec = res.json()["record"]
+
+    assert "image_path" in rec and rec["image_path"].startswith("/static/detections/")
+    assert "crop_image_path" in rec and rec["crop_image_path"].startswith("/static/detections/")
+    assert rec["image_path"] != rec["crop_image_path"]
+
+    full_disk = os.path.join(BASE_DIR, "web", rec["image_path"].lstrip("/"))
+    crop_disk = os.path.join(BASE_DIR, "web", rec["crop_image_path"].lstrip("/"))
+
+    assert os.path.exists(full_disk)
+    assert os.path.exists(crop_disk)
+    assert os.path.getsize(full_disk) > 1000
+    assert os.path.getsize(crop_disk) > 1000
+
+    # Query from database to verify persistence of crop_image_path
+    db_rec = get_detection_by_id(rec["id"])
+    assert db_rec is not None
+    assert db_rec["crop_image_path"] == rec["crop_image_path"]
+
+
+def test_multi_pest_recommendations_grouping():
+    """Verify multi-pest recommendation engine groups detected species and computes tailored guidance."""
+    from edge.probe_controller import probe
+    from edge.vision.detector import DetectionBox
+
+    sample_boxes = [
+        DetectionBox("Rice Leaf Roller", 0.92, 50, 50, 100, 100, pest_key="rice_leaf_roller"),
+        DetectionBox("Rice Leaf Roller", 0.88, 160, 50, 90, 90, pest_key="rice_leaf_roller"),
+        DetectionBox("Brown Planthopper", 0.85, 300, 200, 80, 80, pest_key="brown_plant_hopper")
+    ]
+
+    recs = probe._build_multi_pest_recommendations(sample_boxes, "rice")
+    assert len(recs) == 2
+
+    species_names = [r["detected_pest"] for r in recs]
+    assert any("Rice Leaf Roller" in n for n in species_names)
+    assert any("Brown Plant" in n or "Brown Planthopper" in n for n in species_names)
+
+    rlr_rec = next(r for r in recs if "Rice Leaf Roller" in r["detected_pest"])
+    assert rlr_rec["pest_count_for_species"] == 2
+    assert rlr_rec["max_confidence"] == 0.92
+
+
+def test_pest_imagery_endpoint():
+    """Verify /api/recommendations returns reference specimen image assets."""
+    res = client.get("/api/recommendations/rice/rice_leaf_roller?confidence=0.90")
+    assert res.status_code == 200
+    data = res.json()
+    assert "images" in data
+    imgs = data["images"]
+    assert "reference_url" in imgs
+    assert "svg_fallback_url" in imgs
+    assert imgs["svg_fallback_url"].endswith(".svg")
+
+
+def test_box_thickness_persistence_via_api():
+    """Verify box_thickness updates live and persists across settings reloads."""
+    res_post = client.post("/api/dev/vision_settings", json={"box_thickness": 5})
+    assert res_post.status_code == 200
+    data_post = res_post.json()
+    assert data_post["settings"]["box_thickness"] == 5
+
+    res_get = client.get("/api/dev/vision_settings")
+    assert res_get.status_code == 200
+    assert res_get.json()["box_thickness"] == 5
+
+    # Check telemetry reflects box thickness
+    tel = client.get("/api/status").json()["telemetry"]
+    assert tel.get("box_thickness") == 5
+
+
+def test_database_farm_analytics_endpoint():
+    """Verify /api/stats returns rich distributions for Top Pests, Crop Share, and Infestation Severity."""
+    res = client.get("/api/stats")
+    assert res.status_code == 200
+    stats = res.json()["stats"]
+
+    assert "total_inspections" in stats
+    assert "severe_alerts" in stats
+    assert "top_pests" in stats
+    assert "crop_distribution" in stats
+    assert "severity_breakdown" in stats
+    assert isinstance(stats["top_pests"], list)
+    assert isinstance(stats["crop_distribution"], list)
+    assert isinstance(stats["severity_breakdown"], list)
+
 
 
 

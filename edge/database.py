@@ -44,9 +44,17 @@ def init_db():
         dosage_instruction TEXT,
         safety_precautions TEXT,
         image_path TEXT,
+        crop_image_path TEXT DEFAULT '',
         status TEXT NOT NULL
     )
     """)
+
+    # Migration: Ensure crop_image_path exists in existing databases
+    cursor.execute("PRAGMA table_info(detections)")
+    existing_cols = [row[1] for row in cursor.fetchall()]
+    if "crop_image_path" not in existing_cols:
+        cursor.execute("ALTER TABLE detections ADD COLUMN crop_image_path TEXT DEFAULT ''")
+        logger.info("[Database] Migrated detections table: added crop_image_path column")
 
     # Create users_tbl if not exists
     cursor.execute("""
@@ -86,7 +94,7 @@ def get_db_connection() -> sqlite3.Connection:
 
 
 def insert_detection(data: Dict[str, Any]) -> int:
-    """Inserts a new detection record into the DBMS."""
+    """Inserts a new detection record into the DBMS, storing both uncropped and cropped image paths."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -97,8 +105,8 @@ def insert_detection(data: Dict[str, Any]) -> int:
         infestation_level, soil_moisture_percent, soil_status,
         plant_health_status, confidence, recommended_pesticide,
         organic_alternative, dosage_instruction, safety_precautions,
-        image_path, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        image_path, crop_image_path, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         ts,
         data.get("crop_type", "corn"),
@@ -115,6 +123,7 @@ def insert_detection(data: Dict[str, Any]) -> int:
         data.get("dosage_instruction", ""),
         data.get("safety_precautions", ""),
         data.get("image_path", ""),
+        data.get("crop_image_path", ""),
         data.get("status", "CONFIRMED")
     ))
 
@@ -237,19 +246,20 @@ def delete_detections_batch(ids: List[int]) -> int:
     conn = get_db_connection()
 
     rows = conn.execute(
-        f"SELECT image_path FROM detections WHERE id IN ({placeholders})",
+        f"SELECT image_path, crop_image_path FROM detections WHERE id IN ({placeholders})",
         valid_ids
     ).fetchall()
 
     for r in rows:
-        img_path = r["image_path"]
-        if img_path:
-            img_full = os.path.join(BASE_DIR, "web", img_path.lstrip("/"))
-            if os.path.exists(img_full):
-                try:
-                    os.remove(img_full)
-                except Exception as e:
-                    logger.warning(f"Failed removing batch image {img_full}: {e}")
+        for col in ("image_path", "crop_image_path"):
+            img_path = r[col] if col in r.keys() else None
+            if img_path:
+                img_full = os.path.join(BASE_DIR, "web", img_path.lstrip("/"))
+                if os.path.exists(img_full):
+                    try:
+                        os.remove(img_full)
+                    except Exception as e:
+                        logger.warning(f"Failed removing batch image {img_full}: {e}")
 
     cursor = conn.execute(
         f"DELETE FROM detections WHERE id IN ({placeholders})",
@@ -264,21 +274,22 @@ def delete_detections_batch(ids: List[int]) -> int:
 def clear_detections(filters: Optional[Dict[str, Any]] = None, clear_all: bool = False) -> int:
     """
     Clears all detection records or only records matching active filters,
-    removing their associated image files from disk.
+    removing both uncropped and cropped snapshot image files from disk.
     """
     conn = get_db_connection()
 
     if clear_all or not filters:
-        rows = conn.execute("SELECT image_path FROM detections").fetchall()
+        rows = conn.execute("SELECT image_path, crop_image_path FROM detections").fetchall()
         for r in rows:
-            img_path = r["image_path"]
-            if img_path:
-                img_full = os.path.join(BASE_DIR, "web", img_path.lstrip("/"))
-                if os.path.exists(img_full):
-                    try:
-                        os.remove(img_full)
-                    except Exception as e:
-                        logger.warning(f"Failed removing image {img_full}: {e}")
+            for col in ("image_path", "crop_image_path"):
+                img_path = r[col] if col in r.keys() else None
+                if img_path:
+                    img_full = os.path.join(BASE_DIR, "web", img_path.lstrip("/"))
+                    if os.path.exists(img_full):
+                        try:
+                            os.remove(img_full)
+                        except Exception as e:
+                            logger.warning(f"Failed removing image {img_full}: {e}")
 
         cursor = conn.execute("DELETE FROM detections")
         deleted = cursor.rowcount
@@ -338,16 +349,17 @@ def clear_detections(filters: Optional[Dict[str, Any]] = None, clear_all: bool =
 
     where_sql = " AND ".join(where_clauses)
 
-    rows = conn.execute(f"SELECT image_path FROM detections WHERE {where_sql}", params).fetchall()
+    rows = conn.execute(f"SELECT image_path, crop_image_path FROM detections WHERE {where_sql}", params).fetchall()
     for r in rows:
-        img_path = r["image_path"]
-        if img_path:
-            img_full = os.path.join(BASE_DIR, "web", img_path.lstrip("/"))
-            if os.path.exists(img_full):
-                try:
-                    os.remove(img_full)
-                except Exception as e:
-                    logger.warning(f"Failed removing filtered image {img_full}: {e}")
+        for col in ("image_path", "crop_image_path"):
+            img_path = r[col] if col in r.keys() else None
+            if img_path:
+                img_full = os.path.join(BASE_DIR, "web", img_path.lstrip("/"))
+                if os.path.exists(img_full):
+                    try:
+                        os.remove(img_full)
+                    except Exception as e:
+                        logger.warning(f"Failed removing filtered image {img_full}: {e}")
 
     cursor = conn.execute(f"DELETE FROM detections WHERE {where_sql}", params)
     deleted = cursor.rowcount
@@ -357,7 +369,7 @@ def clear_detections(filters: Optional[Dict[str, Any]] = None, clear_all: bool =
 
 
 def get_detection_stats() -> Dict[str, Any]:
-    """Computes summary statistics across all detections."""
+    """Computes comprehensive summary statistics and distributions across all detections."""
     conn = get_db_connection()
     total = conn.execute("SELECT COUNT(*) FROM detections").fetchone()[0]
 
@@ -365,13 +377,25 @@ def get_detection_stats() -> Dict[str, Any]:
         "SELECT COUNT(*) FROM detections WHERE infestation_level = 'Severe'"
     ).fetchone()[0]
 
+    pest_free_count = conn.execute("""
+        SELECT COUNT(*) FROM detections
+        WHERE detected_pest = 'Pest-Free' OR infestation_level = 'None'
+    """).fetchone()[0]
+
+    beneficial_count = conn.execute("""
+        SELECT COUNT(*) FROM detections
+        WHERE LOWER(plant_health_status) LIKE '%beneficial%' OR LOWER(detected_pest) LIKE '%beneficial%'
+    """).fetchone()[0]
+
+    harmful_pest_count = max(0, total - pest_free_count - beneficial_count)
+
     pest_summary = conn.execute("""
         SELECT detected_pest, COUNT(*) as count
         FROM detections
-        WHERE detected_pest != 'Pest-Free'
+        WHERE detected_pest != 'Pest-Free' AND LOWER(detected_pest) NOT LIKE '%beneficial%'
         GROUP BY detected_pest
         ORDER BY count DESC
-        LIMIT 5
+        LIMIT 8
     """).fetchall()
 
     crop_summary = conn.execute("""
@@ -381,17 +405,59 @@ def get_detection_stats() -> Dict[str, Any]:
         ORDER BY count DESC
     """).fetchall()
 
+    severity_rows = conn.execute("""
+        SELECT infestation_level, COUNT(*) as count
+        FROM detections
+        GROUP BY infestation_level
+    """).fetchall()
+
     avg_conf = conn.execute(
         "SELECT AVG(confidence) FROM detections WHERE confidence > 0"
     ).fetchone()[0]
 
     conn.close()
 
+    top_pests = []
+    for r in pest_summary:
+        cnt = int(r["count"])
+        pct = round((cnt / total * 100), 1) if total > 0 else 0.0
+        top_pests.append({
+            "detected_pest": r["detected_pest"],
+            "count": cnt,
+            "percentage": pct
+        })
+
+    crop_distribution = []
+    for r in crop_summary:
+        cnt = int(r["count"])
+        pct = round((cnt / total * 100), 1) if total > 0 else 0.0
+        crop_distribution.append({
+            "crop_type": r["crop_type"],
+            "count": cnt,
+            "percentage": pct
+        })
+
+    severity_map = {r["infestation_level"]: int(r["count"]) for r in severity_rows}
+    severity_order = ["Severe", "High", "Moderate", "Low", "None"]
+    severity_breakdown = []
+    for sev in severity_order:
+        cnt = severity_map.get(sev, 0)
+        pct = round((cnt / total * 100), 1) if total > 0 else 0.0
+        severity_breakdown.append({
+            "level": sev,
+            "count": cnt,
+            "percentage": pct
+        })
+
     return {
         "total_inspections": total,
         "severe_alerts": severe_count,
-        "top_pests": [dict(r) for r in pest_summary],
-        "crop_distribution": [dict(r) for r in crop_summary],
+        "pest_free_count": pest_free_count,
+        "beneficial_count": beneficial_count,
+        "harmful_pest_count": harmful_pest_count,
+        "top_pests": top_pests,
+        "crop_distribution": crop_distribution,
+        "severity_breakdown": severity_breakdown,
         "avg_confidence": round((avg_conf or 0.0) * 100, 1),
         "avg_soil_moisture": 0.0,
     }
