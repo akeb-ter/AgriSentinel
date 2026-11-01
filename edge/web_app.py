@@ -56,6 +56,42 @@ logger = logging.getLogger("AgriSentinel-WebApp")
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _find_intro_video_file() -> Optional[str]:
+    """Scans for intro video file across candidate paths case-insensitively."""
+    search_dirs = [
+        BASE_DIR,
+        os.path.dirname(BASE_DIR),
+        os.path.join(BASE_DIR, "web", "static"),
+        os.path.expanduser("~"),
+        "/home/agrisentinel",
+        "/home/agrisentinel/gh/remote/AgriSentinel",
+    ]
+    candidate_names = [
+        "VIdeoAboutAgriSentinel.mp4",
+        "VideoAboutAgriSentinel.mp4",
+        "videoaboutagrisentinel.mp4",
+        "video_about_agrisentinel.mp4",
+        "agrisentinel_intro.mp4",
+        "intro.mp4",
+    ]
+    for d in search_dirs:
+        if not os.path.exists(d):
+            continue
+        for name in candidate_names:
+            p = os.path.join(d, name)
+            if os.path.isfile(p) and os.path.getsize(p) > 1000:
+                return p
+        try:
+            for fname in os.listdir(d):
+                if fname.lower().endswith(".mp4") and ("video" in fname.lower() or "agri" in fname.lower() or "intro" in fname.lower()):
+                    p = os.path.join(d, fname)
+                    if os.path.isfile(p) and os.path.getsize(p) > 1000:
+                        return p
+        except Exception:
+            pass
+    return None
+
+
 def _ensure_video_logo_assets():
     """Extracts official logo emblem and full video poster from VIdeoAboutAgriSentinel.mp4 if missing."""
     icon_path = os.path.join(BASE_DIR, "web", "static", "images", "logo_icon.png")
@@ -63,8 +99,8 @@ def _ensure_video_logo_assets():
     if os.path.exists(icon_path) and os.path.exists(full_path):
         return
 
-    video_path = os.path.join(BASE_DIR, "VIdeoAboutAgriSentinel.mp4")
-    if not os.path.exists(video_path):
+    video_path = _find_intro_video_file()
+    if not video_path:
         return
 
     try:
@@ -185,13 +221,9 @@ async def logo_fallback():
 @router.get("/api/video/intro")
 async def get_intro_video():
     """Serves promotional & introductory video with HTTP byte-range streaming support."""
-    video_path = os.path.join(BASE_DIR, "VIdeoAboutAgriSentinel.mp4")
-    if not os.path.exists(video_path):
-        alt_path = os.path.join(os.path.dirname(BASE_DIR), "VIdeoAboutAgriSentinel.mp4")
-        if os.path.exists(alt_path):
-            video_path = alt_path
-        else:
-            raise HTTPException(status_code=404, detail="Intro video file not found on probe.")
+    video_path = _find_intro_video_file()
+    if not video_path:
+        raise HTTPException(status_code=404, detail="Intro video file not found on probe.")
     return FileResponse(video_path, media_type="video/mp4")
 
 
